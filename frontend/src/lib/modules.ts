@@ -33,6 +33,8 @@ export const GAME_TYPES: readonly { type: string; family: string; name: string }
   { type: 'lambdamoo', family: 'moo', name: 'MOO (LambdaMOO, ToastStunt)' },
   { type: 'evennia', family: 'evennia', name: 'Evennia' },
   { type: 'muck', family: 'muck', name: 'MUCK (Fuzzball, TinyMUCK)' },
+  { type: 'tinymuse', family: 'muse', name: 'TinyMUSE (MicroMUSE, PernMUSE...)' },
+  { type: 'coldmud', family: 'cold', name: 'ColdMUD' },
   { type: 'coffeemud', family: 'coffeemud', name: 'CoffeeMUD' },
   { type: 'ironrealms', family: 'ironrealms', name: 'Iron Realms (Achaea, Aetolia...)' },
   { type: 'custom', family: 'custom', name: 'Other MUD (not listed)' },
