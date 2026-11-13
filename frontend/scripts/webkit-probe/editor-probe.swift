@@ -8,6 +8,11 @@
 import Cocoa
 import WebKit
 
+/// A real user's click on an inactive window may only activate it; the probe must not lose clicks that way.
+final class FirstClickWebView: WKWebView {
+  override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+}
+
 final class Probe: NSObject, NSApplicationDelegate {
   var win: NSWindow!
   var wv: WKWebView!
@@ -18,7 +23,7 @@ final class Probe: NSObject, NSApplicationDelegate {
 
   func applicationDidFinishLaunching(_ n: Notification) {
     win = NSWindow(contentRect: NSRect(x: 80, y: 80, width: 1000, height: 700), styleMask: [.titled], backing: .buffered, defer: false)
-    wv = WKWebView(frame: win.contentView!.bounds)
+    wv = FirstClickWebView(frame: win.contentView!.bounds)
     wv.autoresizingMask = [.width, .height]
     win.contentView!.addSubview(wv)
     guard let first = args.first, let url = URL(string: first) else {
@@ -47,6 +52,7 @@ final class Probe: NSObject, NSApplicationDelegate {
   }
   func typeText(_ s: String) { for c in s { key(String(c), String(c), 0) } }
   func mouse(_ type: NSEvent.EventType, _ x: Double, _ yTop: Double) {
+    if !win.isKeyWindow { win.makeKeyAndOrderFront(nil); NSApp.activate(ignoringOtherApps: true) }
     let h = Double(win.contentView!.bounds.height)
     let ev = NSEvent.mouseEvent(with: type, location: NSPoint(x: x, y: h - yTop), modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: win.windowNumber, context: nil, eventNumber: 0, clickCount: 1, pressure: 1)!
     win.makeFirstResponder(wv)

@@ -7,6 +7,11 @@
 import Cocoa
 import WebKit
 
+/// A real user's click on an inactive window may only activate it; the probe must not lose clicks that way.
+final class FirstClickWebView: WKWebView {
+  override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+}
+
 final class Probe: NSObject, NSApplicationDelegate {
   var win: NSWindow!
   var wv: WKWebView!
@@ -16,7 +21,7 @@ final class Probe: NSObject, NSApplicationDelegate {
 
   func applicationDidFinishLaunching(_ n: Notification) {
     win = NSWindow(contentRect: NSRect(x: 80, y: 80, width: 1000, height: 640), styleMask: [.titled], backing: .buffered, defer: false)
-    wv = WKWebView(frame: win.contentView!.bounds)
+    wv = FirstClickWebView(frame: win.contentView!.bounds)
     win.contentView!.addSubview(wv)
     guard let first = args.first, let url = URL(string: first) else {
       FileHandle.standardError.write("usage: help-probe URL [topic ...]\n".data(using: .utf8)!)
