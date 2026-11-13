@@ -38,17 +38,22 @@ Up, Down, Ctrl-P, Ctrl-N and Shift-Enter are disabled while a password is being 
 
 ## Editor mode
 
-Toggle with Cmd-Shift-E or Ctrl-Shift-E (or the Editor button). In the editor the Emacs keys above are not used; the browser's normal text editing applies.
+Toggle with Cmd-Shift-E or Ctrl-Shift-E (or the Editor button). The editor is a code editor: the Emacs keys above are not used; it has the usual code-editor keys instead.
 
-| Key                               | Action                                        |
-| --------------------------------- | --------------------------------------------- |
-| Cmd-Shift-E, Ctrl-Shift-E         | switch editor mode on or off                  |
-| Enter                             | insert a new line                             |
-| Cmd-Enter, Ctrl-Enter             | send the whole buffer                         |
-| Cmd-Shift-Enter, Ctrl-Shift-Enter | send the selection or the current line        |
-| Tab                               | insert two spaces (indent the selected lines) |
-| Shift-Tab                         | outdent                                       |
-| Escape                            | back to the single line (the text is kept)    |
+| Key                               | Action                                                                  |
+| --------------------------------- | ----------------------------------------------------------------------- |
+| Cmd-Shift-E, Ctrl-Shift-E         | switch editor mode on or off                                            |
+| Enter                             | insert a new line                                                       |
+| Cmd-Enter, Ctrl-Enter             | send the whole buffer                                                   |
+| Cmd-Shift-Enter, Ctrl-Shift-Enter | send the selection or the current line                                  |
+| Tab                               | insert two spaces (indent the selected lines)                           |
+| Shift-Tab                         | outdent                                                                 |
+| Cmd-Alt-], Ctrl-Alt-]             | expand the selection (or everything) over indented lines                |
+| Cmd-Alt-[, Ctrl-Alt-[             | collapse it again                                                       |
+| Cmd-F, Ctrl-F                     | search (and replace) inside the editor; Escape closes it                |
+| Cmd-Z, Ctrl-Z                     | undo                                                                    |
+| Cmd-Shift-Z, Ctrl-Y               | redo                                                                    |
+| Escape                            | back to the single line (the text is kept), when no search is open      |
 
 ## Resizing the command window
 

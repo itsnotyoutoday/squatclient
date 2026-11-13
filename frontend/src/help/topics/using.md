@@ -1,7 +1,7 @@
 ---
 title: Using the client
 order: 4
-keywords: editor mode, resize, history browser, softcode, output, scrollback, search, pause, more, input, history, tabs, status bar, themes, colours, colors, 256, truecolor, utf-8, links, find
+keywords: editor mode, upload, /upload, drag and drop, expand, collapse, brackets, code editor, resize, history browser, softcode, output, scrollback, search, pause, more, input, history, tabs, status bar, themes, colours, colors, 256, truecolor, utf-8, links, find
 aliases: output, scrollback, input, history, tabs, status, statusbar, themes, theme, search, pause, more
 ---
 
@@ -59,12 +59,19 @@ Drag the thin bar above the input upwards to make the command window taller (up 
 
 ## Editor mode
 
-For big pieces of code press **Editor** (or Cmd/Ctrl-Shift-E): the input becomes a large monospace editor.
+For big pieces of code press **Editor** (or Cmd/Ctrl-Shift-E): the input becomes a large **code editor** made for MUSH softcode. It loads the first time you open it.
 
+- It colours softcode as you type (functions, `[ ]` `{ }` `( )`, `%` substitutions, `#dbrefs`, `&ATTR` and `@commands`, `$` patterns, `@@` comments), marks the matching bracket, closes `(` `[` `{` for you and underlines brackets that do not balance (the toolbar counts them).
 - Enter inserts a new line; **Cmd/Ctrl-Enter sends the whole buffer**; **Cmd/Ctrl-Shift-Enter** (or the _Send line / selection_ button) sends only the selection, or the line under the cursor together with the indented lines that continue it.
-- Tab inserts two spaces (with a selection it indents every selected line); Shift-Tab outdents. Line numbers, the line and column, and _Wrap_ (off by default) are in the toolbar.
-- Escape returns to the single line and keeps your text. Unsent text is kept as a **draft** for the world, across tab switches and restarts.
-- Pasting several lines inserts them into the editor instead of sending them.
+- Tab inserts two spaces (with a selection it indents every selected line); Shift-Tab outdents. Undo and redo (Cmd/Ctrl-Z, Cmd/Ctrl-Shift-Z or Ctrl-Y) work as in any editor. Line numbers, the line and column, and _Wrap_ (off by default) are in the toolbar.
+- **Cmd/Ctrl-F searches inside the editor** (with replace); Escape closes that search first. The output search stays on Cmd/Ctrl-F whenever you are not in the editor.
+- **Expand** breaks long function calls over indented lines so you can read them, and **Collapse** puts them back; both work on the selection, or on everything when nothing is selected, and Collapse after Expand gives back exactly what you had. Keys: Cmd/Ctrl-Alt-] and Cmd/Ctrl-Alt-[.
+- Escape (with no search open) returns to the single line and keeps your text. Unsent text is kept as a **draft** for the world, across tab switches and restarts.
+- Pasting several lines in the editor inserts them there instead of sending them.
+
+### Checking brackets before sending
+
+When you send from the editor (the whole buffer, or the selection or line) and the code has brackets that do not balance, a dialog says how many problems there are and on which lines. **Fix first** puts the cursor on the first problem and sends nothing; **Send anyway** sends it as it is. Turn the check off with _Editor: ask before sending unbalanced brackets_ in [Settings](help:settings). Single-line input is never checked.
 
 ### Sending blocks
 
@@ -79,6 +86,17 @@ Every resulting line is sent to the game separately, in order:
 Lines like `connect name password`, `create name password` and `@password ...` are recognised automatically and are never echoed, stored or logged by a squatter; the screen shows them masked (`connect name ********`). Use `/secret text` for anything else you must keep out of logs.
 
 When the game turns off echo (for a password prompt) the input becomes a masked password field with a lock icon, history is disabled and what you type is not recorded.
+
+## Uploading a file
+
+`/upload` sends a text file to the game, for example a softcode installer. Type `/upload` to choose the file in the system file dialog (it starts in the folder you used last; text and code files such as `.txt` `.mush` `.mu` `.tf` `.lua` `.md` are listed first, All Files is one click away), or `/upload ~/code/install.mush` to give the path yourself (`~/` is your home folder; use quotes if the path has spaces). You can also **drag a text file onto the window**. Nothing is sent yet: a dialog opens first.
+
+- The dialog shows the file name, size, line count and a scrollable preview with line numbers (a second tab shows exactly what will be sent). Large files stay responsive.
+- It follows the same rules as editor mode: _join continuation lines_ and _skip blank and @@ comment lines_ start from your settings, and you can change them for this upload. The number of commands that will be sent is shown. _Delay per line_ starts from your setting, or 50 ms when that is 0, so the game is not flooded; an optional _prefix_ is put in front of every command.
+- The commands go to the world shown as **Send to** (the one in front), one line at a time. If the code has unbalanced brackets the first problems are listed and the button reads **Send anyway**.
+- While it runs you see a progress bar, the current line and the elapsed time, with **Pause**, **Resume** and **Cancel**. At the end a summary says how many commands were sent and skipped, or where it was cancelled. Closing the dialog while sending cancels the rest.
+- Command history gets one entry, `/upload install.mush`, not the whole file.
+- Only plain text files up to 5 MiB are accepted (binary files are refused with a message). UTF-8 and Latin-1 files both work; line endings are normalised. The app reads only the file you chose or typed.
 
 ## Tabs
 

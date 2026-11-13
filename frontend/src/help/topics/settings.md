@@ -27,6 +27,7 @@ Open settings with Ctrl-, (Cmd-, on macOS), the menu (Session, Settings) or the 
 | Delay between block lines               | editor mode: milliseconds between the lines of a sent block (0 sends them at once); 0 to 10000                                                                                                                                             | 0                                                   |
 | Editor: join indented lines             | a line starting with whitespace continues the previous line (leading whitespace removed, nothing inserted)                                                                                                                                 | on                                                  |
 | Editor: drop blank and @@ comment lines | blank lines and lines holding only an `@@` comment are not sent                                                                                                                                                                            | on                                                  |
+| Editor: ask before sending unbalanced brackets | before sending from the editor, and in the [upload](help:using#uploading-a-file) dialog, check `( ) [ ] { }` and ask (_Fix first_ or _Send anyway_) when they do not balance | on |
 
 The heights of the command window and the editor are set by dragging (see [Using the client](help:using#resizing-the-command-window)); they are saved as settings too.
 
