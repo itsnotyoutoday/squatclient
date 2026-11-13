@@ -1,0 +1,280 @@
+/* Help browser. Uses the theme variables set by applyTheme(), so dark, light and high-contrast all apply. */
+.dialog:has(.helpbrowser) {
+  width: min(1100px, 96vw);
+}
+.dialog:has(.helpbrowser) .body {
+  padding: 0;
+  overflow: hidden;
+}
+.helpbrowser {
+  display: flex;
+  flex-direction: column;
+  height: min(78vh, 780px);
+  min-height: 320px;
+  color: var(--ui-text);
+}
+.helpbar {
+  display: flex;
+  gap: 6px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--ui-border);
+  align-items: center;
+}
+.helpbar input[type='search'] {
+  flex: 1;
+  min-width: 0;
+}
+.helpbar button {
+  min-width: 2rem;
+}
+.helpmain {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(170px, 230px) 1fr;
+}
+.helpside {
+  border-right: 1px solid var(--ui-border);
+  overflow: auto;
+  padding: 6px 4px;
+  background: var(--ui-panel-alt);
+}
+.helpcontent {
+  min-width: 0;
+  overflow: hidden;
+  display: flex;
+}
+.helppage,
+.helpresults {
+  flex: 1;
+  overflow: auto;
+  padding: 12px 18px 24px;
+  line-height: 1.5;
+}
+.helptree,
+.helptree ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.helptree ul[role='group'] {
+  padding-left: 12px;
+}
+.treeitem {
+  outline: none;
+}
+.treeitem > .row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.treeitem > .row:hover {
+  background: var(--selection);
+}
+.treeitem > .row.current {
+  background: var(--ui-accent);
+  color: var(--ui-accent-text);
+}
+.treeitem:focus-visible > .row {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 1px;
+}
+.treeitem > .row.current:focus-visible,
+.treeitem:focus-visible > .row.current {
+  outline-color: var(--ui-text);
+}
+.twisty {
+  width: 1em;
+  flex: none;
+  text-align: center;
+}
+.crumbs ol {
+  display: flex;
+  flex-wrap: wrap;
+  list-style: none;
+  margin: 0 0 4px;
+  padding: 0;
+  font-size: 12px;
+  color: var(--ui-text-dim);
+}
+.crumbs li + li::before {
+  content: '\203A';
+  margin: 0 6px;
+}
+.helppage h1 {
+  margin: 4px 0 10px;
+  font-size: 22px;
+}
+.helpbody h2 {
+  font-size: 17px;
+  margin: 22px 0 6px;
+  padding-bottom: 3px;
+  border-bottom: 1px solid var(--ui-border);
+}
+.helpbody h3 {
+  font-size: 15px;
+  margin: 16px 0 4px;
+}
+.helpbody p,
+.helpbody ul,
+.helpbody ol {
+  margin: 8px 0;
+}
+.helpbody a,
+.helppage .link,
+.helpresults .rtitle {
+  color: var(--link);
+}
+.helppage .link {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+}
+.helppage .crumbs .link {
+  color: var(--ui-text-dim);
+}
+.helpbody code {
+  font-family: var(--font);
+  font-size: 0.92em;
+  background: var(--ui-panel-alt);
+  border-radius: 3px;
+  padding: 0 4px;
+}
+.helpbody blockquote {
+  margin: 10px 0;
+  padding: 6px 14px;
+  border-left: 4px solid var(--ui-accent);
+  background: var(--ui-panel-alt);
+}
+.helpbody table {
+  display: block;
+  overflow-x: auto;
+  border-collapse: collapse;
+  max-width: 100%;
+}
+.helpbody th,
+.helpbody td {
+  border: 1px solid var(--ui-border);
+  padding: 3px 8px;
+  text-align: left;
+  vertical-align: top;
+}
+.helpbody th {
+  background: var(--ui-panel-alt);
+}
+.codeblock {
+  margin: 10px 0;
+  border: 1px solid var(--ui-border);
+  border-radius: 6px;
+  background: var(--bg);
+}
+.codeblock .codebar {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  padding: 3px 6px;
+  border-bottom: 1px solid var(--ui-border);
+}
+.codeblock .codebtn {
+  font-size: 12px;
+  padding: 1px 8px;
+}
+.codeblock pre {
+  margin: 0;
+  padding: 8px 10px;
+  overflow-x: auto;
+}
+.codeblock code {
+  background: none;
+  padding: 0;
+  color: var(--fg);
+  white-space: pre;
+}
+.toc {
+  margin: 8px 0 12px;
+  padding: 6px 12px;
+  border: 1px solid var(--ui-border);
+  border-radius: 6px;
+  background: var(--ui-panel-alt);
+  font-size: 13px;
+}
+.toc .tochead,
+.kids h2 {
+  margin: 0 0 4px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ui-text-dim);
+  border: none;
+}
+.toc ul,
+.kids ul {
+  margin: 0;
+  padding-left: 16px;
+}
+.toc li.lvl3 {
+  margin-left: 14px;
+}
+.kids {
+  margin-top: 22px;
+}
+mark.hit {
+  background: var(--ui-warn);
+  color: #000;
+  border-radius: 2px;
+  padding: 0 1px;
+}
+.helpresults ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.helpresults .count {
+  color: var(--ui-text-dim);
+  margin: 0 0 8px;
+}
+.helpresults .result {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 6px 8px;
+  cursor: pointer;
+  color: inherit;
+}
+.helpresults .result:hover,
+.helpresults .result:focus-visible {
+  background: var(--ui-panel-alt);
+  border-color: var(--ui-border);
+}
+.helpresults .rtitle {
+  display: block;
+  font-weight: 600;
+}
+.helpresults .rsnip {
+  display: block;
+  color: var(--ui-text-dim);
+  font-size: 13px;
+}
+@media (max-width: 760px) {
+  .helpmain {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(90px, 28%) 1fr;
+  }
+  .helpside {
+    border-right: none;
+    border-bottom: 1px solid var(--ui-border);
+  }
+  .helppage,
+  .helpresults {
+    padding: 10px 12px 20px;
+  }
+}

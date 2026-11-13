@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { Suspense, lazy, useEffect, useState } from 'react';
 import type { EngineAPI } from './api/types';
 import { startController } from './state/controller';
 import type { Controller } from './state/controller';
@@ -18,10 +18,12 @@ import { QuickConnect } from './components/dialogs/QuickConnect';
 import { SettingsDialog } from './components/dialogs/SettingsDialog';
 import { WorldManager } from './components/dialogs/WorldManager';
 import { SquattersDialog } from './components/dialogs/SquattersDialog';
-import { HelpDialog } from './components/dialogs/HelpDialog';
 import { AwayDialog } from './components/dialogs/AwayDialog';
 import { useGlobalKeys } from './global-keys';
 import './styles/app.css';
+
+// The help browser and its content load on first use, keeping the main bundle small.
+const HelpBrowser = lazy(() => import('./components/help/HelpBrowser'));
 
 function Dialogs() {
   const d = useUi((s) => s.dialog);
@@ -35,7 +37,11 @@ function Dialogs() {
     case 'squatters':
       return <SquattersDialog />;
     case 'help':
-      return <HelpDialog />;
+      return (
+        <Suspense fallback={null}>
+          <HelpBrowser />
+        </Suspense>
+      );
     case 'away':
       return <AwayDialog />;
     default:

@@ -4,13 +4,17 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "help:build": "node src/help/build/build-help.mjs",
+    "predev": "npm run help:build",
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
+    "prebuild": "npm run help:build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --max-warnings 0",
     "format": "prettier --write .",
     "test": "vitest run",
+    "pretest": "npm run help:build",
     "smoke": "vitest run tests/smoke.test.tsx"
   },
   "dependencies": {

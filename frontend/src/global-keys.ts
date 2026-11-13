@@ -2,12 +2,18 @@ import { useEffect } from 'react';
 import type { Controller } from './state/controller';
 import type { OutputHandle } from './components/output/handle';
 import { useSessions, useUi } from './state/stores';
+import { openHelp } from './help/command';
 
 /** UI-level shortcuts only. Everything else typed goes to engine.input untouched. */
 export function useGlobalKeys(controller: Controller | null, getOutput: () => OutputHandle | null): void {
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       const ui = useUi.getState();
+      if (e.key === 'F1' || (e.metaKey && e.key === '?')) {
+        e.preventDefault();
+        if (ui.dialog !== 'help') openHelp();
+        return;
+      }
       if (ui.dialog) return;
       const inInput = !!(e.target as HTMLElement | null)?.closest?.('.inputline');
       const s = useSessions.getState();

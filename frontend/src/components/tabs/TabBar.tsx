@@ -1,3 +1,4 @@
+import { openHelp } from '../../help/command';
 import { useSessions, useUi } from '../../state/stores';
 import { useControllerRef } from '../../state/controller-context';
 
@@ -101,9 +102,9 @@ export function TabBar() {
       <button
         type="button"
         className="tabadd"
-        title="Keyboard help"
+        title="Help (F1)"
         aria-label="Help"
-        onClick={() => useUi.getState().openDialog('help')}
+        onClick={() => openHelp()}
       >
         ?
       </button>

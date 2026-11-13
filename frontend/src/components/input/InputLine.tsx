@@ -5,6 +5,8 @@ import type { EditState, Keymap } from '../../lib/keymap';
 import { DEFAULT_KEYMAP } from '../../lib/keymap';
 import { addHistory, getHistory } from '../../state/history';
 import { useUi } from '../../state/stores';
+import { INSERT_EVENT, openHelp, parseHelpCommand } from '../../help/command';
+import type { InsertDetail } from '../../help/command';
 
 type El = HTMLTextAreaElement | HTMLInputElement;
 const NATIVE_DELETE = new Set(['Backspace', 'Delete', 'C-h', 'C-d']);
@@ -39,10 +41,38 @@ export function InputLine({ sessionId, remoteEcho, disabled, keymap = DEFAULT_KE
     }
   }, [st.text, st.cursor]);
 
+  // "Insert into input" from the help browser: put text at the cursor, never send it.
+  useEffect(() => {
+    const onInsert = (ev: Event): void => {
+      const d = (ev as CustomEvent<InsertDetail>).detail;
+      if (remoteEcho || disabled || !d || d.handled) return;
+      d.handled = true;
+      const at = ref.current?.selectionStart ?? null;
+      setSt((s) => {
+        const c = Math.min(at ?? s.cursor, s.text.length);
+        return {
+          ...s,
+          text: s.text.slice(0, c) + d.text + s.text.slice(c),
+          cursor: c + d.text.length,
+          nav: NO_NAV,
+        };
+      });
+    };
+    window.addEventListener(INSERT_EVENT, onInsert);
+    return () => window.removeEventListener(INSERT_EVENT, onInsert);
+  }, [remoteEcho, disabled]);
+
   const send = (lines: string[]): void => {
-    if (!engine) return;
-    for (const l of lines)
+    for (const l of lines) {
+      // /help is a UI feature: open the help browser instead of sending it (never while typing a password).
+      const help = remoteEcho ? null : parseHelpCommand(l);
+      if (help !== null) {
+        openHelp(help);
+        continue;
+      }
+      if (!engine) return;
       void engine.input(sessionId, l).catch((e: unknown) => useUi.getState().toast('error', String(e)));
+    }
   };
 
   const submit = (text: string): void => {
