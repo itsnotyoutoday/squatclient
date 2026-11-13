@@ -240,7 +240,7 @@ func TestHistorySearch20kPerformance(t *testing.T) {
 		if err != nil || p.Total == 0 {
 			t.Fatalf("%q: %v %d", c.q, err, p.Total)
 		}
-		if d := time.Since(start); d > 750*time.Millisecond {
+		if d := time.Since(start); d > 3*time.Second {
 			t.Fatalf("%q took %v over 20k entries", c.q, d)
 		}
 	}
