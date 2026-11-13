@@ -3,6 +3,7 @@ import type {
   EngineAPI,
   EngineEventName,
   EngineEvents,
+  FileResult,
   HistoryPage,
   HistoryQueryOpts,
   Settings,
@@ -81,6 +82,8 @@ export class WailsEngine implements EngineAPI {
     }));
   deleteHistory = (id: string, entryId: number) => call<void>('DeleteHistory', id, entryId);
   clearHistory = (id: string) => call<void>('ClearHistory', id);
+  pickFile = (title: string) => call<string>('PickFile', title).then((p) => p ?? '');
+  readTextFile = (path: string) => call<FileResult>('ReadTextFile', path);
 
   on<E extends EngineEventName>(event: E, cb: (payload: EngineEvents[E]) => void): () => void {
     const rt = w().runtime;

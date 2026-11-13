@@ -133,6 +133,21 @@ export interface Settings {
   sendLineDelayMs: number;
   /** History entries kept per world. */
   historyMax: number;
+  /** Editor mode: ask before sending a buffer with bracket problems. */
+  warnUnbalanced: boolean;
+}
+
+/** Result of `readTextFile` (the /upload command). Failures are reported inside the result. */
+export interface FileResult {
+  ok: boolean;
+  error?: string;
+  path: string;
+  name: string;
+  /** bytes on disk */
+  size: number;
+  encoding: string;
+  /** Decoded text, LF line endings, BOM removed. */
+  text: string;
 }
 
 /** One remembered input. A multi-line editor block is ONE entry (text contains newlines). */
@@ -250,6 +265,10 @@ export interface EngineAPI {
   history(sessionId: string, query: string, opts: HistoryQueryOpts): Promise<HistoryPage>;
   deleteHistory(sessionId: string, id: number): Promise<void>;
   clearHistory(sessionId: string): Promise<void>;
+  /** Native file dialog (text/code filters, starts in the last folder). Resolves '' when cancelled. */
+  pickFile(title: string): Promise<string>;
+  /** Read a text file the user chose or typed (regular file, <= 5 MiB, no binary). */
+  readTextFile(path: string): Promise<FileResult>;
   on<E extends EngineEventName>(event: E, cb: (payload: EngineEvents[E]) => void): () => void;
 }
 
@@ -275,4 +294,5 @@ export const DEFAULT_SETTINGS: Settings = {
   stripBlankLines: true,
   sendLineDelayMs: 0,
   historyMax: 20000,
+  warnUnbalanced: true,
 };

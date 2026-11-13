@@ -4,6 +4,7 @@ import type {
   EngineAPI,
   EngineEventName,
   EngineEvents,
+  FileResult,
   HistoryEntry,
   HistoryPage,
   HistoryQueryOpts,
@@ -26,6 +27,9 @@ export interface MockOptions {
   /** "demo": seeded sessions incl. an ended one and unread backlog. "empty": nothing. */
   scenario?: 'demo' | 'empty';
 }
+
+/** Canned text the mock returns for any path it has not been given (see MockEngine.setFile). */
+const MOCK_UPLOAD = '@@ demo upload\n&GREET me=Hello,\n  [name(%#)]\n\nthink uploaded\n';
 
 const plain = (spans: Span[]): string => spans.map((s) => s.s).join('');
 
@@ -521,6 +525,35 @@ export class MockEngine implements EngineAPI {
   }
   async clearHistory(sessionId: string): Promise<void> {
     this.hist(this.histKey(sessionId).key).list = [];
+  }
+  /** What the next `pickFile` resolves with ('' = the user cancelled). Test/demo hook. */
+  nextPick = '~/demo-script.mush';
+  /** Files `readTextFile` knows (path -> text). Test/demo hook; see `setFile`. */
+  private files = new Map<string, string>();
+  setFile(path: string, text: string): void {
+    this.files.set(path, text);
+  }
+  async pickFile(): Promise<string> {
+    return this.nextPick;
+  }
+  async readTextFile(path: string): Promise<FileResult> {
+    const p = path.trim();
+    const name = p.split(/[\\/]/).pop() || p;
+    const fail = (error: string): FileResult => ({
+      ok: false,
+      error,
+      path: p,
+      name,
+      size: 0,
+      encoding: '',
+      text: '',
+    });
+    if (!p) return fail('no file given');
+    if (!p.startsWith('/') && !p.startsWith('~/'))
+      return fail(`use an absolute path (or ~/...): "${p}" is relative`);
+    const text = this.files.get(p) ?? (/missing|nope/.test(p) ? null : MOCK_UPLOAD);
+    if (text === null) return fail(`file not found: ${p}`);
+    return { ok: true, path: p, name, size: new TextEncoder().encode(text).length, encoding: 'utf-8', text };
   }
   async ack(sessionId: string, seq: number): Promise<void> {
     const sd = this.must(sessionId);
