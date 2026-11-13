@@ -28,8 +28,8 @@ type World struct {
 	Login       *Login `json:"login,omitempty"`
 	AutoConnect bool   `json:"autoConnect,omitempty"`
 	MacrosFile  string `json:"macrosFile,omitempty"`
-	// GameType overrides detection of the kind of game: pennmush, cobramush, tinymux, tinymush,
-	// rhostmush, mush (an unrecognised MU*) or other (not a MU*). Empty means detect.
+	// GameType overrides detection of the kind of game (see engine.GameKinds: pennmush, cobramush,
+	// circlemud, evennia, lambdamoo...; "other" = something else). Empty means detect.
 	GameType string `json:"gameType,omitempty"`
 }
 

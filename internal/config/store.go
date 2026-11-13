@@ -213,11 +213,11 @@ func (w *World) Validate(defaultEncoding string) error {
 	default:
 		return fmt.Errorf("bad tlsVerify %q", w.TLSVerify)
 	}
-	switch w.GameType {
-	case "", "auto":
+	if w.GameType == "auto" {
 		w.GameType = ""
-	case "pennmush", "cobramush", "tinymux", "tinymush", "rhostmush", "mush", "other":
-	default:
+	}
+	// the engine knows the valid types; an unknown one is ignored there (detection is used)
+	if len(w.GameType) > 24 || strings.Trim(w.GameType, "abcdefghijklmnopqrstuvwxyz0123456789_") != "" {
 		return fmt.Errorf("bad gameType %q", w.GameType)
 	}
 	switch w.Encoding {

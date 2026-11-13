@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { GAME_TYPES } from '../../lib/modules';
 import type { FormEvent } from 'react';
 import type { WorldConfig } from '../../api/types';
 import { useUi } from '../../state/stores';
@@ -170,17 +171,16 @@ export function WorldManager() {
               </Field>
               <Field
                 label="Game type"
-                hint="Decides which modules apply (the Object Editor is for MU* games)"
+                hint="Decides which modules apply (the Object Editor is for MU* games; other kinds get their own tools)"
               >
                 <select value={draft.gameType ?? ''} onChange={(e) => set('gameType', e.target.value)}>
                   <option value="">Detect automatically</option>
-                  <option value="pennmush">PennMUSH</option>
-                  <option value="cobramush">CobraMUSH</option>
-                  <option value="tinymux">TinyMUX</option>
-                  <option value="tinymush">TinyMUSH</option>
-                  <option value="rhostmush">RhostMUSH</option>
-                  <option value="mush">Other MU*</option>
-                  <option value="other">Not a MU* (MUD, MOO...)</option>
+                  {GAME_TYPES.map((g) => (
+                    <option key={g.type} value={g.type}>
+                      {g.name}
+                    </option>
+                  ))}
+                  <option value="other">Something else</option>
                 </select>
               </Field>
               <Field label="Encoding">

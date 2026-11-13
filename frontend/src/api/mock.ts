@@ -1,4 +1,5 @@
 import { DEFAULT_SETTINGS } from './types';
+import { GAME_TYPES } from '../lib/modules';
 import type {
   ConnectTarget,
   EditAttrFlagResult,
@@ -398,9 +399,7 @@ export class MockEngine implements EngineAPI {
     const sd = this.sessions.get(id);
     if (!sd) throw new Error(`no such session: ${id}`);
     const auto = t === '' || t === 'auto';
-    const family = ['pennmush', 'cobramush', 'tinymux', 'tinymush', 'rhostmush', 'mush'].includes(t)
-      ? 'mush'
-      : undefined;
+    const family = GAME_TYPES.find((g) => g.type === t)?.family;
     sd.info = {
       ...sd.info,
       gameType: auto ? undefined : t,
