@@ -17,6 +17,8 @@ These are the default bindings of the input line. They follow Emacs and TinyFugu
 | Shift-Enter                  | insert a new line                                       |
 | Tab                          | insert a tab character                                  |
 | Escape                       | clear the input line                                    |
+| Cmd-Z, Ctrl-Z                | undo typing                                             |
+| Cmd-Shift-Z, Ctrl-Y          | redo                                                    |
 | Ctrl-A, Home                 | start of line                                           |
 | Ctrl-E, End                  | end of line                                             |
 | Ctrl-B, Left                 | back one character                                      |

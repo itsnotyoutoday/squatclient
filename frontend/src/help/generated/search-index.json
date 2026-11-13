@@ -362,6 +362,8 @@
 ["keys","editing-the-input-line","b","Shift-Enter insert a new line"],
 ["keys","editing-the-input-line","b","Tab insert a tab character"],
 ["keys","editing-the-input-line","b","Escape clear the input line"],
+["keys","editing-the-input-line","b","Cmd-Z, Ctrl-Z undo typing"],
+["keys","editing-the-input-line","b","Cmd-Shift-Z, Ctrl-Y redo"],
 ["keys","editing-the-input-line","b","Ctrl-A, Home start of line"],
 ["keys","editing-the-input-line","b","Ctrl-E, End end of line"],
 ["keys","editing-the-input-line","b","Ctrl-B, Left back one character"],

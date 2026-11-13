@@ -51,6 +51,7 @@ func (a *App) startup(ctx context.Context) {
 	a.mu.Lock()
 	a.ctx, a.svc, a.cfg, a.initErr = ctx, svc, cfg, err
 	a.mu.Unlock()
+	fixEditMenu(a.emitMenu) // macOS: let Cmd+Z / Shift+Cmd+Z reach the code editor
 	if err != nil {
 		slog.Error("startup failed", "err", err)
 		return
@@ -120,6 +121,7 @@ func (a *App) saveWindow(ctx context.Context) {
 
 // domReady restores the window position (size is applied at creation).
 func (a *App) domReady(ctx context.Context) {
+	fixEditMenu(a.emitMenu) // the native menu exists by now; this is safe to repeat
 	svc, err := a.service()
 	if err != nil {
 		return
