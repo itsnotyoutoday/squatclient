@@ -99,11 +99,11 @@ export function TabBar() {
       <button
         type="button"
         className="tabadd"
-        title="Object editor (Cmd/Ctrl-E, or /edit)"
-        aria-label="Editor"
+        title="Object Editor (Cmd+E)"
+        aria-label="Object Editor"
         onClick={() => toggleEditorView()}
       >
-        Editor
+        Object Editor
       </button>
       <button
         type="button"

@@ -1,23 +1,23 @@
 ---
 title: Editing objects and attributes
 order: 5
-keywords: edit, /edit, editor view, object editor, attribute, attributes, dbref, softcode, save, conflict, permission, read-only, tabs, quick open, search, go to definition, expand, collapse, %r
-aliases: edit, /edit, editor view, object editor, attributes, editing objects
+keywords: edit, /edit, Object Editor, editor view, attribute, attributes, dbref, softcode, save, conflict, permission, read-only, tabs, quick open, search, go to definition, expand, collapse, %r
+aliases: edit, /edit, Object Editor, editor view, attributes, editing objects
 ---
 
-The editor view lets you work on objects and their attributes in a game as if they were files: a list of attributes on the left, a full code editor on the right, and tabs for every object you have open. It needs a connected world, because it reads and writes through the game itself.
+The Object Editor lets you work on objects and their attributes in a game as if they were files: a list of attributes on the left, a full code editor on the right, and tabs for every object you have open. It needs a connected world, because it reads and writes through the game itself.
 
 ## Opening the editor
 
-| How                      | What happens                                                            |
-| ------------------------ | ----------------------------------------------------------------------- |
-| `/edit`                  | open the editor view and bring back the objects you had open            |
-| `/edit #12`              | open object #12                                                         |
-| `/edit #12/CMD_ENGAGE`   | open object #12 and select the attribute `CMD_ENGAGE`                   |
-| `/edit me`, `/edit here` | open yourself, or the room you are in                                   |
-| `/edit Nav Console`      | open an object by name (the game finds it; use a `#dbref` if two match) |
-| Cmd-E (Ctrl-E)           | switch between the terminal and the editor                              |
-| the **Editor** button    | the same, from the top bar                                              |
+| How                          | What happens                                                            |
+| ---------------------------- | ----------------------------------------------------------------------- |
+| `/edit`                      | open the Object Editor and bring back the objects you had open          |
+| `/edit #12`                  | open object #12                                                         |
+| `/edit #12/CMD_ENGAGE`       | open object #12 and select the attribute `CMD_ENGAGE`                   |
+| `/edit me`, `/edit here`     | open yourself, or the room you are in                                   |
+| `/edit Nav Console`          | open an object by name (the game finds it; use a `#dbref` if two match) |
+| Cmd-E (Ctrl-E)               | switch between the terminal and the editor                              |
+| the **Object Editor** button | the same, from the top bar                                              |
 
 `/edit` is handled by the window itself and is never sent to the game. Your connections keep running while you edit: switch back with Cmd-E, Escape or the **Terminal** button and everything that happened is in the output. Ctrl-E is the end-of-line key on the input line, so there it does not switch views; use Cmd-E, the button, or press Ctrl-E from anywhere else.
 
@@ -73,4 +73,4 @@ Go to definition opens the object in a new tab when it is not open yet. Referenc
 
 Searching all attributes reads every attribute of the object once, so a big object takes a moment; results appear as they come in and the values are kept for the next search. **Refresh** reads the object again.
 
-See also [Keyboard shortcuts](help:keys#the-editor-view) and [Commands](help:commands).
+See also [Keyboard shortcuts](help:keys#the-object-editor) and [Commands](help:commands).

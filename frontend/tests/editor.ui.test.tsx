@@ -106,7 +106,7 @@ describe('entry points', () => {
     key('e', { metaKey: true });
     await screen.findByLabelText('Command input');
     expect(useUi.getState().view).toBe('terminal');
-    await userEvent.click(screen.getByRole('button', { name: 'Editor' })); // top bar button
+    await userEvent.click(screen.getByRole('button', { name: 'Object Editor' })); // top bar button
     await screen.findByTestId('editor-workspace');
     key('Escape');
     await screen.findByLabelText('Command input');
@@ -168,7 +168,7 @@ describe('layout and accessibility', () => {
     expect(opts.length).toBeGreaterThan(5);
     expect(opts.length).toBeLessThan(80); // virtualised: not all ~130 rows
     expect(within(list).getByRole('option', { selected: true })).toHaveTextContent('POWER');
-    expect(screen.getByRole('main', { name: 'Object editor' })).toBeInTheDocument();
+    expect(screen.getByRole('main', { name: 'Object Editor' })).toBeInTheDocument();
     expect(screen.getByRole('toolbar', { name: /Tools for POWER/ })).toBeInTheDocument();
     for (const name of ['Save', 'Revert', 'Expand', 'Collapse', 'Compare', 'Refresh']) {
       expect(screen.getByRole('button', { name })).toBeInTheDocument();

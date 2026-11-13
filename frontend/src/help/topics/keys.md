@@ -55,9 +55,9 @@ Toggle with Cmd-Shift-E or Ctrl-Shift-E (or the Editor button). The editor is a 
 | Cmd-Shift-Z, Ctrl-Y               | redo                                                               |
 | Escape                            | back to the single line (the text is kept), when no search is open |
 
-## The editor view
+## The Object Editor
 
-Open it with `/edit`, the Editor button in the top bar, or Cmd-E (Ctrl-E from anywhere except the input line). See [Editing objects and attributes](help:editing).
+Open it with `/edit`, the Object Editor button in the top bar, or Cmd-E (Ctrl-E from anywhere except the input line). See [Editing objects and attributes](help:editing).
 
 | Key                       | Action                                                  |
 | ------------------------- | ------------------------------------------------------- |

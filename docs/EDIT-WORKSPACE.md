@@ -7,8 +7,8 @@ engine capture/object API: `pkg/engine/capture*.go`, `mushobj*.go`, bound as `Ed
 
 ## 1. What it is
 
-A full-window **Editor view** for working on game objects as if they were files. `/edit` (no arguments),
-`/edit <dbref>`, `/edit <dbref/attr>`, the Cmd/Ctrl+E shortcut and an "Editor" button flip to it;
+A full-window **Object Editor** (view) for working on game objects as if they were files. `/edit` (no arguments),
+`/edit <dbref>`, `/edit <dbref/attr>`, the Cmd/Ctrl+E shortcut and an "Object Editor" button flip to it;
 Cmd/Ctrl+E or Escape (when nothing is selected) flips back to the terminal. The game connection and
 output keep running underneath. (Wails v2 is single-window, so this is a view, not a second window; a
 detachable window can come later.)

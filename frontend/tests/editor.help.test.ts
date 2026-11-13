@@ -5,7 +5,7 @@ import { resolveQuery } from '../src/help/lookup';
 describe('editor help', () => {
   it('has the editing topic, reachable as /help edit and /help /edit', () => {
     expect(getTopic('editing')).toBeDefined();
-    for (const q of ['edit', '/edit', 'editor view', 'Editing objects and attributes']) {
+    for (const q of ['edit', '/edit', 'editor view', 'Object Editor', 'Editing objects and attributes']) {
       const r = resolveQuery(q);
       expect(r.kind === 'topic' ? r.id : r.kind, q).toBe('editing');
     }
@@ -28,7 +28,7 @@ describe('editor help', () => {
   });
   it('is linked from the keys and commands pages', () => {
     expect(getTopic('keys')!.body).toContain('help:editing');
-    expect(getTopic('keys')!.headings.some((h) => h.id === 'the-editor-view')).toBe(true);
+    expect(getTopic('keys')!.headings.some((h) => h.id === 'the-object-editor')).toBe(true);
     expect(getTopic('commands')!.body).toContain('`/edit`');
   });
 });

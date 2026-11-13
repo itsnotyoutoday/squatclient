@@ -88,7 +88,7 @@ export default function EditorWorkspace() {
   const conflictAttr = obj ? Object.keys(obj.buffers).find((a) => obj.buffers[a].conflict) : undefined;
 
   return (
-    <main className="ew-root" aria-label="Object editor" data-testid="editor-workspace">
+    <main className="ew-root" aria-label="Object Editor" data-testid="editor-workspace">
       <WorldTabs sid={sid} />
       {sid ? (
         <>
@@ -103,7 +103,7 @@ export default function EditorWorkspace() {
               </>
             ) : (
               <div className="ew-welcome">
-                <h1>Editor</h1>
+                <h1>Object Editor</h1>
                 <p>Open an object to edit its attributes like files.</p>
                 <p className="dim">
                   Use the + above, press Cmd/Ctrl-T, or type <code>/edit #123</code> or{' '}
@@ -118,7 +118,7 @@ export default function EditorWorkspace() {
         </>
       ) : (
         <div className="ew-welcome">
-          <h1>Editor</h1>
+          <h1>Object Editor</h1>
           <p>Connect to a world to edit its objects. The editor works through the game connection.</p>
           <div className="actions">
             <button type="button" className="primary" onClick={() => useUi.getState().openDialog('worlds')}>

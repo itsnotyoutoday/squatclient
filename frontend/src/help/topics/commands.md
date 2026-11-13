@@ -9,11 +9,11 @@ Anything you type that starts with `/` is a command. Everything else is sent to 
 
 ## Handled by the app
 
-| Command   | Meaning                                                                                                                                                                                         |
-| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/help`   | open this help; `/help topic` opens a topic and `/help words` searches                                                                                                                          |
-| `/upload` | choose a text file and send it line by line; `/upload ~/file.mush` names the file yourself; see [Uploading a file](help:using#uploading-a-file)                                                 |
-| `/edit`   | open the editor view; `/edit #12` or `/edit #12/ATTRIBUTE` opens that object or attribute, and `/edit me`, `/edit here` or a name works too; see [Editing objects and attributes](help:editing) |
+| Command   | Meaning                                                                                                                                                                                           |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/help`   | open this help; `/help topic` opens a topic and `/help words` searches                                                                                                                            |
+| `/upload` | choose a text file and send it line by line; `/upload ~/file.mush` names the file yourself; see [Uploading a file](help:using#uploading-a-file)                                                   |
+| `/edit`   | open the Object Editor; `/edit #12` or `/edit #12/ATTRIBUTE` opens that object or attribute, and `/edit me`, `/edit here` or a name works too; see [Editing objects and attributes](help:editing) |
 
 `/help` is handled by the window itself, so it works even when no world is connected. The browser accepts TinyFugue-style names: `/help def`, `/help /def`, `/help expressions`, `/help triggers`.
 
