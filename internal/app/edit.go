@@ -69,9 +69,9 @@ func editCode(err error) string {
 		return "timeout"
 	case errors.Is(err, engine.ErrCaptureSessionEnded):
 		return "session_ended"
-	case errors.Is(err, engine.ErrSaveRejected):
+	case errors.Is(err, engine.ErrSaveRejected), errors.Is(err, engine.ErrRejected):
 		return "rejected"
-	case errors.Is(err, engine.ErrSaveMismatch):
+	case errors.Is(err, engine.ErrSaveMismatch), errors.Is(err, engine.ErrMismatch):
 		return "mismatch"
 	case errors.Is(err, engine.ErrNewline), errors.Is(err, engine.ErrUnsafeValue), errors.Is(err, engine.ErrAmbiguousEscape):
 		return "unsafe_value"
