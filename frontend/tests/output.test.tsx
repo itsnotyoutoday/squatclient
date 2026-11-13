@@ -5,6 +5,9 @@ import { getBuffer, resetStores, useSessions, useSettings } from '../src/state/s
 import { DEFAULT_SETTINGS } from '../src/api/types';
 import type { Line } from '../src/api/types';
 import { mkLine, stubLayout } from './helpers';
+import { dark } from '../src/themes/builtin';
+const rgbOf = (hex: string): string =>
+  `rgb(${parseInt(hex.slice(1, 3), 16)}, ${parseInt(hex.slice(3, 5), 16)}, ${parseInt(hex.slice(5, 7), 16)})`;
 
 let restore: () => void;
 beforeEach(() => {
@@ -50,7 +53,7 @@ describe('OutputPane virtualisation', () => {
     expect(byText('red').style.color).toBe('rgb(255, 0, 0)');
     expect(byText('true').style.color).toBe('rgb(18, 52, 86)');
     expect(byText('true').style.backgroundColor).toBe('rgb(171, 205, 239)');
-    expect(byText('ansi').style.color).toBe('rgb(224, 108, 117)'); // dark theme ansi[1] #e06c75
+    expect(byText('ansi').style.color).toBe(rgbOf(dark.ansi[1])); // from the theme, never hard-coded
   });
 
   it('shows a timestamp gutter only when enabled, excluded from selection', () => {

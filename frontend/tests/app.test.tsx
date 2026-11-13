@@ -6,6 +6,9 @@ import { MockEngine } from '../src/api/mock';
 import { resetStores, useSessions, useSettings, useUi } from '../src/state/stores';
 import { clearHistories } from '../src/state/history';
 import { stubLayout } from './helpers';
+import { dark } from '../src/themes/builtin';
+const rgbOf = (hex: string): string =>
+  `rgb(${parseInt(hex.slice(1, 3), 16)}, ${parseInt(hex.slice(3, 5), 16)}, ${parseInt(hex.slice(5, 7), 16)})`;
 
 let restore: () => void;
 let engine: MockEngine;
@@ -33,7 +36,7 @@ describe('App smoke (mock mode)', () => {
     await waitFor(() => expect(document.querySelectorAll('.row').length).toBeGreaterThan(0));
     // the grand atrium room is rendered with ANSI 14 bold ("cyan")
     const el = (await screen.findAllByText('The Grand Atrium'))[0];
-    expect(el.style.color).toBe('rgb(111, 208, 220)'); // dark ansi[14] #6fd0dc
+    expect(el.style.color).toBe(rgbOf(dark.ansi[14])); // from the theme, never hard-coded
     expect(el.className).toContain('b');
     expect(screen.getByRole('tablist', { name: 'Sessions' })).toBeInTheDocument();
     expect(screen.getByRole('status', { name: 'Status' })).toBeInTheDocument();

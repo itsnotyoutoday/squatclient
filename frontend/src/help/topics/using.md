@@ -44,6 +44,8 @@ Up and Down (or Ctrl-P and Ctrl-N) walk through lines you sent earlier. If you t
 
 ### Passwords
 
+Lines like `connect name password`, `create name password` and `@password ...` are recognised automatically and are never echoed, stored or logged by a squatter; the screen shows them masked (`connect name ********`). Use `/secret text` for anything else you must keep out of logs.
+
 When the game turns off echo (for a password prompt) the input becomes a masked password field with a lock icon, history is disabled and what you type is not recorded.
 
 ## Tabs
@@ -56,7 +58,9 @@ Pick a theme in [Settings](help:settings): **Dark**, **Light** or **High contras
 
 ## Colours
 
-By default SquatClient shows UTF-8 text with xterm-256 and 24-bit truecolour. _Bold text uses bright colours_ makes bold text switch to the bright variant of the 8 basic colours, as in many terminals. In scripts you can use all of these colours; see [Attributes](help:scripting/attributes).
+By default SquatClient shows UTF-8 text with xterm-256 and 24-bit truecolour. Type `/colortest` to print every colour mode (16 colours, the full 256 grid, truecolor gradients, text styles and UTF-8) and compare it with another program.
+
+**Why basic colours can differ between programs:** colours 0-15 (the plain `red`, `yellow`, ... and their bright versions) are not fixed: every terminal and theme chooses its own shades, and games that use them look different in different clients. Colours 16-255 (xterm-256) and truecolour are exact everywhere. SquatClient's default dark theme uses a classic terminal palette so a game that sends basic colours looks like it does in tinyfugue; if a slot looks wrong, change it in a custom theme (see below). _Bold text uses bright colours_ makes bold text switch to the bright variant of the 8 basic colours, as in many terminals. In scripts you can use all of these colours; see [Attributes](help:scripting/attributes).
 
 ## Accessibility
 
