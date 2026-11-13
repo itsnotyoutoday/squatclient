@@ -64,6 +64,7 @@ type Settings struct {
 	StripBlankLines bool `json:"stripBlankLines"` // editor mode: drop blank and @@-comment-only lines
 	SendLineDelayMs int  `json:"sendLineDelayMs"` // editor mode: pause between lines of a block (0 = none)
 	HistoryMax      int  `json:"historyMax"`      // entries kept per world
+	WarnUnbalanced  bool `json:"warnUnbalanced"`  // editor mode: ask before sending a buffer with bracket problems
 }
 
 // Limits of the command-window settings (SaveSettings clamps into them).
@@ -100,7 +101,7 @@ func DefaultSettings() Settings {
 		Theme: "dark", FontFamily: "JetBrains Mono, SF Mono, Menlo, Consolas, monospace", FontSize: 14,
 		ScrollbackLines: 20000, Notifications: true, Linkify: true, PauseOnScroll: true,
 		DefaultEncoding: "utf-8", Truecolor: true,
-		EditorHeight: DefaultEditorH, SoftcodeJoin: true, StripBlankLines: true, HistoryMax: DefaultHistoryMax,
+		EditorHeight: DefaultEditorH, SoftcodeJoin: true, StripBlankLines: true, HistoryMax: DefaultHistoryMax, WarnUnbalanced: true,
 	}
 }
 
