@@ -52,6 +52,8 @@
   gap: 2px;
   min-width: 0;
   overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
   flex: 0 1 auto;
 }
 .ew-objects .ew-tablist {
@@ -407,6 +409,12 @@
   border-radius: 0;
   border-left: 0;
   border-right: 0;
+}
+/* the flex item has the size; CodeMirror fills it and scrolls inside (percent heights are unreliable here) */
+.ew-editorhost .cm-editor {
+  position: absolute;
+  inset: 0;
+  height: auto;
 }
 .ew-placeholder,
 .ew-welcome {
