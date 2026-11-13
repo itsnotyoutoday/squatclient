@@ -123,7 +123,7 @@ export function TopicTree({ currentId, onOpen }: TopicTreeProps) {
         onFocus={(e) => e.target === e.currentTarget && setFocusId(id)}
       >
         <div
-          className={`row${id === currentId ? ' current' : ''}`}
+          className={`treerow${id === currentId ? ' current' : ''}`}
           onClick={() => {
             onOpen(id);
             if (kids) toggle(id, true);

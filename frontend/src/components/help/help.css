@@ -66,7 +66,7 @@
 .treeitem {
   outline: none;
 }
-.treeitem > .row {
+.treeitem > .treerow {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -74,19 +74,19 @@
   border-radius: 4px;
   cursor: pointer;
 }
-.treeitem > .row:hover {
+.treeitem > .treerow:hover {
   background: var(--selection);
 }
-.treeitem > .row.current {
+.treeitem > .treerow.current {
   background: var(--ui-accent);
   color: var(--ui-accent-text);
 }
-.treeitem:focus-visible > .row {
+.treeitem:focus-visible > .treerow {
   outline: 2px solid var(--ui-accent);
   outline-offset: 1px;
 }
-.treeitem > .row.current:focus-visible,
-.treeitem:focus-visible > .row.current {
+.treeitem > .treerow.current:focus-visible,
+.treeitem:focus-visible > .treerow.current {
   outline-color: var(--ui-text);
 }
 .twisty {
