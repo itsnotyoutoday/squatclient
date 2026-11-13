@@ -22,7 +22,9 @@ interface Settings { theme: string; fontFamily: string; fontSize: number; scroll
   boldAsBright: boolean; minContrast: number /*0=off*/; linkify: boolean; notifications: boolean; screenReader: boolean;
   pauseOnScroll: boolean; defaultEncoding: "utf-8"|"latin1"; truecolor: true;
   inputHeight: number /*px, 0=auto*/; editorHeight: number /*px*/; softcodeJoin: boolean; stripBlankLines: boolean;
-  sendLineDelayMs: number /*0..10000*/; historyMax: number /*entries per world, 100..1000000*/ }
+  sendLineDelayMs: number /*0..10000*/; historyMax: number /*entries per world, 100..1000000*/;
+  warnUnbalanced: boolean /*editor: confirm before sending unbalanced brackets; default true*/ }
+interface FileResult { ok: boolean; error?: string; path: string; name: string; size: number; encoding: string; text: string }
 interface HistoryEntry { id: number; ts: number /*unix ms*/; text: string /*multi-line block = one entry*/ }
 interface HistoryPage { entries: HistoryEntry[] /*newest first*/; total: number /*all matches*/ }
 
@@ -49,6 +51,8 @@ interface EngineAPI {
   history(sessionId: string, query: string, opts: { regex?: boolean; caseSensitive?: boolean; limit?: number; offset?: number }): Promise<HistoryPage>;
   deleteHistory(sessionId: string, id: number): Promise<void>;
   clearHistory(sessionId: string): Promise<void>;
+  pickFile(title: string): Promise<string>;  // native file dialog; "" = cancelled (UI-CONTRACT-NOTES U1)
+  readTextFile(path: string): Promise<FileResult>;  // /upload; errors inside the result (U2)
   // events (engine -> UI). Returns an unsubscribe function.
   on<E extends keyof EngineEvents>(event: E, cb: (payload: EngineEvents[E]) => void): () => void;
 }
