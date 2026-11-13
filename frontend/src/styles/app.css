@@ -654,3 +654,8 @@ html.mac-titlebar .titlestrip {
   user-select: none;
   -webkit-user-select: none;
 }
+
+.crash { padding: 24px; color: var(--fg, #ddd); background: var(--bg, #14161a); height: 100vh; overflow: auto; font: 14px system-ui, sans-serif; }
+.crash h1 { font-size: 18px; margin: 0 0 8px; }
+.crash-details { white-space: pre-wrap; background: rgba(255, 255, 255, 0.06); padding: 12px; border-radius: 6px; font-size: 12px; max-height: 55vh; overflow: auto; }
+.crash-actions { display: flex; gap: 8px; margin-top: 12px; }

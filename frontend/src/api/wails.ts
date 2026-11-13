@@ -25,6 +25,11 @@ export function openExternal(url: string): void {
   else window.open(url, '_blank', 'noopener,noreferrer');
 }
 
+/** Go marshals a nil slice as JSON null; the UI always wants a list. */
+function list<T>(p: Promise<T[] | null | undefined>): Promise<T[]> {
+  return p.then((v) => v ?? []);
+}
+
 function call<T>(method: string, ...args: unknown[]): Promise<T> {
   const fn = w().go?.main?.App?.[method];
   if (!fn) return Promise.reject(new Error(`Wails binding App.${method} is not available`));
@@ -33,13 +38,13 @@ function call<T>(method: string, ...args: unknown[]): Promise<T> {
 
 /** EngineAPI backed by Wails-generated bindings (window.go.main.App.*) and runtime events. */
 export class WailsEngine implements EngineAPI {
-  listWorlds = () => call<WorldConfig[]>('ListWorlds');
+  listWorlds = () => list(call<WorldConfig[] | null>('ListWorlds'));
   saveWorld = (x: WorldConfig) => call<WorldConfig>('SaveWorld', x);
   deleteWorld = (id: string) => call<void>('DeleteWorld', id);
   setWorldPassword = (id: string, pw: string) => call<void>('SetWorldPassword', id, pw);
   getSettings = () => call<Settings>('GetSettings');
   saveSettings = (s: Settings) => call<void>('SaveSettings', s);
-  listSquatters = () => call<Awaited<ReturnType<EngineAPI['listSquatters']>>>('ListSquatters');
+  listSquatters = () => list(call<Awaited<ReturnType<EngineAPI['listSquatters']>> | null>('ListSquatters'));
   pairSquatter = (host: string, port: number, name: string, code: string) =>
     call<{ id: string; fingerprint: string }>('PairSquatter', host, port, name, code);
   confirmSquatter = (id: string, accept: boolean) => call<void>('ConfirmSquatter', id, accept);
@@ -47,14 +52,14 @@ export class WailsEngine implements EngineAPI {
   connect = (t: ConnectTarget) => call<Awaited<ReturnType<EngineAPI['connect']>>>('Connect', t);
   disconnect = (id: string) => call<void>('Disconnect', id);
   dismiss = (id: string) => call<void>('Dismiss', id);
-  listSessions = () => call<Awaited<ReturnType<EngineAPI['listSessions']>>>('ListSessions');
+  listSessions = () => list(call<Awaited<ReturnType<EngineAPI['listSessions']>> | null>('ListSessions'));
   foreground = (id: string) => call<void>('Foreground', id);
   input = (id: string, text: string) => call<void>('Input', id, text);
   resize = (id: string, cols: number, rows: number) => call<void>('Resize', id, cols, rows);
   scrollback = (id: string, opts: { beforeSeq?: number; limit: number }) =>
-    call<Awaited<ReturnType<EngineAPI['scrollback']>>>('Scrollback', id, opts);
+    list(call<Awaited<ReturnType<EngineAPI['scrollback']>> | null>('Scrollback', id, opts));
   search = (id: string, q: string, opts: { regex?: boolean; caseSensitive?: boolean }) =>
-    call<Awaited<ReturnType<EngineAPI['search']>>>('Search', id, q, opts);
+    list(call<Awaited<ReturnType<EngineAPI['search']>> | null>('Search', id, q, opts));
   ack = (id: string, seq: number) => call<void>('Ack', id, seq);
 
   on<E extends EngineEventName>(event: E, cb: (payload: EngineEvents[E]) => void): () => void {

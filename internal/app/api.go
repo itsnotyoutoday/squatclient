@@ -101,7 +101,13 @@ func (s *Service) SaveSettings(in config.Settings) error {
 // ---- squatters -----------------------------------------------------------
 
 // ListSquatters returns the stored squatters.
-func (s *Service) ListSquatters() ([]config.Squatter, error) { return s.cfg.Squatters(), nil }
+func (s *Service) ListSquatters() ([]config.Squatter, error) {
+	out := s.cfg.Squatters()
+	if out == nil {
+		out = []config.Squatter{} // JSON [] not null: the UI maps over this
+	}
+	return out, nil
+}
 
 // PairSquatter is not available yet.
 func (s *Service) PairSquatter(host string, port int, name, pairCode string) (PairResult, error) {

@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createEngine, hasWails } from './api';
 import { App } from './App';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { loadStoredThemes, parseTheme } from './themes';
 
 loadStoredThemes(parseTheme);
@@ -9,6 +10,8 @@ loadStoredThemes(parseTheme);
 if (hasWails() && /Mac/.test(navigator.userAgent)) document.documentElement.classList.add('mac-titlebar');
 createRoot(document.getElementById('root') as HTMLElement).render(
   <StrictMode>
-    <App engine={createEngine()} />
+    <ErrorBoundary>
+      <App engine={createEngine()} />
+    </ErrorBoundary>
   </StrictMode>,
 );
