@@ -4,6 +4,7 @@ import type { OutputHandle } from './components/output/handle';
 import { useSessions, useUi } from './state/stores';
 import { openHelp } from './help/command';
 import { toggleEditor } from './lib/inputevents';
+import { uploadDialogOpen } from './lib/upload/store';
 
 /** UI-level shortcuts only. Everything else typed goes to engine.input untouched. */
 export function useGlobalKeys(controller: Controller | null, getOutput: () => OutputHandle | null): void {
@@ -15,8 +16,10 @@ export function useGlobalKeys(controller: Controller | null, getOutput: () => Ou
         if (ui.dialog !== 'help') openHelp();
         return;
       }
-      if (ui.dialog) return;
+      if (ui.dialog || uploadDialogOpen()) return;
       const inInput = !!(e.target as HTMLElement | null)?.closest?.('.inputline');
+      // the code editor (command window editor mode) has its own search on Mod-F: never steal it
+      const inCodeEditor = !!(e.target as HTMLElement | null)?.closest?.('.cm-editor');
       const s = useSessions.getState();
 
       if (e.altKey && !e.ctrlKey && !e.metaKey && /^Digit[1-9]$/.test(e.code)) {
@@ -35,9 +38,10 @@ export function useGlobalKeys(controller: Controller | null, getOutput: () => Ou
       }
       const isF = e.key.toLowerCase() === 'f';
       if (
-        (e.metaKey && isF) ||
-        (e.ctrlKey && e.shiftKey && isF) ||
-        (e.ctrlKey && !e.shiftKey && !e.altKey && isF && !inInput)
+        !inCodeEditor &&
+        ((e.metaKey && isF) ||
+          (e.ctrlKey && e.shiftKey && isF) ||
+          (e.ctrlKey && !e.shiftKey && !e.altKey && isF && !inInput))
       ) {
         e.preventDefault();
         ui.setSearch(true);

@@ -1,0 +1,151 @@
+/* /upload dialog and drop overlay. Every class is prefixed cw- (command window). */
+.cw-upload {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.cw-meta,
+.cw-count,
+.cw-target,
+.cw-summary {
+  margin: 0;
+  font-size: 13px;
+}
+.cw-dim {
+  color: var(--ui-text-dim);
+}
+.cw-bad {
+  color: var(--ui-danger, #e5484d);
+}
+.cw-tabs {
+  display: flex;
+  gap: 4px;
+}
+.cw-tabs button {
+  padding: 2px 10px;
+  font-size: 12px;
+}
+.cw-tabs button.cw-on {
+  background: var(--ui-accent);
+  color: var(--ui-accent-text);
+  border-color: var(--ui-accent);
+}
+.cw-vl {
+  position: relative;
+  overflow: auto;
+  border: 1px solid var(--ui-border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font);
+  font-size: 12px;
+}
+.cw-vl-space {
+  position: relative;
+  min-width: max-content;
+}
+.cw-vl-row {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: flex;
+  gap: 8px;
+  line-height: 18px;
+  white-space: pre;
+}
+.cw-vl-n {
+  flex: none;
+  text-align: right;
+  color: var(--ui-text-dim);
+  padding-left: 4px;
+  user-select: none;
+  background: var(--ui-panel-alt);
+}
+.cw-vl-t {
+  flex: 1;
+}
+.cw-opts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+  border: 1px solid var(--ui-border);
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-size: 13px;
+}
+.cw-check,
+.cw-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.cw-field input[type='number'] {
+  width: 6em;
+}
+.cw-field input[type='text'] {
+  width: 12em;
+}
+.cw-warn {
+  border: 1px solid var(--ui-warn);
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-size: 13px;
+}
+.cw-warn ul {
+  margin: 4px 0;
+  padding-left: 18px;
+}
+.cw-progress {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+.cw-progress progress {
+  flex: 1;
+  min-width: 160px;
+  height: 10px;
+}
+.cw-cur {
+  flex-basis: 100%;
+  color: var(--ui-text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cw-drop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--bg) 70%, transparent);
+  border: 3px dashed var(--ui-accent);
+  color: var(--fg);
+  font-size: 20px;
+  pointer-events: none;
+}
+/* editor mode on CodeMirror */
+.cw-editor-body {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.cw-editor-body > .codeeditor {
+  flex: 1;
+  min-height: 0;
+}
+.cw-confirm .cw-list {
+  margin: 6px 0;
+  padding-left: 18px;
+}
+.cw-problems {
+  color: var(--ui-warn);
+  border: 1px solid var(--ui-warn);
+  border-radius: 3px;
+  padding: 0 5px;
+}

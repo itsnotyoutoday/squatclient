@@ -20,6 +20,7 @@ import { WorldManager } from './components/dialogs/WorldManager';
 import { SquattersDialog } from './components/dialogs/SquattersDialog';
 import { AwayDialog } from './components/dialogs/AwayDialog';
 import HistoryBrowser from './components/history/HistoryBrowser';
+import { UploadHost } from './components/upload/UploadDialog';
 import { useGlobalKeys } from './global-keys';
 import './styles/app.css';
 
@@ -180,6 +181,7 @@ export function App({ engine }: { engine: EngineAPI }) {
         <LiveRegion />
         <Toasts />
         <Dialogs />
+        <UploadHost />
       </div>
     </ControllerContext.Provider>
   );

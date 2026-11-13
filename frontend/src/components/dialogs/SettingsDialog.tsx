@@ -205,6 +205,7 @@ export function SettingsDialog() {
             '(softcode continuation)',
           )}
           {check('stripBlankLines', 'Editor: drop blank and @@ comment lines')}
+          {check('warnUnbalanced', 'Editor: ask before sending unbalanced brackets')}
           {check('timestamps', 'Show timestamps')}
           {check('boldAsBright', 'Bold text uses bright colours')}
           {check('linkify', 'Make bare URLs clickable')}
