@@ -81,7 +81,7 @@ Clone TF's *behaviour* by studying its source and documentation, then write an o
 
 **Oracle testing (the key to fidelity):** build the real `tf` locally from source and use it as a reference. For every feature, a differential test runs the same script through real `tf` (non-interactive) and through our engine and compares output and side effects. `tf-lib/*.tf` (esp. `stdlib.tf`, `tools.tf`, `textutil.tf`, `alias.tf`, `at.tf`, `spedwalk.tf`) must load and behave identically. This makes "faithful" measurable, not a feeling.
 
-**Licence:** TF is GPL v2. See Section 11, decision 1: recommending our project be GPL-compatible so studying and porting is unambiguous and `tf-lib`/help text can ship.
+**Originality:** `pkg/tf` is an original implementation *inspired by* TF's design and documented behaviour. We do not copy TF source, ship `tf-lib` or help text, or aim for bug-for-bug compatibility: matching TF where it is sensible, and improving on it over time, is the goal (decision 10). The reference `tf` binary is used only as a black-box test oracle.
 
 ### 3.2 Scope from TF's own lists (from `cmdlist.h`, `funclist.h`, `hooklist.h`, `varlist.h`)
 
@@ -195,13 +195,14 @@ The game serves its own React stations/viewer; the client opens a URL + token wh
 
 `squatterd` + SWP (the daemon repo) can proceed in parallel with P0/P1 since it only needs `pkg/telnet`, `pkg/ansi`, `pkg/conn`, `pkg/scrollback`.
 
-## 11. Decisions still needed
+## 11. Resolved decisions (added in v0.3.1)
 
-1. **Licence.** TF is GPL v2. Recommend we license SquatClient and squatterd **GPL-2.0-or-later** so studying and porting TF's logic/algorithms, bundling `tf-lib` scripts and `help` text, and using its tests is straightforward. If you prefer a permissive licence (MIT), then the TF engine must be a strict clean-room (written from docs and black-box oracle tests only, with no source-derived structure), and `tf-lib`/help cannot ship. Which?
-2. **Shared-engine location:** put `pkg/*` in the daemon repo (my default) or a third repo `squatcore`.
-3. **How faithful vs. improved.** Where TF behaviour is a terminal quirk (e.g. line-editing assumptions, status line geometry), default to "match TF, add a GUI-friendly option". OK?
-4. **Windows/Linux in v1?** All three build, but Linux (WebKitGTK) needs distro testing. Do you want all three at launch, or macOS first?
-5. **Where the prior work stands:** the contract (`docs/PROTOCOL.md`) and ANSI vectors stay valid; the TypeScript direct-mode parser and Electron app are dropped.
+10. **Licence: MIT** for both repos. `pkg/tf` is original, clean-room work inspired by TF; no TF code or bundled TF files; compatibility is "as close as is useful", not a hard requirement, and we are free to diverge and improve.
+11. **Engine location:** `pkg/*` lives in `squatClientDaemon` (module `github.com/itsnotyoutoday/squatClientDaemon`); the Wails app in `squatclient` imports it. Local dev uses `~/mush/squat/go.work`.
+12. **Directory structure is frozen** in `docs/STRUCTURE.md` (identical in both repos; changes need an ADR).
+13. **Automation** runs at the client site in v1; daemon-site execution is a designed future step (`docs/AUTOMATION.md`).
+14. **Colour/text requirements are acceptance criteria** (STRUCTURE.md Section 8).
+15. All three platforms build in CI; macOS is the primary dev/test platform for v1.
 
 ## 12. Risks
 
