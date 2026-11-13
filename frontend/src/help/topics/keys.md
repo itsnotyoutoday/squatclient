@@ -36,13 +36,13 @@ These are the default bindings of the input line. They follow Emacs and TinyFugu
 
 Up, Down, Ctrl-P, Ctrl-N and Shift-Enter are disabled while a password is being typed.
 
-## Editor mode
+## Multi-line mode
 
-Toggle with Cmd-Shift-E or Ctrl-Shift-E (or the Editor button). The editor is a code editor: the Emacs keys above are not used; it has the usual code-editor keys instead.
+Toggle with Cmd-Shift-E or Ctrl-Shift-E (or the Multi-line button). The editor is a code editor: the Emacs keys above are not used; it has the usual code-editor keys instead.
 
 | Key                               | Action                                                             |
 | --------------------------------- | ------------------------------------------------------------------ |
-| Cmd-Shift-E, Ctrl-Shift-E         | switch editor mode on or off                                       |
+| Cmd-Shift-E, Ctrl-Shift-E         | switch multi-line mode on or off                                   |
 | Enter                             | insert a new line                                                  |
 | Cmd-Enter, Ctrl-Enter             | send the whole buffer                                              |
 | Cmd-Shift-Enter, Ctrl-Shift-Enter | send the selection or the current line                             |
