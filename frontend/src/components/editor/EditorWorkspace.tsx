@@ -6,6 +6,7 @@ import {
   save,
   saveAll,
   selectObjectIndex,
+  showDetails,
   startPersistence,
   useEditor,
   useEditorUi,
@@ -21,6 +22,11 @@ import { WorldTabs } from './WorldTabs';
 import { ObjectTabs } from './ObjectTabs';
 import { AttrList } from './AttrList';
 import { AttrEditor } from './AttrEditor';
+import { DetailsPane } from './DetailsPane';
+import { PlaceDialog } from './PlaceDialog';
+import { PickDialog } from './PickDialog';
+import { AttrFlagsDialog } from './AttrFlagsDialog';
+import { openPlaceDialog } from '../../state/detailsStore';
 import { CloseConfirm, CompareDialog, ConflictDialog, QuickOpen } from './EditorDialogs';
 import '../../styles/editorworkspace.css';
 
@@ -67,6 +73,12 @@ export default function EditorWorkspace() {
       } else if (k === 'w' && !e.shiftKey) {
         e.preventDefault();
         closeActiveEditorTab();
+      } else if (k === 'd' && e.shiftKey) {
+        e.preventDefault();
+        if (w && o) showDetails(w, o.dbref);
+      } else if (k === 'm' && e.shiftKey) {
+        e.preventDefault();
+        if (w && o?.details && o.controls !== false) openPlaceDialog(w, o.dbref, 'move');
       } else if (k === 't' && !e.shiftKey) {
         e.preventDefault();
         promptNewTab();
@@ -99,7 +111,7 @@ export default function EditorWorkspace() {
                 <div className="ew-side">
                   <AttrList key={obj.dbref} sid={sid} obj={obj} />
                 </div>
-                <AttrEditor sid={sid} obj={obj} />
+                {obj.details ? <DetailsPane sid={sid} obj={obj} /> : <AttrEditor sid={sid} obj={obj} />}
               </>
             ) : (
               <div className="ew-welcome">
@@ -144,6 +156,9 @@ export default function EditorWorkspace() {
       </div>
       {sid && conflictAttr && obj && <ConflictDialog sid={sid} dbref={obj.dbref} attr={conflictAttr} />}
       <CompareDialog />
+      <PlaceDialog />
+      <PickDialog />
+      <AttrFlagsDialog />
       <CloseConfirm />
       {quickOpen && sid && obj && <QuickOpenHost sid={sid} dbref={obj.dbref} />}
     </main>

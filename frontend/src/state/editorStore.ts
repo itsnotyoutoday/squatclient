@@ -65,6 +65,8 @@ export interface OpenObject {
   attrs: AttrEntry[];
   attrsLoadedAt?: number;
   activeAttr: string | null;
+  /** the Object details view is showing instead of an attribute */
+  details?: boolean;
   buffers: Record<string, Buffer>;
   /** raw values seen so far (search across attributes, go-to-definition) */
   cache: Record<string, string>;
@@ -274,6 +276,7 @@ export async function loadObject(sid: string, dbref: string, opts: LoadOpts = {}
   const o = getObject(sid, dbref);
   const target = opts.select ?? o?.activeAttr ?? p?.activeAttr ?? o?.attrs[0]?.name ?? null;
   if (target) await selectAttr(sid, dbref, target, { create: !!opts.select, activate: false });
+  else if (getObject(sid, dbref)) patchObject(sid, dbref, (x) => ({ ...x, details: true }));
 }
 
 interface BufferLoad {
@@ -382,7 +385,10 @@ export async function selectAttr(
   const eng = engine();
   const ob = getObject(sid, dbref);
   if (!eng || !ob) return 'error';
-  if (opts.activate !== false) patchWs(sid, (w) => ({ ...w, activeObject: dbref }));
+  if (opts.activate !== false) {
+    patchWs(sid, (w) => ({ ...w, activeObject: dbref }));
+    if (ob.details) patchObject(sid, dbref, (o) => ({ ...o, details: false }));
+  }
   const had = !!ob.buffers[attr];
   if (!had) {
     const inList = ob.attrs.some((a) => a.name === attr);
@@ -416,6 +422,53 @@ async function loadAttrInfo(sid: string, dbref: string, attr: string): Promise<v
             ...a,
             flags: r.flagNames || r.flags || a.flags,
             writable: r.writable === 'false' ? false : a.writable,
+          }
+        : a,
+    ),
+  }));
+}
+
+/** Show (or hide) the Object details view of an open object. */
+export function showDetails(sid: string, dbref: string, on = true): void {
+  if (!getObject(sid, dbref)) return;
+  patchWs(sid, (w) => ({ ...w, activeObject: dbref }));
+  patchObject(sid, dbref, (o) => ({ ...o, details: on }));
+  if (!on) {
+    const o = getObject(sid, dbref);
+    if (o?.activeAttr && !o.buffers[o.activeAttr]) void selectAttr(sid, dbref, o.activeAttr);
+  }
+}
+
+/** Keep the tab and list header in step with what the details view learned. */
+export function syncHeader(
+  sid: string,
+  dbref: string,
+  h: { name?: string; owner?: string; type?: string; flags?: string },
+): void {
+  if (!getObject(sid, dbref)) return;
+  patchObject(sid, dbref, (o) => ({
+    ...o,
+    name: h.name || o.name,
+    owner: h.owner || o.owner,
+    type: h.type ? h.type.toUpperCase() : o.type,
+    flags: h.flags ?? o.flags,
+  }));
+}
+
+/** Record attribute flags (names, space separated) learned from the game; protected flags make it read-only. */
+export function setAttrFlags(sid: string, dbref: string, attr: string, flagNames: string): void {
+  patchObject(sid, dbref, (o) => ({
+    ...o,
+    attrs: o.attrs.map((a) =>
+      a.name === attr
+        ? {
+            ...a,
+            flags: flagNames,
+            writable: /\b(locked|safe)\b/i.test(flagNames)
+              ? false
+              : a.writable === false
+                ? 'unknown'
+                : a.writable,
           }
         : a,
     ),

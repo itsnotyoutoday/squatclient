@@ -18,6 +18,7 @@ import {
   useEditorUi,
 } from '../../state/editorStore';
 import type { Buffer, OpenObject } from '../../state/editorStore';
+import { openAttrFlags } from '../../state/detailsStore';
 import { SearchPanel } from './SearchPanel';
 
 const MAX_MOUNTED = 6;
@@ -163,6 +164,13 @@ export function AttrEditor({ sid, obj }: { sid: string; obj: OpenObject }) {
           ) : null}
         </h2>
         <span className="ew-grow" />
+        <button
+          type="button"
+          title="Attribute flags such as no_command, visual or safe (also: right-click the attribute, or press F in the list)"
+          onClick={() => openAttrFlags(sid, obj.dbref, attr)}
+        >
+          Flags...
+        </button>
         <button
           type="button"
           className="primary"

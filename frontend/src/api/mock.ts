@@ -1,12 +1,17 @@
 import { DEFAULT_SETTINGS } from './types';
 import type {
   ConnectTarget,
+  EditAttrFlagResult,
   EditAttrInfoResult,
   EditAttrResult,
+  EditCatalogResult,
   EditControlsResult,
+  EditDetailsResult,
+  EditNearbyResult,
   EditObjectResult,
   EditResolveResult,
   EditResult,
+  EditSearchResult,
   EngineAPI,
   EngineEventName,
   EngineEvents,
@@ -589,6 +594,132 @@ export class MockEngine implements EngineAPI {
         writable: 'unknown',
       }) ?? this.game.attrInfo(dbref, attr)
     );
+  }
+  // ---- object details (docs/EDIT.md section 11)
+  async editDetails(sessionId: string, dbref: string): Promise<EditDetailsResult> {
+    return this.editGate<EditDetailsResult>(sessionId, this.noDetails(dbref)) ?? this.game.details(dbref);
+  }
+  async editListFlags(sessionId: string): Promise<EditCatalogResult> {
+    return this.editGate<EditCatalogResult>(sessionId, { known: false, items: [] }) ?? this.game.listFlags();
+  }
+  async editListPowers(sessionId: string): Promise<EditCatalogResult> {
+    return this.editGate<EditCatalogResult>(sessionId, { known: false, items: [] }) ?? this.game.listPowers();
+  }
+  async editSetFlag(sessionId: string, dbref: string, flag: string, on: boolean): Promise<EditDetailsResult> {
+    return (
+      this.editGate<EditDetailsResult>(sessionId, this.noDetails(dbref)) ?? this.game.setFlag(dbref, flag, on)
+    );
+  }
+  async editSetPower(
+    sessionId: string,
+    dbref: string,
+    power: string,
+    on: boolean,
+  ): Promise<EditDetailsResult> {
+    return (
+      this.editGate<EditDetailsResult>(sessionId, this.noDetails(dbref)) ??
+      this.game.setPower(dbref, power, on)
+    );
+  }
+  async editSetAttrFlag(
+    sessionId: string,
+    dbref: string,
+    attr: string,
+    flag: string,
+    on: boolean,
+  ): Promise<EditAttrFlagResult> {
+    return (
+      this.editGate<EditAttrFlagResult>(sessionId, { reply: '', known: false, flags: '', flagNames: '' }) ??
+      this.game.setAttrFlag(dbref, attr, flag, on)
+    );
+  }
+  async editRename(sessionId: string, dbref: string, name: string): Promise<EditDetailsResult> {
+    return (
+      this.editGate<EditDetailsResult>(sessionId, this.noDetails(dbref)) ?? this.game.rename(dbref, name)
+    );
+  }
+  async editChown(sessionId: string, dbref: string, owner: string): Promise<EditDetailsResult> {
+    return (
+      this.editGate<EditDetailsResult>(sessionId, this.noDetails(dbref)) ?? this.game.chown(dbref, owner)
+    );
+  }
+  async editSetParent(sessionId: string, dbref: string, parent: string): Promise<EditDetailsResult> {
+    return (
+      this.editGate<EditDetailsResult>(sessionId, this.noDetails(dbref)) ?? this.game.setParent(dbref, parent)
+    );
+  }
+  async editSetZone(sessionId: string, dbref: string, zone: string): Promise<EditDetailsResult> {
+    return (
+      this.editGate<EditDetailsResult>(sessionId, this.noDetails(dbref)) ?? this.game.setZone(dbref, zone)
+    );
+  }
+  async editSetLock(
+    sessionId: string,
+    dbref: string,
+    lockType: string,
+    expr: string,
+  ): Promise<EditDetailsResult> {
+    return (
+      this.editGate<EditDetailsResult>(sessionId, this.noDetails(dbref)) ??
+      this.game.setLock(dbref, lockType, expr)
+    );
+  }
+  async editSetHome(sessionId: string, dbref: string, room: string): Promise<EditDetailsResult> {
+    return (
+      this.editGate<EditDetailsResult>(sessionId, this.noDetails(dbref)) ?? this.game.setHome(dbref, room)
+    );
+  }
+  async editSetDestination(sessionId: string, dbref: string, room: string): Promise<EditDetailsResult> {
+    return (
+      this.editGate<EditDetailsResult>(sessionId, this.noDetails(dbref)) ??
+      this.game.setDestination(dbref, room)
+    );
+  }
+  async editMove(sessionId: string, dbref: string, dest: string): Promise<EditDetailsResult> {
+    return this.editGate<EditDetailsResult>(sessionId, this.noDetails(dbref)) ?? this.game.move(dbref, dest);
+  }
+  async editSearchRooms(sessionId: string, query: string): Promise<EditSearchResult> {
+    return (
+      this.editGate<EditSearchResult>(sessionId, { items: [], restricted: false, truncated: false }) ??
+      this.game.searchRooms(query)
+    );
+  }
+  async editNearby(sessionId: string, dbref: string): Promise<EditNearbyResult> {
+    return (
+      this.editGate<EditNearbyResult>(sessionId, {
+        room: { dbref: '', name: '', type: '', owner: '' },
+        desc: '',
+        exits: [],
+        contents: [],
+      }) ?? this.game.nearby(dbref)
+    );
+  }
+  private noDetails(dbref: string): Omit<EditDetailsResult, keyof EditResult> {
+    return {
+      reply: '',
+      details: {
+        dbref,
+        name: '',
+        type: '',
+        owner: '',
+        parent: '',
+        zone: '',
+        location: '',
+        home: '',
+        destination: '',
+        pennies: null,
+        created: '',
+        modified: '',
+        flags: [],
+        flagLetters: '',
+        powers: [],
+        locks: [],
+        contents: [],
+        exits: [],
+        attrCount: -1,
+        names: {},
+      },
+    };
   }
   /** What the next `pickFile` resolves with ('' = the user cancelled). Test/demo hook. */
   nextPick = '~/demo-script.mush';

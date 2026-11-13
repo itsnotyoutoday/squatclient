@@ -287,6 +287,91 @@ export interface EditAttrInfoResult extends EditResult {
   writable: Tri;
 }
 
+// ---- object details of the Object Editor (docs/EDIT.md section 11). Calls never reject: check `ok`.
+
+export interface EditLock {
+  type: string;
+  expr: string;
+}
+export interface EditObjRef {
+  dbref: string;
+  name: string;
+}
+export interface EditDetails {
+  dbref: string;
+  name: string;
+  /** lower case: room, thing, player, exit, garbage */
+  type: string;
+  owner: string;
+  /** '' when none */
+  parent: string;
+  zone: string;
+  /** containing room (an exit: its source room) */
+  location: string;
+  home: string;
+  /** exits only */
+  destination: string;
+  /** null: the game did not say */
+  pennies: number | null;
+  created: string;
+  modified: string;
+  flags: string[];
+  flagLetters: string;
+  powers: string[];
+  locks: EditLock[];
+  contents: EditObjRef[];
+  exits: EditObjRef[];
+  /** -1 when unknown */
+  attrCount: number;
+  /** names of the dbrefs above (owner, parent, zone, location, home, destination), where known */
+  names: Record<string, string>;
+}
+/** Result of editDetails and of every mutation: the verified state and the game's exact reply. */
+export interface EditDetailsResult extends EditResult {
+  reply: string;
+  details: EditDetails;
+}
+export interface EditCatalogItem {
+  name: string;
+  letter: string;
+  desc: string;
+}
+export interface EditCatalogResult extends EditResult {
+  /** false: the game gave nothing usable (let the user type a name) */
+  known: boolean;
+  items: EditCatalogItem[];
+}
+export interface EditAttrFlagResult extends EditResult {
+  reply: string;
+  known: boolean;
+  flags: string;
+  flagNames: string;
+}
+export interface EditPlace {
+  dbref: string;
+  name: string;
+  type: string;
+  owner: string;
+}
+export interface EditSearchResult extends EditResult {
+  items: EditPlace[];
+  /** the game refused a global room search: only your own rooms and things nearby */
+  restricted: boolean;
+  truncated: boolean;
+}
+export interface EditNearbyExit {
+  dbref: string;
+  name: string;
+  destDbref: string;
+  destName: string;
+}
+export interface EditNearbyResult extends EditResult {
+  room: EditPlace;
+  desc: string;
+  exits: EditNearbyExit[];
+  contents: EditPlace[];
+}
+
 export interface EngineAPI {
   listWorlds(): Promise<WorldConfig[]>;
   saveWorld(w: WorldConfig): Promise<WorldConfig>;
@@ -343,6 +428,31 @@ export interface EngineAPI {
   editResolve(sessionId: string, target: string): Promise<EditResolveResult>;
   editControls(sessionId: string, dbref: string): Promise<EditControlsResult>;
   editAttrInfo(sessionId: string, dbref: string, attr: string): Promise<EditAttrInfoResult>;
+  // ---- object details (docs/EDIT.md section 11): silent like the calls above; never typed input
+  editDetails(sessionId: string, dbref: string): Promise<EditDetailsResult>;
+  editListFlags(sessionId: string): Promise<EditCatalogResult>;
+  editListPowers(sessionId: string): Promise<EditCatalogResult>;
+  editSetFlag(sessionId: string, dbref: string, flag: string, on: boolean): Promise<EditDetailsResult>;
+  editSetPower(sessionId: string, dbref: string, power: string, on: boolean): Promise<EditDetailsResult>;
+  editSetAttrFlag(
+    sessionId: string,
+    dbref: string,
+    attr: string,
+    flag: string,
+    on: boolean,
+  ): Promise<EditAttrFlagResult>;
+  editRename(sessionId: string, dbref: string, name: string): Promise<EditDetailsResult>;
+  editChown(sessionId: string, dbref: string, owner: string): Promise<EditDetailsResult>;
+  /** parent '' or 'none' clears */
+  editSetParent(sessionId: string, dbref: string, parent: string): Promise<EditDetailsResult>;
+  editSetZone(sessionId: string, dbref: string, zone: string): Promise<EditDetailsResult>;
+  /** expr '' or 'none' removes the lock */
+  editSetLock(sessionId: string, dbref: string, lockType: string, expr: string): Promise<EditDetailsResult>;
+  editSetHome(sessionId: string, dbref: string, room: string): Promise<EditDetailsResult>;
+  editSetDestination(sessionId: string, dbref: string, room: string): Promise<EditDetailsResult>;
+  editMove(sessionId: string, dbref: string, dest: string): Promise<EditDetailsResult>;
+  editSearchRooms(sessionId: string, query: string): Promise<EditSearchResult>;
+  editNearby(sessionId: string, dbref: string): Promise<EditNearbyResult>;
   on<E extends EngineEventName>(event: E, cb: (payload: EngineEvents[E]) => void): () => void;
 }
 

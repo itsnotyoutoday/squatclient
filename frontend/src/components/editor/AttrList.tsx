@@ -1,6 +1,13 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
-import { isReadOnlyObject, newAttribute, selectAttr, useEditorUi } from '../../state/editorStore';
+import {
+  isReadOnlyObject,
+  newAttribute,
+  selectAttr,
+  showDetails,
+  useEditorUi,
+} from '../../state/editorStore';
+import { openAttrFlags } from '../../state/detailsStore';
 import type { AttrEntry, OpenObject } from '../../state/editorStore';
 
 export const ROW_H = 28;
@@ -21,6 +28,7 @@ export function AttrList({ sid, obj }: { sid: string; obj: OpenObject }) {
   const [adding, setAdding] = useState(false);
   const [addErr, setAddErr] = useState('');
   const scroller = useRef<HTMLDivElement>(null);
+  const pin = useRef<HTMLButtonElement>(null);
   const [scrollTop, setScrollTop] = useState(0);
   const [height, setHeight] = useState(0);
 
@@ -74,8 +82,17 @@ export function AttrList({ sid, obj }: { sid: string; obj: OpenObject }) {
 
   const onKey = (e: KeyboardEvent<HTMLDivElement>): void => {
     if (e.key === 'ArrowDown') move(cursor + 1);
-    else if (e.key === 'ArrowUp') move(cursor - 1);
-    else if (e.key === 'Home') move(0);
+    else if (e.key === 'ArrowUp') {
+      if (cursor === 0) pin.current?.focus();
+      else move(cursor - 1);
+    } else if (
+      e.key === 'ContextMenu' ||
+      (e.shiftKey && e.key === 'F10') ||
+      (e.key === 'f' && !e.metaKey && !e.ctrlKey && !e.altKey)
+    ) {
+      const a = items[cursor];
+      if (a) openAttrFlags(sid, obj.dbref, a.name);
+    } else if (e.key === 'Home') move(0);
     else if (e.key === 'End') move(items.length - 1);
     else if (e.key === 'PageDown') move(cursor + Math.max(1, Math.floor(viewport / ROW_H) - 1));
     else if (e.key === 'PageUp') move(cursor - Math.max(1, Math.floor(viewport / ROW_H) - 1));
@@ -95,6 +112,25 @@ export function AttrList({ sid, obj }: { sid: string; obj: OpenObject }) {
 
   return (
     <div className="ew-attrs">
+      <button
+        type="button"
+        ref={pin}
+        className={`ew-pin${obj.details ? ' ew-active' : ''}`}
+        aria-current={obj.details ? 'true' : undefined}
+        title="Name, flags, powers, locks, location and more (Cmd/Ctrl-Shift-D)"
+        onClick={() => showDetails(sid, obj.dbref)}
+        onKeyDown={(e) => {
+          if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            scroller.current?.focus();
+          }
+        }}
+      >
+        <span className="ew-pinicon" aria-hidden="true">
+          &#9432;
+        </span>
+        Object details
+      </button>
       <div className="ew-attrhead">
         <label className="ew-filterlabel">
           <span className="ew-sr">Filter attributes</span>
@@ -162,6 +198,11 @@ export function AttrList({ sid, obj }: { sid: string; obj: OpenObject }) {
                 style={{ top: i * ROW_H, height: ROW_H }}
                 title={a.flags ? `${a.name} (${a.flags})` : a.name}
                 onMouseDown={(e) => e.preventDefault()}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  setCursor(i);
+                  openAttrFlags(sid, obj.dbref, a.name);
+                }}
                 onClick={() => {
                   setCursor(i);
                   scroller.current?.focus();
@@ -182,13 +223,27 @@ export function AttrList({ sid, obj }: { sid: string; obj: OpenObject }) {
                   ) : null}
                 </span>
                 <span className="ew-attrname">{a.name}</span>
+                {a.flags && (
+                  <span className="ew-aflags" aria-hidden="true">
+                    {a.flags
+                      .split(/\s+/)
+                      .filter(Boolean)
+                      .map((f) => (
+                        <span key={f} className="ew-aflag" title={f}>
+                          {f}
+                        </span>
+                      ))}
+                  </span>
+                )}
                 {ro && (
                   <span className="ew-lockwrap" role="img" aria-label="read-only">
                     <LockIcon />
                   </span>
                 )}
                 <span className="ew-sr">
-                  {[state && `(${state})`, ro && '(read-only)'].filter(Boolean).join(' ')}
+                  {[state && `(${state})`, ro && '(read-only)', a.flags && `(flags: ${a.flags})`]
+                    .filter(Boolean)
+                    .join(' ')}
                 </span>
               </div>
             );

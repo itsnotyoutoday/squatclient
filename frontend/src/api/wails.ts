@@ -1,11 +1,17 @@
 import type {
   ConnectTarget,
+  EditAttrFlagResult,
   EditAttrInfoResult,
   EditAttrResult,
+  EditCatalogResult,
   EditControlsResult,
+  EditDetails,
+  EditDetailsResult,
+  EditNearbyResult,
   EditObjectResult,
   EditResolveResult,
   EditResult,
+  EditSearchResult,
   EngineAPI,
   EngineEventName,
   EngineEvents,
@@ -63,6 +69,45 @@ function editCall<T extends EditResult>(
       ({ ...empty, ok: false, code: 'error', error: e instanceof Error ? e.message : String(e) }) as T,
   );
 }
+
+const emptyDetails = (dbref: string): EditDetails => ({
+  dbref,
+  name: '',
+  type: '',
+  owner: '',
+  parent: '',
+  zone: '',
+  location: '',
+  home: '',
+  destination: '',
+  pennies: null,
+  created: '',
+  modified: '',
+  flags: [],
+  flagLetters: '',
+  powers: [],
+  locks: [],
+  contents: [],
+  exits: [],
+  attrCount: -1,
+  names: {},
+});
+
+/** Go encodes nil slices as null in some paths: make every list an array. */
+function normDetails(r: EditDetailsResult): EditDetailsResult {
+  const d = { ...emptyDetails(r.details?.dbref ?? ''), ...(r.details ?? {}) };
+  d.flags ??= [];
+  d.powers ??= [];
+  d.locks ??= [];
+  d.contents ??= [];
+  d.exits ??= [];
+  d.names ??= {};
+  return { ...r, reply: r.reply ?? '', details: d };
+}
+const normCatalog = (r: EditCatalogResult): EditCatalogResult => ({ ...r, items: r.items ?? [] });
+
+const mut = (method: string, dbref: string, ...args: unknown[]): Promise<EditDetailsResult> =>
+  editCall<EditDetailsResult>(method, { reply: '', details: emptyDetails(dbref) }, ...args).then(normDetails);
 
 /** EngineAPI backed by Wails-generated bindings (window.go.main.App.*) and runtime events. */
 export class WailsEngine implements EngineAPI {
@@ -132,6 +177,54 @@ export class WailsEngine implements EngineAPI {
       dbref,
       attr,
     );
+  // ---- object details (docs/EDIT.md section 11)
+  editDetails = (id: string, dbref: string) =>
+    editCall<EditDetailsResult>('EditDetails', { reply: '', details: emptyDetails(dbref) }, id, dbref).then(
+      normDetails,
+    );
+  editListFlags = (id: string) =>
+    editCall<EditCatalogResult>('EditListFlags', { known: false, items: [] }, id).then(normCatalog);
+  editListPowers = (id: string) =>
+    editCall<EditCatalogResult>('EditListPowers', { known: false, items: [] }, id).then(normCatalog);
+  editSetFlag = (id: string, dbref: string, flag: string, on: boolean) =>
+    mut('EditSetFlag', dbref, id, dbref, flag, on);
+  editSetPower = (id: string, dbref: string, power: string, on: boolean) =>
+    mut('EditSetPower', dbref, id, dbref, power, on);
+  editSetAttrFlag = (id: string, dbref: string, attr: string, flag: string, on: boolean) =>
+    editCall<EditAttrFlagResult>(
+      'EditSetAttrFlag',
+      { reply: '', known: false, flags: '', flagNames: '' },
+      id,
+      dbref,
+      attr,
+      flag,
+      on,
+    );
+  editRename = (id: string, dbref: string, name: string) => mut('EditRename', dbref, id, dbref, name);
+  editChown = (id: string, dbref: string, owner: string) => mut('EditChown', dbref, id, dbref, owner);
+  editSetParent = (id: string, dbref: string, parent: string) =>
+    mut('EditSetParent', dbref, id, dbref, parent);
+  editSetZone = (id: string, dbref: string, zone: string) => mut('EditSetZone', dbref, id, dbref, zone);
+  editSetLock = (id: string, dbref: string, lockType: string, expr: string) =>
+    mut('EditSetLock', dbref, id, dbref, lockType, expr);
+  editSetHome = (id: string, dbref: string, room: string) => mut('EditSetHome', dbref, id, dbref, room);
+  editSetDestination = (id: string, dbref: string, room: string) =>
+    mut('EditSetDestination', dbref, id, dbref, room);
+  editMove = (id: string, dbref: string, dest: string) => mut('EditMove', dbref, id, dbref, dest);
+  editSearchRooms = (id: string, query: string) =>
+    editCall<EditSearchResult>(
+      'EditSearchRooms',
+      { items: [], restricted: false, truncated: false },
+      id,
+      query,
+    ).then((r) => ({ ...r, items: r.items ?? [] }));
+  editNearby = (id: string, dbref: string) =>
+    editCall<EditNearbyResult>(
+      'EditNearby',
+      { room: { dbref: '', name: '', type: '', owner: '' }, desc: '', exits: [], contents: [] },
+      id,
+      dbref,
+    ).then((r) => ({ ...r, exits: r.exits ?? [], contents: r.contents ?? [] }));
   pickFile = (title: string) => call<string>('PickFile', title).then((p) => p ?? '');
   readTextFile = (path: string) => call<FileResult>('ReadTextFile', path);
 
