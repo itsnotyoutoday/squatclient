@@ -18,6 +18,8 @@ type editGame struct {
 	attrs map[string]string
 	stop  chan struct{}
 	wg    sync.WaitGroup
+	// extra, when set, may answer a `think` argument before the built-in replies
+	extra func(arg string) []string
 }
 
 func startEditGame(t *testing.T, srv *fakemush.Server) *editGame {
@@ -67,6 +69,11 @@ func (g *editGame) answer(cmd string) []string {
 	switch {
 	case strings.HasPrefix(cmd, "think "):
 		arg := strings.TrimPrefix(cmd, "think ")
+		if g.extra != nil {
+			if out := g.extra(arg); out != nil {
+				return out
+			}
+		}
 		switch {
 		case strings.Contains(arg, "-O:#999"), strings.Contains(arg, "(#999)"):
 			return []string{strings.SplitN(arg, ":", 2)[0] + ":#-1 NO MATCH" + strings.Repeat("^|^#-1 NO MATCH", 5)}
