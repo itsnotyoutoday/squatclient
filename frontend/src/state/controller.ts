@@ -1,5 +1,6 @@
 import type { EngineAPI, Line, SessionInfo } from '../api/types';
 import { getBuffer, dropBuffer, setBufferCap, useSessions, useSettings, useUi } from './stores';
+import { closeActiveEditorTab, toggleEditorView } from '../lib/editor/view';
 
 /** Sessions that need attention when the UI attaches: unread output or ended. */
 export function awaySessions(list: readonly SessionInfo[]): SessionInfo[] {
@@ -147,7 +148,15 @@ export async function startController(
         case 'search':
           u.setSearch(true);
           break;
+        case 'editor':
+          toggleEditorView();
+          break;
         case 'close-session': {
+          // in the editor view Cmd-W closes the active object tab, never the connection
+          if (u.view === 'editor') {
+            closeActiveEditorTab();
+            break;
+          }
           const cur = s.fg ? s.sessions[s.fg] : undefined;
           if (!cur) break;
           if (cur.state === 'ended') void controller.dismiss(cur.id);

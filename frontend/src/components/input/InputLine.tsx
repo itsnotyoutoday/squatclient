@@ -20,6 +20,8 @@ import type { HistoryUseDetail } from '../../lib/inputevents';
 import { worldKey } from '../../lib/worldkey';
 import { getHistory, recordHistory, seedHistory } from '../../state/history';
 import { useSessions, useSettings, useUi } from '../../state/stores';
+import { parseEditCommand } from '../../lib/editor/command';
+import { runEditCommand } from '../../lib/editor/view';
 import { INSERT_EVENT, openHelp, parseHelpCommand } from '../../help/command';
 import type { InsertDetail } from '../../help/command';
 import { EditorPane, modLabel } from './EditorPane';
@@ -188,6 +190,12 @@ export function InputLine({ sessionId, remoteEcho, disabled, keymap = DEFAULT_KE
       const up = parseUploadCommand(l);
       if (up !== null) {
         void beginUpload(engine, sid, up);
+        return;
+      }
+      // /edit is a UI feature too: it flips to the editor view (docs/EDIT-WORKSPACE.md).
+      const edit = parseEditCommand(l);
+      if (edit !== null) {
+        void runEditCommand(edit);
         return;
       }
       if (!engine) return;

@@ -4,6 +4,7 @@ import type { OutputHandle } from './components/output/handle';
 import { useSessions, useUi } from './state/stores';
 import { openHelp } from './help/command';
 import { toggleEditor } from './lib/inputevents';
+import { toggleEditorView } from './lib/editor/view';
 import { uploadDialogOpen } from './lib/upload/store';
 
 /** UI-level shortcuts only. Everything else typed goes to engine.input untouched. */
@@ -34,6 +35,28 @@ export function useGlobalKeys(controller: Controller | null, getOutput: () => Ou
         e.preventDefault();
         const i = s.fg ? s.order.indexOf(s.fg) : 0;
         controller.switchTo(s.order[(i + (e.shiftKey ? -1 : 1) + s.order.length) % s.order.length]);
+        return;
+      }
+      // Cmd-E (Ctrl-E outside the input line, where it means end-of-line): flip terminal <-> editor view
+      if (
+        e.key.toLowerCase() === 'e' &&
+        !e.shiftKey &&
+        !e.altKey &&
+        (e.metaKey || (e.ctrlKey && !inInput && !e.defaultPrevented))
+      ) {
+        e.preventDefault();
+        toggleEditorView();
+        return;
+      }
+      // the rest are terminal-only; the editor view has its own keys (components/editor)
+      if (ui.view === 'editor') {
+        if (e.ctrlKey && !e.shiftKey && !e.metaKey && e.key.toLowerCase() === 'o') {
+          e.preventDefault();
+          ui.openDialog('worlds');
+        } else if ((e.ctrlKey || e.metaKey) && e.key === ',') {
+          e.preventDefault();
+          ui.openDialog('settings');
+        }
         return;
       }
       const isF = e.key.toLowerCase() === 'f';

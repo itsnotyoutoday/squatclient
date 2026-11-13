@@ -26,6 +26,8 @@ import './styles/app.css';
 
 // The help browser and its content load on first use, keeping the main bundle small.
 const HelpBrowser = lazy(() => import('./components/help/HelpBrowser'));
+// The editor workspace (/edit) loads on first use as well.
+const EditorWorkspace = lazy(() => import('./components/editor/EditorWorkspace'));
 
 function Dialogs() {
   const d = useUi((s) => s.dialog);
@@ -116,6 +118,7 @@ export function App({ engine }: { engine: EngineAPI }) {
   const [controller, setController] = useState<Controller | null>(null);
   const [error, setError] = useState('');
   const theme = useTheme();
+  const view = useUi((s) => s.view);
   const fontFamily = useSettings((s) => s.settings.fontFamily);
   const fontSize = useSettings((s) => s.settings.fontSize);
   const unread = useSessions((s) =>
@@ -167,13 +170,19 @@ export function App({ engine }: { engine: EngineAPI }) {
           Skip to input
         </a>
         <div className="titlestrip" aria-hidden="true" />
-        <header>
-          <TabBar />
-        </header>
+        {view === 'terminal' && (
+          <header>
+            <TabBar />
+          </header>
+        )}
         {error ? (
           <p role="alert" className="err pad">
             Failed to start: {error}
           </p>
+        ) : view === 'editor' ? (
+          <Suspense fallback={<main className="empty" aria-busy="true" />}>
+            <EditorWorkspace />
+          </Suspense>
         ) : (
           <Workspace />
         )}
