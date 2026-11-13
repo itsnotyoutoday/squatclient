@@ -639,3 +639,18 @@ kbd {
     text-decoration: underline dotted;
   }
 }
+
+/* macOS integrated title bar (ADR 0002): only active with html.mac-titlebar */
+.titlestrip {
+  display: none;
+}
+html.mac-titlebar .titlestrip {
+  display: block;
+  flex: none;
+  height: 28px;
+  background: var(--ui-panel);
+  border-bottom: 1px solid var(--ui-border);
+  --wails-draggable: drag;
+  user-select: none;
+  -webkit-user-select: none;
+}

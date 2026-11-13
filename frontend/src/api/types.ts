@@ -43,6 +43,8 @@ export interface SessionInfo {
   attached: number;
   remoteEcho: boolean;
   via: 'direct' | string;
+  /** Id of the world this session was opened from (absent for quick connects). */
+  worldId?: string;
   endedAt?: number;
   endReason?: string;
   endDetail?: string;
@@ -118,6 +120,14 @@ export interface EngineEvents {
   bell: { session: string };
   gmcp: { session: string; package: string; data: unknown };
   quit: Record<string, never>;
+  /** A session was dismissed (by this or another client). */
+  'session-removed': { id: string };
+  /** The engine changed the foreground session (e.g. a script ran /fg). */
+  foreground: { session: string };
+  /** The session's view filter (/limit) changed: drop the buffer and refetch scrollback. */
+  reset: { session: string };
+  /** A native menu item was chosen. */
+  menu: { action: string };
 }
 
 export type EngineEventName = keyof EngineEvents;

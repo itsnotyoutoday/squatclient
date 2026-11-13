@@ -196,6 +196,7 @@ export class MockEngine implements EngineAPI {
       attached: 1,
       remoteEcho: false,
       via: this.worlds.find((w) => w.id === worldId)?.via ?? 'direct',
+      ...(worldId ? { worldId } : {}),
     };
     const sd: SessionData = { info, lines: [], acked: 0, tick: 0 };
     this.sessions.set(id, sd);
@@ -392,6 +393,7 @@ export class MockEngine implements EngineAPI {
     if (sd.info.state !== 'ended') throw new Error('session_not_ended');
     this.sessions.delete(sessionId);
     if (this.fg === sessionId) this.fg = '';
+    this.emit('session-removed', { id: sessionId });
   }
   async listSessions(): Promise<SessionInfo[]> {
     return [...this.sessions.values()].map((s) => this.snapshot(s));

@@ -156,6 +156,7 @@ export function App({ engine }: { engine: EngineAPI }) {
         >
           Skip to input
         </a>
+        <div className="titlestrip" aria-hidden="true" />
         <header>
           <TabBar />
         </header>

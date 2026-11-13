@@ -10,3 +10,22 @@
 8. **Password input.** When `remoteEcho` is true the UI uses a masked `<input type=password>`, skips history and still sends via `input()`.
 9. **`SearchHit`** has only `seq` and `preview`; the UI highlights matches itself in loaded lines and uses engine hits only for history older than the loaded buffer.
 10. **`resize`** is sent (debounced) with measured cols/rows of the output pane using canvas text metrics.
+
+## Decisions made by the Go side (internal/app, settled)
+
+1. **Session removal**: after `dismiss` the app emits `session-removed` `{id}`. Coalesced `session` events are never emitted after it for that id. The UI also removes locally (idempotent).
+3. **worldId**: `SessionInfo` now carries `worldId?` (absent for quick connects) and `via: "direct"`. "Connect again" matches by `worldId`, falling back to host+port.
+5. **Notices**: notices that belong to a session (connect/end messages, script errors, `/echo`, unknown commands) are stored by the engine as `system` lines (they replay and have real seqs). The `notice` event is used ONLY for messages without a session (startup/script-load errors, auto-connect failures); the UI shows those as before. No duplication.
+6. **Unread/ack**: the engine counts unread (non-prompt `game` lines since the last `ack`) for every session including the foreground one; `ack(id, seq)` takes an integer seq.
+4. **Method names**: exactly as listed in note 4 (positional args). `Connect` takes `{worldId}` or `{host, port, tls}`; `Scrollback` takes `{beforeSeq?, limit}`; `Search` takes `{regex?, caseSensitive?}` and always returns an array. Squatter methods `PairSquatter`/`ConfirmSquatter` reject with "squatter connections are not available yet"; `ListSquatters`/`RemoveSquatter` work on the stored list.
+
+New runtime events (additions to the contract):
+
+| Event | Payload | Meaning |
+|---|---|---|
+| `session-removed` | `{id}` | a session was dismissed |
+| `foreground` | `{session}` | a script/engine changed the foreground session (`/fg`, first session, fallback after dismiss). The UI's own `foreground()` calls are not echoed back |
+| `reset` | `{session}` | the view filter (`/limit`) changed: drop the buffer and refetch `scrollback` |
+| `menu` | `{action}` | native menu: `quick-connect`, `worlds`, `settings`, `search`, `help`, `close-session` |
+
+Delivery: lines, gmcp, notices, bells and removals are never dropped and keep order; `session` and `status` events are coalesced per ~12 ms batch and sent after the batch's lines. A `/quit` from a script emits `quit` and closes the window.

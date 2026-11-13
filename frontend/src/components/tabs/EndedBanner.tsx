@@ -10,7 +10,9 @@ export function EndedBanner({ session }: { session: SessionInfo }) {
 
   const reconnect = async (): Promise<void> => {
     if (!engine) return;
-    const world = worlds.find((w) => w.host === session.host && w.port === session.port);
+    const world =
+      (session.worldId ? worlds.find((w) => w.id === session.worldId) : undefined) ??
+      worlds.find((w) => w.host === session.host && w.port === session.port);
     try {
       await engine.connect(
         world ? { worldId: world.id } : { host: session.host, port: session.port, tls: session.tls },

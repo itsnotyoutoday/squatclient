@@ -9,5 +9,12 @@
   "author": {
     "name": "itsnotyoutoday",
     "email": "10070062+itsnotyoutoday@users.noreply.github.com"
+  },
+  "info": {
+    "companyName": "itsnotyoutoday",
+    "productName": "SquatClient",
+    "productVersion": "0.1.0",
+    "copyright": "Copyright 2026 itsnotyoutoday. GPL-3.0-or-later.",
+    "comments": "A graphical MU*/MUSH client"
   }
 }

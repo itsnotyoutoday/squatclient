@@ -70,6 +70,15 @@ export async function startController(
     raf(flush);
   };
 
+  const reloadSession = async (id: string): Promise<void> => {
+    dropBuffer(id);
+    const lines = await engine.scrollback(id, { limit: INITIAL_LOAD }).catch(() => [] as Line[]);
+    const b = getBuffer(id);
+    b.merge(lines);
+    if (lines.length < INITIAL_LOAD) b.exhausted = true;
+    useSessions.getState().bump([id]);
+  };
+
   const offs: (() => void)[] = [];
   offs.push(
     engine.on('line', (l) => {
@@ -90,6 +99,47 @@ export async function startController(
         useSessions.getState().bump([target]);
       }
       if (n.level !== 'info' || !target) useUi.getState().toast(n.level, n.text);
+    }),
+    engine.on('session-removed', ({ id }) => {
+      dropBuffer(id);
+      useSessions.getState().remove(id);
+    }),
+    engine.on('foreground', ({ session }) => {
+      const s = useSessions.getState();
+      if (s.sessions[session] && s.fg !== session) s.setFg(session);
+    }),
+    engine.on('reset', ({ session }) => {
+      void reloadSession(session);
+    }),
+    engine.on('menu', ({ action }) => {
+      const u = useUi.getState();
+      const s = useSessions.getState();
+      switch (action) {
+        case 'quick-connect':
+          u.openDialog('quick');
+          break;
+        case 'worlds':
+          u.openDialog('worlds');
+          break;
+        case 'settings':
+          u.openDialog('settings');
+          break;
+        case 'help':
+          u.openDialog('help');
+          break;
+        case 'search':
+          u.setSearch(true);
+          break;
+        case 'close-session': {
+          const cur = s.fg ? s.sessions[s.fg] : undefined;
+          if (!cur) break;
+          if (cur.state === 'ended') void controller.dismiss(cur.id);
+          else void engine.disconnect(cur.id).catch(() => undefined);
+          break;
+        }
+        default:
+          break;
+      }
     }),
     engine.on('bell', (b) => {
       const s = useSessions.getState();
