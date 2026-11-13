@@ -273,7 +273,7 @@ export async function loadObject(sid: string, dbref: string, opts: LoadOpts = {}
   }
   const o = getObject(sid, dbref);
   const target = opts.select ?? o?.activeAttr ?? p?.activeAttr ?? o?.attrs[0]?.name ?? null;
-  if (target) await selectAttr(sid, dbref, target, { create: !!opts.select });
+  if (target) await selectAttr(sid, dbref, target, { create: !!opts.select, activate: false });
 }
 
 interface BufferLoad {
@@ -377,12 +377,12 @@ export async function selectAttr(
   sid: string,
   dbref: string,
   attr: string,
-  opts: { create?: boolean } = {},
+  opts: { create?: boolean; activate?: boolean } = {},
 ): Promise<'ok' | 'missing' | 'error'> {
   const eng = engine();
   const ob = getObject(sid, dbref);
   if (!eng || !ob) return 'error';
-  patchWs(sid, (w) => ({ ...w, activeObject: dbref }));
+  if (opts.activate !== false) patchWs(sid, (w) => ({ ...w, activeObject: dbref }));
   const had = !!ob.buffers[attr];
   if (!had) {
     const inList = ob.attrs.some((a) => a.name === attr);

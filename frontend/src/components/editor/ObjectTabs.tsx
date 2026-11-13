@@ -113,7 +113,7 @@ function OpenPrompt({ sid }: { sid: string }) {
   };
 
   return (
-    <form className="ew-prompt" onSubmit={(e) => void submit(e)} role="search" aria-label="Open object">
+    <form className="ew-prompt" onSubmit={(e) => void submit(e)} role="search" aria-label="Object prompt">
       <label className="ew-promptlabel">
         <span className="ew-promptcap">Open object</span>
         <input

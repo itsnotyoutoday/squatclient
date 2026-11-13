@@ -30,9 +30,13 @@ export function AttrList({ sid, obj }: { sid: string; obj: OpenObject }) {
   }, [obj.attrs, filter]);
 
   // keep the cursor on the active attribute when it changes elsewhere
+  const revealRef = useRef<(i: number) => void>(() => undefined);
   useEffect(() => {
     const i = items.findIndex((a) => a.name === obj.activeAttr);
-    if (i >= 0) setCursor(i);
+    if (i >= 0) {
+      setCursor(i);
+      revealRef.current(i);
+    }
   }, [obj.activeAttr, items]);
 
   useLayoutEffect(() => {
@@ -59,6 +63,8 @@ export function AttrList({ sid, obj }: { sid: string; obj: OpenObject }) {
     else if (top + ROW_H > el.scrollTop + viewport) el.scrollTop = top + ROW_H - viewport;
     setScrollTop(el.scrollTop);
   };
+
+  revealRef.current = reveal;
 
   const move = (i: number): void => {
     const n = Math.max(0, Math.min(items.length - 1, i));

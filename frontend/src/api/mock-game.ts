@@ -231,7 +231,12 @@ export class MockGame {
     else {
       const q = t.toLowerCase().replace(/^\*/, '');
       const hits = [...this.objects.values()].filter(
-        (x) => !x.invisible && x.name.toLowerCase().startsWith(q),
+        (x) =>
+          !x.invisible &&
+          x.name
+            .toLowerCase()
+            .split(/\s+/)
+            .some((w) => w.startsWith(q)),
       );
       const exact = hits.filter((x) => x.name.toLowerCase() === q);
       const pick = exact.length === 1 ? exact : hits;
