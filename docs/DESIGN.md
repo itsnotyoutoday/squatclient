@@ -204,6 +204,7 @@ The game serves its own React stations/viewer; the client opens a URL + token wh
 14. **Colour/text requirements are acceptance criteria** (STRUCTURE.md Section 8).
 15. All three platforms build in CI; macOS is the primary dev/test platform for v1.
 16. **Only wrapping and paging are dropped** from TinyFugue (`wrap`/`wraplog`/`wrapspace`/`wrapsize`, `more`/paging: accepted-and-ignored; UI has soft-wrap and pause-on-scroll settings). Process commands (`/ps /kill /repeat /sh /quote`, shell forms behind `/restrict`), keyboard-buffer functions and `/dokey`/`/bind` (operating on the GUI input line), and terminal-control commands (`/visual /redraw /suspend`, geometry functions) stay in scope with GUI equivalents. Only `/core` and terminal-signal hooks may remain N/A.
+17. **`/suspend` = detach from the squatter** (TF's Ctrl-Z, `screen`'s detach): sessions held by a squatter stay alive and recording while the client goes idle/minimised ("suspended" state with a Resume action that reattaches and replays). `/detach` is an alias. Direct (non-squatter) sessions cannot outlive the app, so for them `/suspend` only minimises/hides the window and the connections stay live. Mixed setups detach only the squatter-held sessions.
 
 ## 12. Risks
 
