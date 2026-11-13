@@ -64,8 +64,12 @@ export interface DetailsState {
   place: { sid: string; dbref: string; mode: PlaceMode } | null;
   /** the owner / parent / zone picker */
   pick: { sid: string; dbref: string; field: 'owner' | 'parent' | 'zone' } | null;
-  /** the attribute flags dialog */
-  attrFlags: { sid: string; dbref: string; attr: string } | null;
+  /** the attribute context menu */
+  attrMenu: { sid: string; dbref: string; attr: string; x: number; y: number } | null;
+  /** rename / delete / change owner of an attribute */
+  attrAction: { sid: string; dbref: string; attr: string; kind: 'rename' | 'delete' | 'owner' } | null;
+  /** the lock editor; type '' = a new lock */
+  lockEditor: { sid: string; dbref: string; type: string } | null;
 }
 
 export const useDetails = create<DetailsState>(() => ({
@@ -74,7 +78,9 @@ export const useDetails = create<DetailsState>(() => ({
   powers: {},
   place: null,
   pick: null,
-  attrFlags: null,
+  attrMenu: null,
+  attrAction: null,
+  lockEditor: null,
 }));
 
 export const detailsKey = (sid: string, dbref: string): string => `${sid}|${dbref}`;
@@ -306,11 +312,47 @@ export const closePlaceDialog = (): void => useDetails.setState({ place: null })
 export const openPickDialog = (sid: string, dbref: string, field: 'owner' | 'parent' | 'zone'): void =>
   useDetails.setState({ pick: { sid, dbref, field } });
 export const closePickDialog = (): void => useDetails.setState({ pick: null });
-export const openAttrFlags = (sid: string, dbref: string, attr: string): void => {
-  if (getObject(sid, dbref)) useDetails.setState({ attrFlags: { sid, dbref, attr } });
+export const openAttrMenu = (sid: string, dbref: string, attr: string, x: number, y: number): void => {
+  if (getObject(sid, dbref)) useDetails.setState({ attrMenu: { sid, dbref, attr, x, y } });
 };
-export const closeAttrFlags = (): void => useDetails.setState({ attrFlags: null });
+export const closeAttrMenu = (): void => useDetails.setState({ attrMenu: null });
+export const openAttrAction = (
+  sid: string,
+  dbref: string,
+  attr: string,
+  kind: 'rename' | 'delete' | 'owner',
+): void => useDetails.setState({ attrMenu: null, attrAction: { sid, dbref, attr, kind } });
+export const closeAttrAction = (): void => useDetails.setState({ attrAction: null });
+export const openLockEditor = (sid: string, dbref: string, type: string): void =>
+  useDetails.setState({ lockEditor: { sid, dbref, type } });
+export const closeLockEditor = (): void => useDetails.setState({ lockEditor: null });
+
+export const setLockFlag = (
+  sid: string,
+  dbref: string,
+  type: string,
+  flag: string,
+  on: boolean,
+): Promise<boolean> =>
+  runChange(
+    sid,
+    dbref,
+    `lockflag:${type}:${flag}`,
+    `${on ? 'Set' : 'Clear'} ${flag} on the ${type} lock`,
+    (e) => e.editSetLockFlag(sid, dbref, type, flag, on),
+  );
+export const setWarnings = (sid: string, dbref: string, list: string): Promise<boolean> =>
+  runChange(sid, dbref, 'warnings', 'Set warnings', (e) => e.editSetWarnings(sid, dbref, list));
 
 export function resetDetails(): void {
-  useDetails.setState({ entries: {}, flags: {}, powers: {}, place: null, pick: null, attrFlags: null });
+  useDetails.setState({
+    entries: {},
+    flags: {},
+    powers: {},
+    place: null,
+    pick: null,
+    attrMenu: null,
+    attrAction: null,
+    lockEditor: null,
+  });
 }

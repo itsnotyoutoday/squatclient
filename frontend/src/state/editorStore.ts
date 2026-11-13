@@ -439,6 +439,24 @@ export function showDetails(sid: string, dbref: string, on = true): void {
   }
 }
 
+/** Drop an attribute that no longer exists (deleted or renamed): its buffer and list entry. */
+export function forgetAttr(sid: string, dbref: string, attr: string): void {
+  patchObject(sid, dbref, (o) => {
+    const { [attr]: _b, ...buffers } = o.buffers;
+    const { [attr]: _c, ...cache } = o.cache;
+    void _b;
+    void _c;
+    const attrs = o.attrs.filter((a) => a.name !== attr);
+    return {
+      ...o,
+      buffers,
+      cache,
+      attrs,
+      activeAttr: o.activeAttr === attr ? (attrs[0]?.name ?? null) : o.activeAttr,
+    };
+  });
+}
+
 /** Keep the tab and list header in step with what the details view learned. */
 export function syncHeader(
   sid: string,

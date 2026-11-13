@@ -25,7 +25,9 @@ import { AttrEditor } from './AttrEditor';
 import { DetailsPane } from './DetailsPane';
 import { PlaceDialog } from './PlaceDialog';
 import { PickDialog } from './PickDialog';
-import { AttrFlagsDialog } from './AttrFlagsDialog';
+import { AttrMenu } from './AttrMenu';
+import { AttrActionDialog } from './AttrActionDialog';
+import { LockEditor } from './LockEditor';
 import { openPlaceDialog } from '../../state/detailsStore';
 import { CloseConfirm, CompareDialog, ConflictDialog, QuickOpen } from './EditorDialogs';
 import '../../styles/editorworkspace.css';
@@ -158,7 +160,9 @@ export default function EditorWorkspace() {
       <CompareDialog />
       <PlaceDialog />
       <PickDialog />
-      <AttrFlagsDialog />
+      <AttrMenu />
+      <AttrActionDialog />
+      <LockEditor />
       <CloseConfirm />
       {quickOpen && sid && obj && <QuickOpenHost sid={sid} dbref={obj.dbref} />}
     </main>

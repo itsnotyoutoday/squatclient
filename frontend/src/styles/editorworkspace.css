@@ -1048,3 +1048,193 @@
   margin-left: 24px;
   font-size: 11.5px;
 }
+
+/* ---- attribute context menu */
+.ew-menu {
+  position: fixed;
+  z-index: 80;
+  min-width: 210px;
+  max-width: min(320px, 94vw);
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
+  padding: 4px;
+  background: var(--ui-panel);
+  color: var(--ui-text);
+  border: 1px solid var(--ui-border);
+  border-radius: 6px;
+  box-shadow: 0 8px 28px rgb(0 0 0 / 55%);
+}
+.ew-menutitle {
+  padding: 3px 8px;
+  font-weight: 600;
+  font-family: var(--font);
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.ew-menuhead {
+  padding: 2px 8px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ui-text-dim);
+}
+.ew-menuitem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  padding: 3px 8px;
+}
+.ew-menuitem:hover:not(:disabled),
+.ew-menuitem:focus-visible {
+  background: color-mix(in srgb, var(--ui-accent) 28%, var(--ui-panel));
+}
+.ew-menuitem:disabled {
+  opacity: 0.5;
+}
+.ew-menucheck {
+  flex: none;
+  width: 16px;
+  text-align: center;
+  color: var(--ui-accent);
+}
+.ew-menusep {
+  height: 1px;
+  margin: 4px 2px;
+  background: var(--ui-border);
+}
+
+/* ---- locks, lock editor, warnings, raw examine */
+.ew-lockflags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-top: 3px;
+}
+.ew-lflag {
+  font-size: 11px;
+  line-height: 16px;
+  padding: 0 7px;
+  border-radius: 9px;
+  border: 1px solid var(--ui-border);
+  background: none;
+  color: var(--ui-text-dim);
+}
+.ew-lflag.ew-on {
+  border-color: var(--ui-accent);
+  background: color-mix(in srgb, var(--ui-accent) 24%, var(--ui-panel));
+  color: var(--ui-text);
+}
+.ew-lockeditor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ew-lockkeyinput {
+  font-family: var(--font);
+}
+.ew-snippets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.ew-snip {
+  font-family: var(--font);
+  padding: 1px 8px;
+}
+.ew-testbox {
+  border: 1px solid var(--ui-border);
+  border-radius: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.ew-testrow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ew-testbox .ew-note,
+.ew-testbox [role='status'] {
+  flex-basis: 100%;
+}
+.ew-testok {
+  color: var(--ui-ok);
+}
+.ew-wcheck {
+  margin: 0;
+  padding: 6px 8px;
+  max-height: 160px;
+  overflow: auto;
+  border: 1px solid var(--ui-border);
+  border-radius: 4px;
+  font-family: var(--font);
+  font-size: 12px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.ew-dettabs {
+  flex: none;
+  display: flex;
+  gap: 2px;
+  padding: 4px 8px 0;
+  border-bottom: 1px solid var(--ui-border);
+  background: var(--ui-panel-alt);
+}
+.ew-dtab {
+  border: 1px solid transparent;
+  border-bottom: 0;
+  border-radius: 4px 4px 0 0;
+  background: none;
+  color: var(--ui-text-dim);
+  padding: 3px 12px;
+}
+.ew-dtab.ew-active {
+  background: var(--bg);
+  border-color: var(--ui-border);
+  color: var(--ui-text);
+  font-weight: 600;
+  margin-bottom: -1px;
+}
+.ew-raw {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+  gap: 6px;
+}
+.ew-rawbar {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.ew-rawmodes {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.ew-rawtext {
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  overflow: auto;
+  padding: 6px 8px;
+  background: var(--bg);
+  border: 1px solid var(--ui-border);
+  border-radius: 4px;
+  font-family: var(--font);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.ew-chain {
+  font-size: 12px;
+}

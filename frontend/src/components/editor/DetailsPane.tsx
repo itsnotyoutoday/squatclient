@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import type { EditCatalogItem, EditDetails } from '../../api/types';
 import { openTarget, isReadOnlyObject } from '../../state/editorStore';
@@ -9,7 +9,10 @@ import {
   loadDetails,
   loadFlagCatalog,
   loadPowerCatalog,
+  openLockEditor,
   openPickDialog,
+  setLockFlag,
+  setWarnings,
   openPlaceDialog,
   rename,
   setFlag,
@@ -19,7 +22,9 @@ import {
   setZone,
   useDetails,
 } from '../../state/detailsStore';
-import { LOCK_TYPES, checkLockExpr, checkLockType, checkName, typeLabel } from '../../lib/editor/props';
+import { LOCK_FLAG_HELP, LOCK_FLAG_NAMES, checkName, typeLabel } from '../../lib/editor/props';
+import { RawExamine } from './RawExamine';
+import { useUi } from '../../state/stores';
 import { Busy, Chip, FieldError, FlagCombo, Section } from './PropWidgets';
 
 const nameOf = (d: EditDetails, dbref: string): string => (dbref ? (d.names?.[dbref] ?? '') : '');
@@ -61,6 +66,7 @@ export function DetailsPane({ sid, obj }: { sid: string; obj: OpenObject }) {
   const busy = entry?.busy ?? {};
   const failed = entry?.failed ?? {};
   const readOnly = isReadOnlyObject(obj);
+  const [tab, setTab] = useState<'overview' | 'raw'>('overview');
 
   useEffect(() => {
     if (!useDetails.getState().entries[key]?.data) void loadDetails(sid, obj.dbref);
@@ -113,116 +119,162 @@ export function DetailsPane({ sid, obj }: { sid: string; obj: OpenObject }) {
         </button>
       </div>
 
-      <div className="ew-detscroll">
-        {!d ? (
-          <p className="ew-empty">{entry?.loading || !entry ? 'Loading...' : 'No details.'}</p>
-        ) : (
-          <div className="ew-detgrid">
-            <IdentitySection
-              sid={sid}
-              dbref={obj.dbref}
-              d={d}
-              readOnly={readOnly}
-              busy={busy}
-              failed={failed}
-            />
-            <LocationSection
-              sid={sid}
-              dbref={obj.dbref}
-              d={d}
-              readOnly={readOnly}
-              busy={busy}
-              failed={failed}
-              open={open}
-            />
-            <RelationsSection
-              sid={sid}
-              dbref={obj.dbref}
-              d={d}
-              readOnly={readOnly}
-              busy={busy}
-              failed={failed}
-              open={open}
-            />
-            <Section title="Flags" id={`ew-h-flags-${obj.dbref.slice(1)}`}>
-              <ul className="ew-chips" aria-label="Flags">
-                {d.flags.map((f) => (
-                  <Chip
-                    key={f}
-                    name={f}
-                    what="flag"
-                    tip={tipFor(f, flagCat?.items, d.flagLetters)}
-                    busy={busy[`flag:${f.toUpperCase()}`]}
-                    disabled={readOnly}
-                    onRemove={() => void setFlag(sid, obj.dbref, f, false)}
-                  />
-                ))}
-                {d.flags.length === 0 && <li className="dim ew-nochip">No flags set.</li>}
-              </ul>
-              {d.flagLetters && <p className="dim ew-letters">Letters: {d.flagLetters}</p>}
-              <FlagCombo
-                label="Add flag"
-                placeholder="Add a flag..."
-                cat={flagCat}
-                taken={d.flags}
-                disabled={readOnly}
-                busy={Object.keys(busy).some(
-                  (k) => k.startsWith('flag:') && !d.flags.some((f) => k === `flag:${f.toUpperCase()}`),
-                )}
-                onAdd={(n) => setFlag(sid, obj.dbref, n, true)}
-              />
-              {Object.entries(failed)
-                .filter(([k]) => k.startsWith('flag:'))
-                .map(([k, f]) => (
-                  <FieldError key={k} text={`${k.slice(5)}: ${f.text}`} reply={f.reply} />
-                ))}
-            </Section>
-            <Section title="Powers" id={`ew-h-powers-${obj.dbref.slice(1)}`}>
-              <ul className="ew-chips" aria-label="Powers">
-                {d.powers.map((p) => (
-                  <Chip
-                    key={p}
-                    name={p}
-                    what="power"
-                    tip={tipFor(p, powerCat?.items)}
-                    busy={busy[`power:${p.toUpperCase()}`]}
-                    disabled={readOnly}
-                    onRemove={() => void setPower(sid, obj.dbref, p, false)}
-                  />
-                ))}
-                {d.powers.length === 0 && <li className="dim ew-nochip">No powers.</li>}
-              </ul>
-              <FlagCombo
-                label="Add power"
-                placeholder="Add a power..."
-                cat={powerCat}
-                taken={d.powers}
-                disabled={readOnly}
-                busy={Object.keys(busy).some(
-                  (k) => k.startsWith('power:') && !d.powers.some((f) => k === `power:${f.toUpperCase()}`),
-                )}
-                onAdd={(n) => setPower(sid, obj.dbref, n, true)}
-              />
-              {Object.entries(failed)
-                .filter(([k]) => k.startsWith('power:'))
-                .map(([k, f]) => (
-                  <FieldError key={k} text={`${k.slice(6)}: ${f.text}`} reply={f.reply} />
-                ))}
-            </Section>
-            <LocksSection sid={sid} dbref={obj.dbref} d={d} readOnly={readOnly} busy={busy} failed={failed} />
-            {(d.type === 'room' || d.type === 'thing' || d.type === 'player' || d.contents.length > 0) && (
-              <Section title={`Contents (${d.contents.length})`} id={`ew-h-con-${obj.dbref.slice(1)}`}>
-                <RefList items={d.contents} empty="Nothing inside." onOpen={open} />
-              </Section>
-            )}
-            {(d.type === 'room' || d.exits.length > 0) && (
-              <Section title={`Exits (${d.exits.length})`} id={`ew-h-exits-${obj.dbref.slice(1)}`}>
-                <RefList items={d.exits} empty="No exits." onOpen={open} />
-              </Section>
-            )}
-          </div>
-        )}
+      <div className="ew-dettabs" role="tablist" aria-label="Details views">
+        {(['overview', 'raw'] as const).map((t) => (
+          <button
+            key={t}
+            type="button"
+            role="tab"
+            id={`ew-dtab-${t}`}
+            aria-selected={tab === t}
+            aria-controls="ew-dpanel"
+            tabIndex={tab === t ? 0 : -1}
+            className={tab === t ? 'ew-dtab ew-active' : 'ew-dtab'}
+            onClick={() => setTab(t)}
+            onKeyDown={(e) => {
+              if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+                e.preventDefault();
+                setTab(t === 'overview' ? 'raw' : 'overview');
+                setTimeout(
+                  () => document.getElementById(`ew-dtab-${t === 'overview' ? 'raw' : 'overview'}`)?.focus(),
+                  0,
+                );
+              }
+            }}
+          >
+            {t === 'overview' ? 'Overview' : 'Raw examine'}
+          </button>
+        ))}
       </div>
+      {tab === 'raw' ? (
+        <RawExamine sid={sid} dbref={obj.dbref} />
+      ) : (
+        <div className="ew-detscroll" id="ew-dpanel" role="tabpanel" aria-labelledby="ew-dtab-overview">
+          {!d ? (
+            <p className="ew-empty">{entry?.loading || !entry ? 'Loading...' : 'No details.'}</p>
+          ) : (
+            <div className="ew-detgrid">
+              <IdentitySection
+                sid={sid}
+                dbref={obj.dbref}
+                d={d}
+                readOnly={readOnly}
+                busy={busy}
+                failed={failed}
+              />
+              <LocationSection
+                sid={sid}
+                dbref={obj.dbref}
+                d={d}
+                readOnly={readOnly}
+                busy={busy}
+                failed={failed}
+                open={open}
+              />
+              <RelationsSection
+                sid={sid}
+                dbref={obj.dbref}
+                d={d}
+                readOnly={readOnly}
+                busy={busy}
+                failed={failed}
+                open={open}
+              />
+              <Section title="Flags" id={`ew-h-flags-${obj.dbref.slice(1)}`}>
+                <ul className="ew-chips" aria-label="Flags">
+                  {d.flags.map((f) => (
+                    <Chip
+                      key={f}
+                      name={f}
+                      what="flag"
+                      tip={tipFor(f, flagCat?.items, d.flagLetters)}
+                      busy={busy[`flag:${f.toUpperCase()}`]}
+                      disabled={readOnly}
+                      onRemove={() => void setFlag(sid, obj.dbref, f, false)}
+                    />
+                  ))}
+                  {d.flags.length === 0 && <li className="dim ew-nochip">No flags set.</li>}
+                </ul>
+                {d.flagLetters && <p className="dim ew-letters">Letters: {d.flagLetters}</p>}
+                <FlagCombo
+                  label="Add flag"
+                  placeholder="Add a flag..."
+                  cat={flagCat}
+                  taken={d.flags}
+                  disabled={readOnly}
+                  busy={Object.keys(busy).some(
+                    (k) => k.startsWith('flag:') && !d.flags.some((f) => k === `flag:${f.toUpperCase()}`),
+                  )}
+                  onAdd={(n) => setFlag(sid, obj.dbref, n, true)}
+                />
+                {Object.entries(failed)
+                  .filter(([k]) => k.startsWith('flag:'))
+                  .map(([k, f]) => (
+                    <FieldError key={k} text={`${k.slice(5)}: ${f.text}`} reply={f.reply} />
+                  ))}
+              </Section>
+              <Section title="Powers" id={`ew-h-powers-${obj.dbref.slice(1)}`}>
+                <ul className="ew-chips" aria-label="Powers">
+                  {d.powers.map((p) => (
+                    <Chip
+                      key={p}
+                      name={p}
+                      what="power"
+                      tip={tipFor(p, powerCat?.items)}
+                      busy={busy[`power:${p.toUpperCase()}`]}
+                      disabled={readOnly}
+                      onRemove={() => void setPower(sid, obj.dbref, p, false)}
+                    />
+                  ))}
+                  {d.powers.length === 0 && <li className="dim ew-nochip">No powers.</li>}
+                </ul>
+                <FlagCombo
+                  label="Add power"
+                  placeholder="Add a power..."
+                  cat={powerCat}
+                  taken={d.powers}
+                  disabled={readOnly}
+                  busy={Object.keys(busy).some(
+                    (k) => k.startsWith('power:') && !d.powers.some((f) => k === `power:${f.toUpperCase()}`),
+                  )}
+                  onAdd={(n) => setPower(sid, obj.dbref, n, true)}
+                />
+                {Object.entries(failed)
+                  .filter(([k]) => k.startsWith('power:'))
+                  .map(([k, f]) => (
+                    <FieldError key={k} text={`${k.slice(6)}: ${f.text}`} reply={f.reply} />
+                  ))}
+              </Section>
+              <LocksSection
+                sid={sid}
+                dbref={obj.dbref}
+                d={d}
+                readOnly={readOnly}
+                busy={busy}
+                failed={failed}
+              />
+              <WarningsSection
+                sid={sid}
+                dbref={obj.dbref}
+                d={d}
+                readOnly={readOnly}
+                busy={busy}
+                failed={failed}
+              />
+              {(d.type === 'room' || d.type === 'thing' || d.type === 'player' || d.contents.length > 0) && (
+                <Section title={`Contents (${d.contents.length})`} id={`ew-h-con-${obj.dbref.slice(1)}`}>
+                  <RefList items={d.contents} empty="Nothing inside." onOpen={open} />
+                </Section>
+              )}
+              {(d.type === 'room' || d.exits.length > 0) && (
+                <Section title={`Exits (${d.exits.length})`} id={`ew-h-exits-${obj.dbref.slice(1)}`}>
+                  <RefList items={d.exits} empty="No exits." onOpen={open} />
+                </Section>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       <div
         className={`ew-detstatus${entry?.status?.kind === 'error' ? ' ew-detstatus-bad' : ''}`}
@@ -379,6 +431,11 @@ function IdentitySection({ sid, dbref, d, readOnly, busy, failed }: SecProps) {
       {d.created && <Row label="Created">{d.created}</Row>}
       {d.modified && <Row label="Modified">{d.modified}</Row>}
       {d.attrCount >= 0 && <Row label="Attributes">{d.attrCount}</Row>}
+      {Object.entries(d.extra ?? {}).map(([k, v]) => (
+        <Row key={k} label={k.charAt(0).toUpperCase() + k.slice(1)}>
+          {v}
+        </Row>
+      ))}
     </Section>
   );
 }
@@ -462,6 +519,24 @@ function RelationsSection({ sid, dbref, d, readOnly, busy, failed, open }: SecPr
       }
     >
       <Ref d={d} dbref={d[field]} onOpen={open} />
+      {field === 'parent' && d.parentChain.length > 1 && (
+        <span className="dim ew-chain">
+          {' '}
+          inherits from{' '}
+          {d.parentChain.slice(1).map((p, i) => (
+            <span key={p.dbref}>
+              {i > 0 && ' > '}
+              {open ? (
+                <button type="button" className="ew-linkbtn" onClick={() => open(p.dbref)}>
+                  {p.name ? `${p.name} (${p.dbref})` : p.dbref}
+                </button>
+              ) : (
+                p.dbref
+              )}
+            </span>
+          ))}
+        </span>
+      )}
     </Row>
   );
   return (
@@ -490,170 +565,147 @@ function RelationsSection({ sid, dbref, d, readOnly, busy, failed, open }: SecPr
 }
 
 function LocksSection({ sid, dbref, d, readOnly, busy, failed }: SecProps) {
-  const [editing, setEditing] = useState<string | null>(null);
-  const [expr, setExpr] = useState('');
-  const [errText, setErrText] = useState('');
-  const [newType, setNewType] = useState('');
-  const [newExpr, setNewExpr] = useState('');
-  const [newErr, setNewErr] = useState('');
-  const setTypes = useMemo(() => new Set(d.locks.map((l) => l.type.toLowerCase())), [d.locks]);
-  const offered = LOCK_TYPES.filter((t) => !setTypes.has(t.toLowerCase()));
-  const dlId = `ew-locktypes-${dbref.slice(1)}`;
-
-  const saveEdit = async (type: string): Promise<void> => {
-    const m = checkLockExpr(expr);
-    setErrText(m ?? '');
-    if (m) return;
-    if (await setLock(sid, dbref, type, expr)) setEditing(null);
-  };
-  const add = async (): Promise<void> => {
-    const m = checkLockType(newType) ?? checkLockExpr(newExpr);
-    setNewErr(m ?? '');
-    if (m) return;
-    if (await setLock(sid, dbref, newType, newExpr)) {
-      setNewType('');
-      setNewExpr('');
-    }
-  };
   return (
-    <Section title="Locks" id={`ew-h-locks-${dbref.slice(1)}`}>
+    <Section
+      title={`Locks (${d.locks.length})`}
+      id={`ew-h-locks-${dbref.slice(1)}`}
+      actions={
+        <button type="button" disabled={readOnly} onClick={() => openLockEditor(sid, dbref, '')}>
+          New lock...
+        </button>
+      }
+    >
       {d.locks.length === 0 && <p className="dim ew-nochip">No locks set.</p>}
       <ul className="ew-locks" aria-label="Locks">
         {d.locks.map((l) => {
           const k = `lock:${l.type}`;
-          const f = failed[k];
+          const errs = Object.entries(failed).filter(
+            ([fk]) => fk === k || fk.startsWith(`lockflag:${l.type}:`),
+          );
           return (
             <li key={l.type} className="ew-lock-row">
               <div className="ew-fieldrow">
                 <span className="ew-lockname">{l.type}</span>
-                {editing === l.type ? (
-                  <form
-                    className="ew-lockform"
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      void saveEdit(l.type);
-                    }}
-                  >
-                    <input
-                      aria-label={`${l.type} lock key`}
-                      value={expr}
-                      autoFocus
-                      spellCheck={false}
-                      onChange={(e) => {
-                        setExpr(e.target.value);
-                        setErrText('');
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Escape') {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          setEditing(null);
-                          setErrText('');
-                        }
-                      }}
-                    />
-                    <button type="submit" disabled={busy[k]}>
-                      Save
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditing(null);
-                        setErrText('');
-                      }}
-                    >
-                      Cancel
-                    </button>
-                  </form>
-                ) : (
-                  <code className="ew-lockexpr">{l.expr || '(empty)'}</code>
-                )}
+                <code className="ew-lockexpr">{l.expr || '(empty)'}</code>
                 <span className="ew-factions">
                   {busy[k] ? (
                     <Busy label={`Updating ${l.type} lock`} />
                   ) : (
-                    editing !== l.type && (
-                      <>
-                        <button
-                          type="button"
-                          disabled={readOnly}
-                          aria-label={`Edit ${l.type} lock`}
-                          onClick={() => {
-                            setEditing(l.type);
-                            setExpr(l.expr);
-                            setErrText('');
-                          }}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          disabled={readOnly}
-                          aria-label={`Clear ${l.type} lock`}
-                          onClick={() => void setLock(sid, dbref, l.type, '')}
-                        >
-                          Clear
-                        </button>
-                      </>
-                    )
+                    <>
+                      <button
+                        type="button"
+                        disabled={readOnly}
+                        aria-label={`Edit ${l.type} lock`}
+                        onClick={() => openLockEditor(sid, dbref, l.type)}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        disabled={readOnly}
+                        aria-label={`Clear ${l.type} lock`}
+                        onClick={() => void setLock(sid, dbref, l.type, '')}
+                      >
+                        Clear
+                      </button>
+                    </>
                   )}
                 </span>
               </div>
-              {editing === l.type && errText && <FieldError text={errText} />}
-              {f && <FieldError text={f.text} reply={f.reply} />}
+              <div className="ew-lockflags" role="group" aria-label={`Flags of the ${l.type} lock`}>
+                {[
+                  ...LOCK_FLAG_NAMES,
+                  ...l.flags.filter((f) => !(LOCK_FLAG_NAMES as readonly string[]).includes(f)),
+                ].map((f) => {
+                  const on = l.flags.includes(f);
+                  const bk = `lockflag:${l.type}:${f}`;
+                  return (
+                    <button
+                      key={f}
+                      type="button"
+                      className={on ? 'ew-lflag ew-on' : 'ew-lflag'}
+                      aria-pressed={on}
+                      disabled={readOnly || busy[bk]}
+                      title={`${f}: ${LOCK_FLAG_HELP[f] ?? ''}`}
+                      onClick={() => void setLockFlag(sid, dbref, l.type, f, !on)}
+                    >
+                      {busy[bk] ? <Busy label={`Updating ${f}`} /> : null}
+                      {f}
+                    </button>
+                  );
+                })}
+              </div>
+              {errs.map(([fk, f]) => (
+                <FieldError key={fk} text={f.text} reply={f.reply} />
+              ))}
             </li>
           );
         })}
       </ul>
+    </Section>
+  );
+}
+
+function WarningsSection({ sid, dbref, d, readOnly, busy, failed }: SecProps) {
+  const engine = useUi((s) => s.engine);
+  const [text, setText] = useState('');
+  const [lines, setLines] = useState<string[] | null>(null);
+  const [checking, setChecking] = useState(false);
+  const [err, setErr] = useState('');
+  return (
+    <Section title="Warnings" id={`ew-h-warn-${dbref.slice(1)}`}>
+      <Row label="Checks">
+        {d.warnings ? <code>{d.warnings}</code> : <span className="dim">(not reported by the game)</span>}
+      </Row>
       <form
-        className="ew-newlock"
-        aria-label="New lock"
+        className="ew-fieldrow"
         onSubmit={(e) => {
           e.preventDefault();
-          void add();
+          if (text.trim()) void setWarnings(sid, dbref, text.trim());
         }}
       >
         <input
-          aria-label="Lock type"
-          list={dlId}
-          placeholder="Type (Basic...)"
-          className="ew-locktype"
-          value={newType}
-          disabled={readOnly}
+          aria-label="Warnings to set"
+          placeholder="normal, all, none, exit-unlinked ..."
+          value={text}
+          disabled={readOnly || busy.warnings}
           spellCheck={false}
-          onChange={(e) => {
-            setNewType(e.target.value);
-            setNewErr('');
-          }}
+          className="ew-nameinput"
+          onChange={(e) => setText(e.target.value)}
         />
-        <datalist id={dlId}>
-          {offered.map((t) => (
-            <option key={t} value={t} />
-          ))}
-        </datalist>
-        <input
-          aria-label="New lock key"
-          placeholder="Key, for example #123 or flag^WIZARD"
-          className="ew-lockkey"
-          value={newExpr}
-          disabled={readOnly}
-          spellCheck={false}
-          onChange={(e) => {
-            setNewExpr(e.target.value);
-            setNewErr('');
-          }}
-        />
-        <button
-          type="submit"
-          disabled={readOnly || !newType || !newExpr || (!!newType && busy[`lock:${newType}`])}
-        >
-          New lock
-        </button>
-        {newType && busy[`lock:${newType}`] && <Busy label="Adding lock" />}
+        {busy.warnings ? (
+          <Busy label="Setting warnings" />
+        ) : (
+          <button type="submit" disabled={readOnly || !text.trim()}>
+            Set
+          </button>
+        )}
       </form>
-      {newErr && <FieldError text={newErr} />}
-      {newType && failed[`lock:${newType}`] && !d.locks.some((l) => l.type === newType) && (
-        <FieldError text={failed[`lock:${newType}`].text} reply={failed[`lock:${newType}`].reply} />
+      {failed.warnings && <FieldError text={failed.warnings.text} reply={failed.warnings.reply} />}
+      <div className="ew-fieldrow">
+        <button
+          type="button"
+          disabled={checking}
+          onClick={() => {
+            if (!engine) return;
+            setChecking(true);
+            setErr('');
+            void engine.editWCheck(sid, dbref).then((r) => {
+              setChecking(false);
+              if (r.ok) setLines(r.lines);
+              else setErr(r.error ? r.error.replace(/^engine: [^:]*: /, '') : 'The check failed.');
+            });
+          }}
+        >
+          Run @wcheck
+        </button>
+        {checking && <Busy label="Checking" />}
+      </div>
+      {err && <FieldError text={err} />}
+      {lines && (
+        <pre className="ew-wcheck" aria-label="Warning check result" tabIndex={0}>
+          {lines.length ? lines.join('\n') : 'No warnings.'}
+        </pre>
       )}
     </Section>
   );

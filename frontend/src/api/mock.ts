@@ -2,6 +2,12 @@ import { DEFAULT_SETTINGS } from './types';
 import type {
   ConnectTarget,
   EditAttrFlagResult,
+  EditAttrLockResult,
+  EditAttrOwnerResult,
+  EditExamineResult,
+  EditLinesResult,
+  EditReplyResult,
+  EditTestLockResult,
   EditAttrInfoResult,
   EditAttrResult,
   EditCatalogResult,
@@ -678,6 +684,68 @@ export class MockEngine implements EngineAPI {
   async editMove(sessionId: string, dbref: string, dest: string): Promise<EditDetailsResult> {
     return this.editGate<EditDetailsResult>(sessionId, this.noDetails(dbref)) ?? this.game.move(dbref, dest);
   }
+  async editSetLockFlag(
+    sessionId: string,
+    dbref: string,
+    t: string,
+    flag: string,
+    on: boolean,
+  ): Promise<EditDetailsResult> {
+    return (
+      this.editGate<EditDetailsResult>(sessionId, this.noDetails(dbref)) ??
+      this.game.setLockFlag(dbref, t, flag, on)
+    );
+  }
+  async editTestLock(
+    sessionId: string,
+    dbref: string,
+    t: string,
+    target: string,
+  ): Promise<EditTestLockResult> {
+    return (
+      this.editGate<EditTestLockResult>(sessionId, { result: 'unknown', raw: '' }) ??
+      this.game.testLock(dbref, t, target)
+    );
+  }
+  async editSetAttrLock(
+    sessionId: string,
+    dbref: string,
+    attr: string,
+    on: boolean,
+  ): Promise<EditAttrLockResult> {
+    return (
+      this.editGate<EditAttrLockResult>(sessionId, { locked: 'unknown', reply: '' }) ??
+      this.game.setAttrLock(dbref, attr, on)
+    );
+  }
+  async editAttrChown(
+    sessionId: string,
+    dbref: string,
+    attr: string,
+    player: string,
+  ): Promise<EditAttrOwnerResult> {
+    return (
+      this.editGate<EditAttrOwnerResult>(sessionId, { owner: '', reply: '' }) ??
+      this.game.attrChown(dbref, attr, player)
+    );
+  }
+  async editRenameAttr(sessionId: string, dbref: string, from: string, to: string): Promise<EditReplyResult> {
+    return this.editGate<EditReplyResult>(sessionId, { reply: '' }) ?? this.game.renameAttr(dbref, from, to);
+  }
+  async editDeleteAttr(sessionId: string, dbref: string, attr: string): Promise<EditReplyResult> {
+    return this.editGate<EditReplyResult>(sessionId, { reply: '' }) ?? this.game.deleteAttr(dbref, attr);
+  }
+  async editSetWarnings(sessionId: string, dbref: string, list: string): Promise<EditDetailsResult> {
+    return (
+      this.editGate<EditDetailsResult>(sessionId, this.noDetails(dbref)) ?? this.game.setWarnings(dbref, list)
+    );
+  }
+  async editWCheck(sessionId: string, dbref: string): Promise<EditLinesResult> {
+    return this.editGate<EditLinesResult>(sessionId, { lines: [] }) ?? this.game.wcheck(dbref);
+  }
+  async editExamine(sessionId: string, dbref: string, mode: string): Promise<EditExamineResult> {
+    return this.editGate<EditExamineResult>(sessionId, { lines: [] }) ?? this.game.examine(dbref, mode);
+  }
   async editSearchRooms(sessionId: string, query: string): Promise<EditSearchResult> {
     return (
       this.editGate<EditSearchResult>(sessionId, { items: [], restricted: false, truncated: false }) ??
@@ -718,6 +786,9 @@ export class MockEngine implements EngineAPI {
         exits: [],
         attrCount: -1,
         names: {},
+        warnings: '',
+        parentChain: [],
+        extra: {},
       },
     };
   }

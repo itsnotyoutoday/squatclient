@@ -18,7 +18,7 @@ import {
   useEditorUi,
 } from '../../state/editorStore';
 import type { Buffer, OpenObject } from '../../state/editorStore';
-import { openAttrFlags } from '../../state/detailsStore';
+import { openAttrMenu } from '../../state/detailsStore';
 import { SearchPanel } from './SearchPanel';
 
 const MAX_MOUNTED = 6;
@@ -166,10 +166,15 @@ export function AttrEditor({ sid, obj }: { sid: string; obj: OpenObject }) {
         <span className="ew-grow" />
         <button
           type="button"
-          title="Attribute flags such as no_command, visual or safe (also: right-click the attribute, or press F in the list)"
-          onClick={() => openAttrFlags(sid, obj.dbref, attr)}
+          aria-haspopup="menu"
+          aria-label={`Actions for attribute ${attr}`}
+          title="Flags, lock, owner, rename, delete, copy (also: right-click the attribute, or press Shift+F10 in the list)"
+          onClick={(e) => {
+            const r = e.currentTarget.getBoundingClientRect();
+            openAttrMenu(sid, obj.dbref, attr, r.left, r.bottom + 2);
+          }}
         >
-          Flags...
+          ...
         </button>
         <button
           type="button"

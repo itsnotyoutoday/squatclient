@@ -292,6 +292,8 @@ export interface EditAttrInfoResult extends EditResult {
 export interface EditLock {
   type: string;
   expr: string;
+  /** lock flags by name: visual, no_inherit, no_clone, wizard, locked */
+  flags: string[];
 }
 export interface EditObjRef {
   dbref: string;
@@ -325,6 +327,12 @@ export interface EditDetails {
   attrCount: number;
   /** names of the dbrefs above (owner, parent, zone, location, home, destination), where known */
   names: Record<string, string>;
+  /** the warning list as the game reports it ('' = unknown) */
+  warnings: string;
+  /** parent, grandparent, ... */
+  parentChain: EditObjRef[];
+  /** player facts the game exposed: alias, channels, quota */
+  extra: Record<string, string>;
 }
 /** Result of editDetails and of every mutation: the verified state and the game's exact reply. */
 export interface EditDetailsResult extends EditResult {
@@ -370,6 +378,30 @@ export interface EditNearbyResult extends EditResult {
   desc: string;
   exits: EditNearbyExit[];
   contents: EditPlace[];
+}
+
+export interface EditTestLockResult extends EditResult {
+  result: Tri;
+  /** the game's text */
+  raw: string;
+}
+export interface EditAttrLockResult extends EditResult {
+  locked: Tri;
+  reply: string;
+}
+export interface EditAttrOwnerResult extends EditResult {
+  owner: string;
+  reply: string;
+}
+export interface EditReplyResult extends EditResult {
+  reply: string;
+}
+export interface EditLinesResult extends EditResult {
+  lines: string[];
+}
+/** The game's examine text with colour: one span list per line. */
+export interface EditExamineResult extends EditResult {
+  lines: Span[][];
 }
 
 export interface EngineAPI {
@@ -451,6 +483,29 @@ export interface EngineAPI {
   editSetHome(sessionId: string, dbref: string, room: string): Promise<EditDetailsResult>;
   editSetDestination(sessionId: string, dbref: string, room: string): Promise<EditDetailsResult>;
   editMove(sessionId: string, dbref: string, dest: string): Promise<EditDetailsResult>;
+  editSetLockFlag(
+    sessionId: string,
+    dbref: string,
+    lockType: string,
+    flag: string,
+    on: boolean,
+  ): Promise<EditDetailsResult>;
+  /** evaluates the stored lock for a target (dbref or name) with elock() */
+  editTestLock(
+    sessionId: string,
+    dbref: string,
+    lockType: string,
+    target: string,
+  ): Promise<EditTestLockResult>;
+  editSetAttrLock(sessionId: string, dbref: string, attr: string, on: boolean): Promise<EditAttrLockResult>;
+  editAttrChown(sessionId: string, dbref: string, attr: string, player: string): Promise<EditAttrOwnerResult>;
+  editRenameAttr(sessionId: string, dbref: string, from: string, to: string): Promise<EditReplyResult>;
+  editDeleteAttr(sessionId: string, dbref: string, attr: string): Promise<EditReplyResult>;
+  /** list: space separated warning names, e.g. 'normal' or 'none' */
+  editSetWarnings(sessionId: string, dbref: string, list: string): Promise<EditDetailsResult>;
+  editWCheck(sessionId: string, dbref: string): Promise<EditLinesResult>;
+  /** mode: '' | 'all' | 'brief' */
+  editExamine(sessionId: string, dbref: string, mode: string): Promise<EditExamineResult>;
   editSearchRooms(sessionId: string, query: string): Promise<EditSearchResult>;
   editNearby(sessionId: string, dbref: string): Promise<EditNearbyResult>;
   on<E extends EngineEventName>(event: E, cb: (payload: EngineEvents[E]) => void): () => void;

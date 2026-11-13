@@ -7,7 +7,7 @@ import type { EditPlace } from '../../api/types';
 
 const reRealDbref = /^#\d+$/;
 const reFlag = /^[A-Za-z0-9_-]{1,64}$/;
-const reLockType = /^[A-Za-z][A-Za-z0-9_]{0,31}$/;
+const reLockType = /^([A-Za-z][A-Za-z0-9_]{0,31}|user:[A-Za-z0-9_]{1,31})$/i;
 
 export const isRealDbref = (s: string): boolean => reRealDbref.test(s);
 
@@ -18,7 +18,9 @@ export function checkFlagName(n: string): string | null {
 
 /** Error text, or null when `t` is a legal lock type (Basic, Enter, Use...). */
 export function checkLockType(t: string): string | null {
-  return reLockType.test(t) ? null : 'A lock type starts with a letter and has letters, digits and _ only';
+  return reLockType.test(t)
+    ? null
+    : 'A lock type starts with a letter (letters, digits and _), or is user:name';
 }
 
 /** Error text, or null when `x` is an acceptable lock key. */
@@ -61,26 +63,72 @@ export const LOCK_TYPES = [
   'Listen',
 ];
 
-/** Attribute flags the menu offers (the game decides which it knows). */
+/** Attribute flags the menu offers (the common set; the game decides which it knows). */
 export const ATTR_FLAG_NAMES = [
   'no_command',
   'no_inherit',
   'no_clone',
-  'visual',
-  'safe',
-  'locked',
   'mortal_dark',
+  'wizard',
+  'veiled',
+  'case',
+  'nearby',
+  'locked',
+  'safe',
+  'visual',
+  'regexp',
 ] as const;
 
 export const ATTR_FLAG_HELP: Record<string, string> = {
-  no_command: 'The attribute is not run as a $-command or ^-listen.',
-  no_inherit: 'Children of this object do not inherit the attribute.',
-  no_clone: 'The attribute is not copied when the object is cloned.',
-  visual: 'Anyone may read the attribute.',
-  safe: 'Protects the attribute from being changed by accident.',
-  locked: 'Only a wizard may change the attribute.',
+  no_command: 'Not run as a $-command or ^-listen.',
+  no_inherit: 'Children of this object do not inherit it.',
+  no_clone: 'Not copied when the object is cloned.',
   mortal_dark: 'Hidden from ordinary players.',
+  wizard: 'Only a wizard may change it.',
+  veiled: 'Not shown by examine unless asked for.',
+  case: '$-commands match upper and lower case exactly.',
+  nearby: 'Only works when the player is near the object.',
+  locked: 'Locked against changes (see @atrlock).',
+  safe: 'Protected from being changed by accident.',
+  visual: 'Anyone may read it.',
+  regexp: 'The $-command pattern is a regular expression.',
 };
+
+/** Flags a lock can carry (@lset). */
+export const LOCK_FLAG_NAMES = ['visual', 'no_inherit', 'no_clone', 'wizard', 'locked'] as const;
+export const LOCK_FLAG_HELP: Record<string, string> = {
+  visual: 'Anyone may see the lock key.',
+  no_inherit: 'Children do not inherit this lock.',
+  no_clone: 'Not copied when the object is cloned.',
+  wizard: 'Only a wizard may change it.',
+  locked: 'Nobody may change it until it is unlocked.',
+};
+
+/** Lock key pieces for the lock editor's helper. */
+export const LOCK_SNIPPETS: { label: string; text: string; help: string }[] = [
+  { label: '#', text: '#', help: 'A player or object by number' },
+  { label: '=#', text: '=#', help: 'Is exactly this object' },
+  { label: '+#', text: '+#', help: 'Carries this object' },
+  { label: '@#', text: '@#', help: "Use another object's lock" },
+  { label: 'flag^', text: 'flag^', help: 'Has a flag, e.g. flag^WIZARD' },
+  { label: 'type^', text: 'type^', help: 'Is a type, e.g. type^PLAYER' },
+  { label: 'power^', text: 'power^', help: 'Has a power' },
+  { label: 'ATTR:', text: ':', help: 'Has an attribute with this value, e.g. RANK:captain' },
+  { label: '&', text: ' & ', help: 'and' },
+  { label: '|', text: ' | ', help: 'or' },
+  { label: '!', text: '!', help: 'not' },
+  { label: '( )', text: '()', help: 'group' },
+];
+
+/** null when the brackets of a key balance, else a message. */
+export function checkParens(x: string): string | null {
+  let d = 0;
+  for (const c of x) {
+    if (c === '(') d++;
+    else if (c === ')' && --d < 0) return 'A ) has no matching (';
+  }
+  return d === 0 ? null : `${d} ( not closed`;
+}
 
 /** "Widget (#123)" */
 export const label = (name: string, dbref: string): string => (name ? `${name} (${dbref})` : dbref);

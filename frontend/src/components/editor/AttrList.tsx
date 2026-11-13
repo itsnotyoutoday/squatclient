@@ -7,7 +7,7 @@ import {
   showDetails,
   useEditorUi,
 } from '../../state/editorStore';
-import { openAttrFlags } from '../../state/detailsStore';
+import { openAttrMenu } from '../../state/detailsStore';
 import type { AttrEntry, OpenObject } from '../../state/editorStore';
 
 export const ROW_H = 28;
@@ -91,7 +91,10 @@ export function AttrList({ sid, obj }: { sid: string; obj: OpenObject }) {
       (e.key === 'f' && !e.metaKey && !e.ctrlKey && !e.altKey)
     ) {
       const a = items[cursor];
-      if (a) openAttrFlags(sid, obj.dbref, a.name);
+      if (a) {
+        const r = document.getElementById(optId(a.name))?.getBoundingClientRect();
+        openAttrMenu(sid, obj.dbref, a.name, (r?.left ?? 40) + 24, (r?.bottom ?? 120) - 4);
+      }
     } else if (e.key === 'Home') move(0);
     else if (e.key === 'End') move(items.length - 1);
     else if (e.key === 'PageDown') move(cursor + Math.max(1, Math.floor(viewport / ROW_H) - 1));
@@ -201,7 +204,7 @@ export function AttrList({ sid, obj }: { sid: string; obj: OpenObject }) {
                 onContextMenu={(e) => {
                   e.preventDefault();
                   setCursor(i);
-                  openAttrFlags(sid, obj.dbref, a.name);
+                  openAttrMenu(sid, obj.dbref, a.name, e.clientX, e.clientY);
                 }}
                 onClick={() => {
                   setCursor(i);

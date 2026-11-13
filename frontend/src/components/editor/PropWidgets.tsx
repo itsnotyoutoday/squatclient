@@ -101,14 +101,24 @@ export function FlagCombo({ label, cat, taken, disabled, busy, placeholder, onAd
   const items = useMemo<EditCatalogItem[]>(() => {
     const q = text.trim().toLowerCase();
     const t = new Set(taken.map((x) => x.toUpperCase()));
-    return (cat?.items ?? []).filter(
-      (i) =>
-        !t.has(i.name.toUpperCase()) &&
-        (!q ||
-          i.name.toLowerCase().includes(q) ||
-          i.desc.toLowerCase().includes(q) ||
-          i.letter.toLowerCase() === q),
-    );
+    const rank = (i: EditCatalogItem): number =>
+      i.name.toLowerCase() === q
+        ? 0
+        : i.name.toLowerCase().startsWith(q)
+          ? 1
+          : i.name.toLowerCase().includes(q)
+            ? 2
+            : 3;
+    return (cat?.items ?? [])
+      .filter(
+        (i) =>
+          !t.has(i.name.toUpperCase()) &&
+          (!q ||
+            i.name.toLowerCase().includes(q) ||
+            i.desc.toLowerCase().includes(q) ||
+            i.letter.toLowerCase() === q),
+      )
+      .sort((a, b) => rank(a) - rank(b));
   }, [cat, text, taken]);
   const optId = (i: number): string => `${id}-o${i}`;
   const optClass = (on: boolean): string => (on ? 'ew-comboopt ew-active' : 'ew-comboopt');

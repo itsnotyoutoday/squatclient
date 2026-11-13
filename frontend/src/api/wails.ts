@@ -1,6 +1,12 @@
 import type {
   ConnectTarget,
   EditAttrFlagResult,
+  EditAttrLockResult,
+  EditAttrOwnerResult,
+  EditExamineResult,
+  EditLinesResult,
+  EditReplyResult,
+  EditTestLockResult,
   EditAttrInfoResult,
   EditAttrResult,
   EditCatalogResult,
@@ -91,6 +97,9 @@ const emptyDetails = (dbref: string): EditDetails => ({
   exits: [],
   attrCount: -1,
   names: {},
+  warnings: '',
+  parentChain: [],
+  extra: {},
 });
 
 /** Go encodes nil slices as null in some paths: make every list an array. */
@@ -102,6 +111,9 @@ function normDetails(r: EditDetailsResult): EditDetailsResult {
   d.contents ??= [];
   d.exits ??= [];
   d.names ??= {};
+  d.parentChain ??= [];
+  d.extra ??= {};
+  d.locks = d.locks.map((l) => ({ ...l, flags: l.flags ?? [] }));
   return { ...r, reply: r.reply ?? '', details: d };
 }
 const normCatalog = (r: EditCatalogResult): EditCatalogResult => ({ ...r, items: r.items ?? [] });
@@ -211,6 +223,30 @@ export class WailsEngine implements EngineAPI {
   editSetDestination = (id: string, dbref: string, room: string) =>
     mut('EditSetDestination', dbref, id, dbref, room);
   editMove = (id: string, dbref: string, dest: string) => mut('EditMove', dbref, id, dbref, dest);
+  editSetLockFlag = (id: string, dbref: string, lockType: string, flag: string, on: boolean) =>
+    mut('EditSetLockFlag', dbref, id, dbref, lockType, flag, on);
+  editTestLock = (id: string, dbref: string, lockType: string, target: string) =>
+    editCall<EditTestLockResult>('EditTestLock', { result: 'unknown', raw: '' }, id, dbref, lockType, target);
+  editSetAttrLock = (id: string, dbref: string, attr: string, on: boolean) =>
+    editCall<EditAttrLockResult>('EditSetAttrLock', { locked: 'unknown', reply: '' }, id, dbref, attr, on);
+  editAttrChown = (id: string, dbref: string, attr: string, player: string) =>
+    editCall<EditAttrOwnerResult>('EditAttrChown', { owner: '', reply: '' }, id, dbref, attr, player);
+  editRenameAttr = (id: string, dbref: string, from: string, to: string) =>
+    editCall<EditReplyResult>('EditRenameAttr', { reply: '' }, id, dbref, from, to);
+  editDeleteAttr = (id: string, dbref: string, attr: string) =>
+    editCall<EditReplyResult>('EditDeleteAttr', { reply: '' }, id, dbref, attr);
+  editSetWarnings = (id: string, dbref: string, list: string) =>
+    mut('EditSetWarnings', dbref, id, dbref, list);
+  editWCheck = (id: string, dbref: string) =>
+    editCall<EditLinesResult>('EditWCheck', { lines: [] }, id, dbref).then((r) => ({
+      ...r,
+      lines: r.lines ?? [],
+    }));
+  editExamine = (id: string, dbref: string, mode: string) =>
+    editCall<EditExamineResult>('EditExamine', { lines: [] }, id, dbref, mode).then((r) => ({
+      ...r,
+      lines: r.lines ?? [],
+    }));
   editSearchRooms = (id: string, query: string) =>
     editCall<EditSearchResult>(
       'EditSearchRooms',

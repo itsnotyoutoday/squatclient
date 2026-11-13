@@ -1,6 +1,8 @@
 import { compressEscapes, expandEscapes, AmbiguousEscapeError } from '../lib/editor/escapes';
 import type {
   EditAttrFlagResult,
+  EditAttrLockResult,
+  EditAttrOwnerResult,
   EditAttrInfoResult,
   EditAttrResult,
   EditCatalogItem,
@@ -9,12 +11,17 @@ import type {
   EditControlsResult,
   EditDetails,
   EditDetailsResult,
+  EditExamineResult,
+  EditLinesResult,
   EditNearbyResult,
   EditObjectResult,
   EditPlace,
+  EditReplyResult,
   EditResolveResult,
   EditResult,
   EditSearchResult,
+  EditTestLockResult,
+  Span,
   Tri,
 } from './types';
 
@@ -34,6 +41,10 @@ export interface MockAttr {
   readonly?: boolean;
   /** reads fail with a permission error */
   hidden?: boolean;
+  /** @atrlock state: writes are refused while locked */
+  atrlocked?: boolean;
+  /** attribute owner when not the object's owner */
+  owner?: string;
 }
 
 export interface MockObject {
@@ -65,7 +76,14 @@ export interface MockObject {
   powers?: string[];
   /** lock type -> expression */
   locks?: Record<string, string>;
+  /** lock type -> lock flag names */
+  lockFlags?: Record<string, string[]>;
+  warnings?: string;
+  /** players: alias, channels, quota */
+  extra?: Record<string, string>;
 }
+
+export const MOCK_LOCK_FLAGS = ['visual', 'no_inherit', 'no_clone', 'wizard', 'locked'];
 
 export const MOCK_FLAGS: EditCatalogItem[] = [
   { name: 'ABODE', letter: 'A', desc: 'Anyone may set their home here.' },
@@ -95,7 +113,20 @@ export const MOCK_POWERS: EditCatalogItem[] = [
   { name: 'TPORT_ANYTHING', letter: '', desc: 'May teleport any object anywhere.' },
 ];
 const WIZARD_ONLY_FLAGS = ['WIZARD', 'ROYALTY'];
-const ATTR_FLAGS = ['no_command', 'no_inherit', 'no_clone', 'visual', 'safe', 'locked', 'mortal_dark'];
+const ATTR_FLAGS = [
+  'no_command',
+  'no_inherit',
+  'no_clone',
+  'mortal_dark',
+  'wizard',
+  'veiled',
+  'case',
+  'nearby',
+  'locked',
+  'safe',
+  'visual',
+  'regexp',
+];
 
 export interface MockCall {
   method: string;
@@ -173,6 +204,7 @@ export function defaultObjects(manyAttrs = 120): MockObject[] {
       location: '#10',
       home: '#10',
       pennies: 120,
+      extra: { alias: 'nv', channels: 'Public Guild', quota: '120' },
       flagNames: [],
       controls: 'true',
       attrs: { PREFS: { value: 'none' } },
@@ -192,7 +224,9 @@ export function defaultObjects(manyAttrs = 120): MockObject[] {
       modified: 'Tue Feb 03 04:05:06 2024',
       flagNames: ['DARK', 'VISUAL'],
       powers: [],
-      locks: { Basic: '=#45', Use: '#45|flag^WIZARD' },
+      locks: { Basic: '=#45', Use: '#45|flag^WIZARD', Enter: '!#14', 'user:gate': 'type^PLAYER' },
+      lockFlags: { Basic: ['visual'], Enter: ['no_inherit', 'no_clone'] },
+      warnings: 'normal',
       controls: 'true',
       attrs: consoleAttrs,
     },
@@ -457,7 +491,7 @@ export class MockGame {
     }
     const name = attr.toUpperCase();
     const a = o.attrs[name];
-    const denied = o.controls === 'false' || a?.readonly || this.rng() < this.rejectRate;
+    const denied = o.controls === 'false' || a?.readonly || a?.atrlocked || this.rng() < this.rejectRate;
     if (denied) return err('rejected', 'engine: the game rejected the attribute: Permission denied.', {});
     const stored = this.alterOnSave ? this.alterOnSave(packed) : packed;
     if (stored === '') delete o.attrs[name];
@@ -495,7 +529,10 @@ export class MockGame {
     const a = o?.attrs[attr.toUpperCase()];
     if (!o || !a)
       return ok({ known: false, flags: '', flagNames: '', owner: '', writable: 'unknown' as Tri });
-    const names = a.flags ?? [];
+    const names = [
+      ...(a.flags ?? []),
+      ...(a.atrlocked && !(a.flags ?? []).includes('locked') ? ['locked'] : []),
+    ];
     return ok({
       known: true,
       flags: names.map((n) => n[0].toUpperCase()).join(''),
@@ -533,7 +570,14 @@ export class MockGame {
       flags: [...names],
       flagLetters: typeLetter + letters,
       powers: [...(o.powers ?? [])],
-      locks: Object.entries(o.locks ?? {}).map(([type, expr]) => ({ type, expr })),
+      locks: Object.entries(o.locks ?? {}).map(([type, expr]) => ({
+        type,
+        expr,
+        flags: [...(o.lockFlags?.[type] ?? [])],
+      })),
+      warnings: o.warnings ?? '',
+      parentChain: this.chainOf(o),
+      extra: { ...(o.extra ?? {}) },
       contents: here
         .filter((x) => x.location === o.dbref && x.type !== 'EXIT' && x.type !== 'ROOM' && !x.invisible)
         .map((x) => ({ dbref: x.dbref, name: x.name })),
@@ -574,7 +618,20 @@ export class MockGame {
       exits: [],
       attrCount: -1,
       names: {},
+      warnings: '',
+      parentChain: [],
+      extra: {},
     };
+  }
+
+  private chainOf(o: MockObject): { dbref: string; name: string }[] {
+    const out: { dbref: string; name: string }[] = [];
+    let p = o.parent ? this.objects.get(o.parent) : undefined;
+    while (p && out.length < 4 && !out.some((x) => x.dbref === p?.dbref)) {
+      out.push({ dbref: p.dbref, name: p.name });
+      p = p.parent ? this.objects.get(p.parent) : undefined;
+    }
+    return out;
   }
 
   async details(dbref: string): Promise<EditDetailsResult> {
@@ -793,10 +850,13 @@ export class MockGame {
 
   setLock(dbref: string, lockType: string, expr: string): Promise<EditDetailsResult> {
     return this.mutate('setLock', dbref, [dbref, lockType, expr], (o) => {
+      if (!/^([A-Za-z][A-Za-z0-9_]{0,31}|user:[A-Za-z0-9_]{1,31})$/i.test(lockType))
+        return { refuse: 'Unknown lock type.', code: 'rejected' };
       const locks = { ...(o.locks ?? {}) };
       const key = Object.keys(locks).find((k) => k.toLowerCase() === lockType.toLowerCase()) ?? lockType;
       if (expr === '' || expr.toLowerCase() === 'none') {
         delete locks[key];
+        if (o.lockFlags) delete o.lockFlags[key];
         o.locks = locks;
         return { reply: 'Unlocked.' };
       }
@@ -908,5 +968,222 @@ export class MockGame {
         .filter((x) => x.location === room.dbref && x.type !== 'EXIT' && x.type !== 'ROOM' && !x.invisible)
         .map((x) => this.place(x)),
     });
+  }
+
+  // ------------------------------------------------------------------ locks, attribute operations, warnings, examine
+
+  setLockFlag(dbref: string, lockType: string, flag: string, on: boolean): Promise<EditDetailsResult> {
+    return this.mutate('setLockFlag', dbref, [dbref, lockType, flag, on], (o) => {
+      const key = Object.keys(o.locks ?? {}).find((k) => k.toLowerCase() === lockType.toLowerCase());
+      if (!key) return { refuse: 'No such lock.', code: 'rejected' };
+      const f = flag.toLowerCase();
+      if (!MOCK_LOCK_FLAGS.includes(f)) return { refuse: 'Unknown lock flag.', code: 'rejected' };
+      if ((f === 'wizard' || f === 'locked') && !this.wizard)
+        return { refuse: 'Permission denied.', code: 'permission' };
+      o.lockFlags ??= {};
+      const set = new Set(o.lockFlags[key] ?? []);
+      if (on) set.add(f);
+      else set.delete(f);
+      o.lockFlags[key] = [...set];
+      return { reply: on ? 'Lock flag set.' : 'Lock flag reset.' };
+    });
+  }
+
+  /** A small evaluator for lock keys: #n, =#n, +#n, !x, a&b, a|b, (x), flag^NAME, type^NAME. */
+  private evalKey(expr: string, who: MockObject): boolean {
+    const toks = expr.match(/flag\^\w+|type\^\w+|[=+$@]?#-?\d+|[()!&|]/gi) ?? [];
+    let i = 0;
+    const prim = (): boolean => {
+      const t = toks[i++];
+      if (t === undefined) return false;
+      if (t === '!') return !prim();
+      if (t === '(') {
+        const v = or();
+        if (toks[i] === ')') i++;
+        return v;
+      }
+      const l = t.toLowerCase();
+      if (l.startsWith('flag^')) return (who.flagNames ?? []).some((f) => f.toLowerCase() === l.slice(5));
+      if (l.startsWith('type^')) return who.type.toLowerCase() === l.slice(5);
+      const m = /^([=+$@]?)(#-?\d+)$/.exec(t);
+      return !!m && m[2] === who.dbref;
+    };
+    const and = (): boolean => {
+      let v = prim();
+      while (toks[i] === '&') {
+        i++;
+        const r = prim();
+        v = v && r;
+      }
+      return v;
+    };
+    const or = (): boolean => {
+      let v = and();
+      while (toks[i] === '|') {
+        i++;
+        const r = and();
+        v = v || r;
+      }
+      return v;
+    };
+    return or();
+  }
+
+  async testLock(dbref: string, lockType: string, target: string): Promise<EditTestLockResult> {
+    await this.enter('testLock', [dbref, lockType, target]);
+    const f = this.forced('testLock');
+    if (f) return err(f.code, f.error ?? 'error', { result: 'unknown' as Tri, raw: '' });
+    const o = this.find(dbref);
+    const key = Object.keys(o?.locks ?? {}).find((k) => k.toLowerCase() === lockType.toLowerCase());
+    if (!o || !key) return ok({ result: 'unknown' as Tri, raw: '#-1 NO SUCH LOCK' });
+    const t = target === 'me' ? this.find(this.me) : this.find(target);
+    if (!t) return ok({ result: 'unknown' as Tri, raw: '#-1 NO MATCH' });
+    const pass = this.evalKey(o.locks?.[key] ?? '', t);
+    return ok({ result: (pass ? 'true' : 'false') as Tri, raw: pass ? '1' : '0' });
+  }
+
+  async setAttrLock(dbref: string, attr: string, on: boolean): Promise<EditAttrLockResult> {
+    const o0 = this.find(dbref);
+    await this.enter('setAttrLock', [dbref, attr, on], o0?.slowMs);
+    const f = this.forced('setAttrLock');
+    if (f) return { ...f, ok: false, locked: 'unknown' as Tri, reply: f.error ? gameOf(f.error) : '' };
+    const o = this.find(dbref);
+    const a = o?.attrs[attr.toUpperCase()];
+    if (!o || !a)
+      return err('no_such_object', 'engine: no such object: No such attribute.', {
+        locked: 'unknown' as Tri,
+        reply: 'No such attribute.',
+      });
+    if ((o.controls === 'false' && !this.wizard) || this.rng() < this.rejectRate)
+      return err('permission', 'engine: permission denied: Permission denied.', {
+        locked: (a.atrlocked ? 'true' : 'false') as Tri,
+        reply: 'Permission denied.',
+      });
+    a.atrlocked = on;
+    return ok({
+      locked: (on ? 'true' : 'false') as Tri,
+      reply: on ? 'Attribute locked.' : 'Attribute unlocked.',
+    });
+  }
+
+  async attrChown(dbref: string, attr: string, player: string): Promise<EditAttrOwnerResult> {
+    const o0 = this.find(dbref);
+    await this.enter('attrChown', [dbref, attr, player], o0?.slowMs);
+    const f = this.forced('attrChown');
+    if (f) return { ...f, ok: false, owner: '', reply: f.error ? gameOf(f.error) : '' };
+    const o = this.find(dbref);
+    const a = o?.attrs[attr.toUpperCase()];
+    if (!o || !a)
+      return err('no_such_object', 'engine: no such object: No such attribute.', {
+        owner: '',
+        reply: 'No such attribute.',
+      });
+    const target = /^#-?\d+$/.test(player)
+      ? this.find(player)
+      : [...this.objects.values()].find(
+          (x) => x.type === 'PLAYER' && x.name.toLowerCase() === player.toLowerCase().replace(/^\*/, ''),
+        );
+    if (!target || target.type !== 'PLAYER')
+      return err('rejected', "engine: the game rejected the change: I can't find that player.", {
+        owner: a.owner ?? o.owner,
+        reply: "I can't find that player.",
+      });
+    if ((o.controls === 'false' && !this.wizard) || (!this.wizard && target.dbref !== this.me))
+      return err('permission', 'engine: permission denied: Permission denied.', {
+        owner: a.owner ?? o.owner,
+        reply: 'Permission denied.',
+      });
+    a.owner = target.dbref;
+    return ok({ owner: target.dbref, reply: 'Attribute owner changed.' });
+  }
+
+  async renameAttr(dbref: string, from: string, to: string): Promise<EditReplyResult> {
+    await this.enter('renameAttr', [dbref, from, to]);
+    const f = this.forced('renameAttr');
+    if (f) return { ...f, ok: false, reply: f.error ? gameOf(f.error) : '' };
+    const o = this.find(dbref);
+    const a = o?.attrs[from.toUpperCase()];
+    if (!o || !a)
+      return err('no_such_object', 'engine: no such object: no attribute ' + from, {
+        reply: 'no attribute ' + from,
+      });
+    if (o.attrs[to.toUpperCase()])
+      return err('rejected', `engine: the game rejected the change: ${to} already exists`, {
+        reply: `${to} already exists`,
+      });
+    if ((o.controls === 'false' && !this.wizard) || a.atrlocked || this.rng() < this.rejectRate)
+      return err('permission', 'engine: permission denied: Permission denied.', {
+        reply: 'Permission denied.',
+      });
+    o.attrs[to.toUpperCase()] = { ...a };
+    delete o.attrs[from.toUpperCase()];
+    return ok({ reply: '' });
+  }
+
+  async deleteAttr(dbref: string, attr: string): Promise<EditReplyResult> {
+    await this.enter('deleteAttr', [dbref, attr]);
+    const f = this.forced('deleteAttr');
+    if (f) return { ...f, ok: false, reply: f.error ? gameOf(f.error) : '' };
+    const o = this.find(dbref);
+    const a = o?.attrs[attr.toUpperCase()];
+    if (!o || !a) return ok({ reply: '' });
+    if ((o.controls === 'false' && !this.wizard) || a.atrlocked || a.readonly || this.rng() < this.rejectRate)
+      return err('rejected', 'engine: the game rejected the attribute: Permission denied.', {
+        reply: 'Permission denied.',
+      });
+    delete o.attrs[attr.toUpperCase()];
+    return ok({ reply: 'Cleared.' });
+  }
+
+  setWarnings(dbref: string, list: string): Promise<EditDetailsResult> {
+    return this.mutate('setWarnings', dbref, [dbref, list], (o) => {
+      if (!/^[a-z!_ -]+$/i.test(list)) return { refuse: 'Unknown warning.', code: 'rejected' };
+      o.warnings = list.trim().toLowerCase();
+      return { reply: 'Warnings set.' };
+    });
+  }
+
+  async wcheck(dbref: string): Promise<EditLinesResult> {
+    await this.enter('wcheck', [dbref]);
+    const f = this.forced('wcheck');
+    if (f) return err(f.code, f.error ?? 'error', { lines: [] as string[] });
+    const o = this.find(dbref);
+    if (!o) return err('no_such_object', 'engine: no such object: #-1 NO MATCH', { lines: [] as string[] });
+    const un = [...this.objects.values()].filter(
+      (x) => x.type === 'EXIT' && x.location === dbref && !x.destination,
+    );
+    return ok({
+      lines: un.length
+        ? un.map((x) => `Warning 'exit-unlinked' for ${x.name}(${x.dbref}).`)
+        : [`No warnings for ${o.name}(${o.dbref}).`],
+    });
+  }
+
+  async examine(dbref: string, mode: string): Promise<EditExamineResult> {
+    await this.enter('examine', [dbref, mode]);
+    const f = this.forced('examine');
+    if (f) return err(f.code, f.error ?? 'error', { lines: [] as Span[][] });
+    const o = this.find(dbref);
+    if (!o || o.invisible)
+      return err('no_such_object', "engine: no such object: I can't see that here.", {
+        lines: [] as Span[][],
+      });
+    const lines: Span[][] = [
+      [
+        { s: o.name, b: true, fg: 14 },
+        { s: `(${o.dbref}${o.type[0]})`, fg: 6 },
+      ],
+      [{ s: 'Type: ' }, { s: o.type, fg: 10 }, { s: ` Flags: ${(o.flagNames ?? []).join(' ')}` }],
+      [{ s: `Owner: ${o.owner}` }],
+    ];
+    if (mode !== 'brief') {
+      lines.push([{ s: `Parent: ${o.parent ?? '*NOTHING*'}` }]);
+      for (const [t, e] of Object.entries(o.locks ?? {}))
+        lines.push([{ s: `${t} Lock [#${o.owner.slice(1)}/v]: `, fg: 3 }, { s: e }]);
+    }
+    if (mode === 'all' || mode === '')
+      for (const [k, a] of Object.entries(o.attrs).slice(0, mode === 'all' ? 200 : 6))
+        lines.push([{ s: `${k}: `, fg: 12 }, { s: a.value.replace(/%r/g, ' ') }]);
+    return ok({ lines });
   }
 }
