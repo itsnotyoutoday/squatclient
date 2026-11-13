@@ -2,7 +2,7 @@
 // src/lib/mushcode/functions.generated.json (sorted, deduplicated, with the source files recorded).
 //
 // Usage:  node scripts/gen-mush-functions.mjs [helpDir]
-//   helpDir defaults to $MUSH_HELP_DIR or /Users/rock/mush/CobraMUSH-Fspace/game/txt/hlp
+//   helpDir defaults to $MUSH_HELP_DIR or <game>/game/txt/hlp
 // If the directory (or any *.hlp file in it) is missing, the committed JSON is left untouched.
 //
 // What counts as a function name:
@@ -17,7 +17,7 @@ import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const OUT = resolve(here, '../src/lib/mushcode/functions.generated.json');
-const dir = process.argv[2] ?? process.env.MUSH_HELP_DIR ?? '/Users/rock/mush/CobraMUSH-Fspace/game/txt/hlp';
+const dir = process.argv[2] ?? process.env.MUSH_HELP_DIR ?? '<game>/game/txt/hlp';
 
 const NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
 const HEADING = /^&\s*([^\s()]+)\(\)\s*$/;

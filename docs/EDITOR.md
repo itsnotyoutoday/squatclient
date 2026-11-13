@@ -50,7 +50,7 @@ Command position = start of a line, or after `;`, `{`, `,`, `=`, or directly aft
 ## 2. Function names
 
 `npm run gen:functions` (`frontend/scripts/gen-mush-functions.mjs`, not hooked into the build) reads
-`/Users/rock/mush/CobraMUSH-Fspace/game/txt/hlp/*.hlp` (override: first argument or `$MUSH_HELP_DIR`)
+`<game>/game/txt/hlp/*.hlp` (override: first argument or `$MUSH_HELP_DIR`)
 and writes the committed `src/lib/mushcode/functions.generated.json` (sorted, deduplicated, lowercase,
 plus the list of source files). Names come from `& NAME()` help topic headings and from category
 listing lines made only of `name()` tokens. If the directory is missing the committed file is kept.

@@ -42,6 +42,5 @@ require (
 	golang.org/x/text v0.22.0 // indirect
 )
 
-// replace github.com/wailsapp/wails/v2 v2.10.2 => /Users/rock/go/pkg/mod
 
 replace github.com/itsnotyoutoday/squatClientDaemon => ../squatClientDaemon
