@@ -63,6 +63,61 @@ describe('events added by the Go app (UI-CONTRACT-NOTES 1, 3)', () => {
     expect(useUi.getState().dialog).toBeNull();
   });
 
+  it('squatter state, suspend/resume and the away summary (squatter events)', async () => {
+    const e = await boot();
+    const [id] = useSessions.getState().order;
+    act(() => useUi.getState().openDialog(null));
+    push(e, 'squatter', {
+      id: 'sq-demo',
+      name: 'Home',
+      host: 'h',
+      port: 1,
+      state: 'unreachable',
+      message: 'lost',
+      sessions: 1,
+    });
+    expect(useUi.getState().squatters.some((q) => q.id === 'sq-demo')).toBe(false); // only known squatters are patched
+    const known = useUi.getState().squatters[0];
+    push(e, 'squatter', {
+      id: known.id,
+      name: known.name,
+      host: 'h',
+      port: 1,
+      state: 'unreachable',
+      message: 'lost',
+      sessions: 2,
+    });
+    expect(useUi.getState().squatters[0]).toMatchObject({
+      state: 'unreachable',
+      message: 'lost',
+      sessions: 2,
+    });
+    push(e, 'suspend', { suspended: true });
+    expect(useUi.getState().suspended).toBe(true);
+    push(e, 'suspend', { suspended: false });
+    expect(useUi.getState().suspended).toBe(false);
+    push(e, 'away', { sessions: [{ session: 'ghost', name: 'x', squatter: 's', unread: 3, ended: false }] });
+    expect(useUi.getState().dialog).toBeNull(); // unknown sessions are ignored
+    push(e, 'away', { sessions: [{ session: id, name: 'x', squatter: 's', unread: 3, ended: false }] });
+    expect(useUi.getState().dialog).toBe('away');
+    expect(useUi.getState().awayIds).toEqual([id]);
+  });
+
+  it('shows the squatter link state and a Resume action while suspended', async () => {
+    const e = await boot();
+    const id = useSessions.getState().fg as string;
+    const cur = useSessions.getState().sessions[id];
+    act(() => useUi.getState().openDialog(null));
+    push(e, 'session', { ...cur, via: 'sq1', link: 'unreachable' });
+    expect(document.querySelector('.seg.link.unreachable')?.textContent).toContain('unreachable');
+    expect(document.querySelector('.tab .badge.link')?.textContent).toBe('unreachable');
+    push(e, 'suspend', { suspended: true });
+    const btn = document.querySelector('.seg.suspended button') as HTMLButtonElement;
+    expect(btn.textContent).toBe('Resume');
+    act(() => btn.click());
+    await waitFor(() => expect(useUi.getState().suspended).toBe(false)); // mock resume() emits suspend:false
+  });
+
   it('reset refetches scrollback for the session', async () => {
     const e = await boot();
     const id = useSessions.getState().order[0];

@@ -211,6 +211,19 @@ textarea {
   background: var(--ui-danger);
   color: #fff;
 }
+.badge.link,
+.badge.sqstate {
+  background: var(--ui-warn);
+  color: #000;
+}
+.badge.sqstate.connected {
+  background: var(--ui-ok);
+}
+.badge.sqstate.refused,
+.badge.link.unreachable {
+  background: var(--ui-danger);
+  color: #fff;
+}
 .spinner {
   width: 10px;
   height: 10px;
@@ -417,6 +430,22 @@ textarea {
 }
 .seg.state.connecting {
   color: var(--ui-warn);
+}
+.seg.link.detached,
+.seg.suspended {
+  color: var(--ui-warn);
+}
+.seg.link.unreachable {
+  color: var(--ui-danger);
+}
+.linkbtn {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--ui-accent-text);
+  text-decoration: underline;
+  cursor: pointer;
+  font: inherit;
 }
 .seg.more {
   color: var(--ui-accent-text);

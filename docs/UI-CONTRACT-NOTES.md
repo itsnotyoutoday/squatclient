@@ -17,7 +17,7 @@
 3. **worldId**: `SessionInfo` now carries `worldId?` (absent for quick connects) and `via: "direct"`. "Connect again" matches by `worldId`, falling back to host+port.
 5. **Notices**: notices that belong to a session (connect/end messages, script errors, `/echo`, unknown commands) are stored by the engine as `system` lines (they replay and have real seqs). The `notice` event is used ONLY for messages without a session (startup/script-load errors, auto-connect failures); the UI shows those as before. No duplication.
 6. **Unread/ack**: the engine counts unread (non-prompt `game` lines since the last `ack`) for every session including the foreground one; `ack(id, seq)` takes an integer seq.
-4. **Method names**: exactly as listed in note 4 (positional args). `Connect` takes `{worldId}` or `{host, port, tls}`; `Scrollback` takes `{beforeSeq?, limit}`; `Search` takes `{regex?, caseSensitive?}` and always returns an array. Squatter methods `PairSquatter`/`ConfirmSquatter` reject with "squatter connections are not available yet"; `ListSquatters`/`RemoveSquatter` work on the stored list.
+4. **Method names**: exactly as listed in note 4 (positional args). `Connect` takes `{worldId}` or `{host, port, tls}`; `Scrollback` takes `{beforeSeq?, limit}`; `Search` takes `{regex?, caseSensitive?}` and always returns an array. Squatter methods are real (see 7-12 below).
 
 New runtime events (additions to the contract):
 
@@ -27,5 +27,17 @@ New runtime events (additions to the contract):
 | `foreground` | `{session}` | a script/engine changed the foreground session (`/fg`, first session, fallback after dismiss). The UI's own `foreground()` calls are not echoed back |
 | `reset` | `{session}` | the view filter (`/limit`) changed: drop the buffer and refetch `scrollback` |
 | `menu` | `{action}` | native menu: `quick-connect`, `worlds`, `settings`, `search`, `help`, `close-session` |
+| `squatter` | `{id,name,host,port,state,problem?,message?,sessions,suspended?}` | a squatter's connection state changed. `state`: `idle connecting connected disconnected unreachable refused`; `problem` (with `refused`/`unreachable`): `fingerprint_mismatch auth_failed rate_limited unreachable connection_lost`; `message` is user-readable |
+| `suspend` | `{suspended}` | `/suspend` detached the squatter sessions (true) / Resume re-attached them (false) |
+| `away` | `{sessions:[{session,name,squatter,unread,ended,endReason?,endedAt?,lastText?}]}` | after (re)attaching to a squatter: sessions with unread output (and ended ones whose end was not acknowledged). The UI opens "While you were away" for the ids it knows |
 
 Delivery: lines, gmcp, notices, bells and removals are never dropped and keep order; `session` and `status` events are coalesced per ~12 ms batch and sent after the batch's lines. A `/quit` from a script emits `quit` and closes the window.
+
+## Squatters (remote daemon), added with the engine's RemoteSession
+
+7. **Bound methods added**: `ReconnectSquatter(id)`, `Suspend() -> number` (sessions detached), `Resume()`. `ListSquatters()` now returns the SquatterConfig fields plus `state`, `problem?`, `message?`, `sessions` (all optional on the UI side).
+8. **Pairing (trust on first use)**: `PairSquatter(host, port, name, code)` performs ONLY a TLS handshake and returns `{id, fingerprint}` (SHA-256, `AA:BB:..`); the code is kept in memory and is not sent. `ConfirmSquatter(id, true)` pins that fingerprint, creates the device key in the OS keychain (key `device-key`, never a file) if needed, connects sending the code, and stores the squatter with `paired: true`; failure removes the half-added entry and rejects with a readable message. `ConfirmSquatter(id, false)` forgets it (the code is never sent). The default squatterd port is 10327 (the dialog default).
+9. **`SessionInfo`** gains `via` = the squatter id (still `"direct"` for direct sessions) and `link`: `attached | detached | unreachable` (squatter sessions only). Session ids of squatter sessions are `<squatterId>:<daemonSessionId>`. The status bar shows the link when it is not `attached`; the tab shows a badge. Sending while `detached`/`unreachable` prints a system line explaining it; nothing reconnects by itself (the Squatters dialog has a Reconnect button).
+10. **`WorldConfig.via`** = a paired squatter id routes `connect({worldId})` through it (the login template is still run client-side with the keychain password). If that squatter is not connected, `connect()` makes one explicit connection attempt first.
+11. **`/suspend` and `/detach`** (typed or the Session menu): squatter sessions are detached (the daemon keeps them running), the window is minimised by the app, `suspend {suspended:true}` is emitted and the status bar shows "Suspended - Resume". Direct sessions stay connected; with only direct sessions nothing is "suspended". `Resume()` re-attaches with `since`, replays what was missed (display effects only: replayed lines never fire triggers) and emits `away`.
+12. **App start**: every paired squatter is connected once in the background (no retry loop); worlds with `autoConnect` that go through one wait for it. Closing the app only detaches from squatters; their sessions keep running.

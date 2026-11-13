@@ -115,6 +115,7 @@ export interface UiState {
   searchOpen: boolean;
   worlds: WorldConfig[];
   squatters: SquatterConfig[];
+  suspended: boolean;
   awayIds: string[];
   toasts: Toast[];
   now: number;
@@ -123,6 +124,8 @@ export interface UiState {
   setSearch(open: boolean): void;
   setWorlds(w: WorldConfig[]): void;
   setSquatters(s: SquatterConfig[]): void;
+  patchSquatter(p: Partial<SquatterConfig> & { id: string }): void;
+  setSuspended(v: boolean): void;
   setAway(ids: string[]): void;
   toast(level: Toast['level'], text: string): void;
   dismissToast(id: number): void;
@@ -136,6 +139,7 @@ export const useUi = create<UiState>((set) => ({
   searchOpen: false,
   worlds: [],
   squatters: [],
+  suspended: false,
   awayIds: [],
   toasts: [],
   now: Date.now(),
@@ -144,6 +148,9 @@ export const useUi = create<UiState>((set) => ({
   setSearch: (searchOpen) => set({ searchOpen }),
   setWorlds: (worlds) => set({ worlds }),
   setSquatters: (squatters) => set({ squatters }),
+  patchSquatter: (p) =>
+    set((s) => ({ squatters: s.squatters.map((q) => (q.id === p.id ? { ...q, ...p } : q)) })),
+  setSuspended: (suspended) => set({ suspended }),
   setAway: (awayIds) => set({ awayIds }),
   toast: (level, text) => set((s) => ({ toasts: [...s.toasts.slice(-3), { id: ++toastId, level, text }] })),
   dismissToast: (id) => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
@@ -153,6 +160,14 @@ export const useUi = create<UiState>((set) => ({
 export function resetStores(): void {
   resetBuffers();
   useSessions.setState({ sessions: {}, order: [], fg: null, versions: {}, status: {}, paused: {} });
-  useUi.setState({ dialog: null, searchOpen: false, awayIds: [], toasts: [], worlds: [], squatters: [] });
+  useUi.setState({
+    dialog: null,
+    searchOpen: false,
+    awayIds: [],
+    toasts: [],
+    worlds: [],
+    squatters: [],
+    suspended: false,
+  });
   useSettings.setState({ settings: { ...DEFAULT_SETTINGS }, loaded: false });
 }

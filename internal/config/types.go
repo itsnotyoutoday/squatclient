@@ -76,3 +76,15 @@ type Window struct {
 	Maximised bool `json:"maximised,omitempty"`
 	Valid     bool `json:"valid"` // false until a geometry has been saved
 }
+
+// SquatterBacklog is how many missed entries are requested when re-attaching
+// to a squatter session (bounded by the daemon at 20000): the scrollback size.
+func (s Settings) SquatterBacklog() int {
+	switch {
+	case s.ScrollbackLines <= 0:
+		return 0 // engine default
+	case s.ScrollbackLines > 20000:
+		return 20000
+	}
+	return s.ScrollbackLines
+}

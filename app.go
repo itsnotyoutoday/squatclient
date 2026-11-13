@@ -80,6 +80,11 @@ func (a *App) build(ctx context.Context) (*app.Service, *config.Store, error) {
 		Secrets: secrets.Keychain{},
 		Emit:    func(name string, payload any) { wailsruntime.EventsEmit(ctx, name, payload) },
 		OnQuit:  func() { wailsruntime.Quit(ctx) },
+		OnWindow: func(action string) {
+			if action == "minimise" { // /suspend: hide the window, the squatter keeps the sessions
+				wailsruntime.WindowMinimise(ctx)
+			}
+		},
 		Engine: engine.Options{
 			ConfigDir: scripts, // startup.tf, plugins/*.lua, logs/
 			Version:   version,
@@ -228,8 +233,8 @@ func (a *App) SaveSettings(st config.Settings) error {
 	return s.SaveSettings(st)
 }
 
-// ListSquatters returns the stored squatters.
-func (a *App) ListSquatters() ([]config.Squatter, error) {
+// ListSquatters returns the stored squatters with their connection state.
+func (a *App) ListSquatters() ([]app.SquatterView, error) {
 	s, err := a.service()
 	if err != nil {
 		return nil, err
@@ -237,7 +242,7 @@ func (a *App) ListSquatters() ([]config.Squatter, error) {
 	return s.ListSquatters()
 }
 
-// PairSquatter is not available yet.
+// PairSquatter reads the squatter's TLS fingerprint (no pairing code is sent yet).
 func (a *App) PairSquatter(host string, port int, name, pairCode string) (app.PairResult, error) {
 	s, err := a.service()
 	if err != nil {
@@ -246,7 +251,7 @@ func (a *App) PairSquatter(host string, port int, name, pairCode string) (app.Pa
 	return s.PairSquatter(host, port, name, pairCode)
 }
 
-// ConfirmSquatter is not available yet.
+// ConfirmSquatter trusts (accept) or drops the fingerprint and pairs.
 func (a *App) ConfirmSquatter(id string, accept bool) error {
 	s, err := a.service()
 	if err != nil {
@@ -262,6 +267,33 @@ func (a *App) RemoveSquatter(id string) error {
 		return err
 	}
 	return s.RemoveSquatter(id)
+}
+
+// ReconnectSquatter reconnects a squatter on the user's request.
+func (a *App) ReconnectSquatter(id string) error {
+	s, err := a.service()
+	if err != nil {
+		return err
+	}
+	return s.ReconnectSquatter(id)
+}
+
+// Suspend detaches from the squatters and minimises the window (/suspend).
+func (a *App) Suspend() (int, error) {
+	s, err := a.service()
+	if err != nil {
+		return 0, err
+	}
+	return s.Suspend(), nil
+}
+
+// Resume re-attaches suspended squatter sessions and replays what was missed.
+func (a *App) Resume() error {
+	s, err := a.service()
+	if err != nil {
+		return err
+	}
+	return s.Resume()
 }
 
 // Connect opens a session.
@@ -352,4 +384,22 @@ func (a *App) Ack(id string, seq uint64) error {
 		return err
 	}
 	return s.Ack(id, seq)
+}
+
+func (a *App) suspendErr() error {
+	_, err := a.Suspend()
+	return err
+}
+
+// report shows an error from a menu action as an error notice in the UI.
+func (a *App) report(err error) {
+	if err == nil {
+		return
+	}
+	a.mu.RLock()
+	ctx := a.ctx
+	a.mu.RUnlock()
+	if ctx != nil {
+		wailsruntime.EventsEmit(ctx, "notice", map[string]string{"level": "error", "text": err.Error()})
+	}
 }

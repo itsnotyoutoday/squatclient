@@ -5,6 +5,7 @@
 package app
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -19,9 +20,6 @@ import (
 	"github.com/itsnotyoutoday/squatclient/internal/secrets"
 )
 
-// ErrNotAvailable is returned by squatter operations (not implemented yet).
-var ErrNotAvailable = errors.New("squatter connections are not available yet")
-
 // Emitter delivers an event to the UI (runtime.EventsEmit in the real app).
 type Emitter func(event string, payload any)
 
@@ -34,6 +32,9 @@ type Options struct {
 	Logger  *slog.Logger
 	// OnQuit is called when a script asks to quit (/quit).
 	OnQuit func()
+	// OnWindow is called when the engine asks the window to change
+	// (action "minimise", from /suspend).
+	OnWindow func(action string)
 	// FlushInterval batches event delivery (default 12ms).
 	FlushInterval time.Duration
 }
@@ -46,11 +47,18 @@ type Service struct {
 	eng   *engine.Engine
 	log   *slog.Logger
 	quit  func()
+	win   func(string)
 	flush time.Duration
+
+	ctx    context.Context
+	cancel context.CancelFunc // stops squatter connects at shutdown
+	boot   sync.WaitGroup
+	keyMu  sync.Mutex
+	pair   pairing
 
 	fgMu     sync.Mutex
 	uiFg     string // foreground the UI last chose or was told about
-	cancel   func()
+	unsub    func()
 	pumpDone chan struct{}
 	once     sync.Once
 }
@@ -78,8 +86,9 @@ func New(o Options) (*Service, error) {
 	if eo.Logger == nil {
 		eo.Logger = o.Logger
 	}
-	s := &Service{cfg: o.Config, sec: o.Secrets, emit: o.Emit, log: o.Logger, quit: o.OnQuit, flush: o.FlushInterval,
+	s := &Service{cfg: o.Config, sec: o.Secrets, emit: o.Emit, log: o.Logger, quit: o.OnQuit, win: o.OnWindow, flush: o.FlushInterval,
 		pumpDone: make(chan struct{})}
+	s.ctx, s.cancel = context.WithCancel(context.Background())
 	eo.PasswordFor = func(worldID string) string {
 		pw, err := s.sec.Get(secrets.WorldKey(worldID))
 		if err != nil {
@@ -103,27 +112,44 @@ func (s *Service) Engine() *engine.Engine { return s.eng }
 // Start subscribes to the engine, starts event delivery, loads scripts and
 // connects autoConnect worlds.
 func (s *Service) Start() {
-	ch, cancel := s.eng.Subscribe()
-	s.cancel = cancel
+	ch, unsub := s.eng.Subscribe()
+	s.unsub = unsub
 	go s.pump(ch)
 	if err := s.eng.LoadScripts(); err != nil {
 		s.log.Warn("script load", "err", err)
 	}
-	for _, w := range s.cfg.Worlds() {
-		if w.AutoConnect {
-			if _, err := s.Connect(ConnectTarget{WorldID: w.ID}); err != nil {
-				s.emit("notice", Notice{Level: "error", Text: fmt.Sprintf("auto-connect %s: %v", w.Name, err)})
+	auto := func(via bool) {
+		for _, w := range s.cfg.Worlds() {
+			if w.AutoConnect && (w.Via != "" && w.Via != "direct") == via {
+				if _, err := s.Connect(ConnectTarget{WorldID: w.ID}); err != nil {
+					s.emit("notice", Notice{Level: "error", Text: fmt.Sprintf("auto-connect %s: %v", w.Name, err)})
+				}
 			}
 		}
 	}
+	auto(false)
+	// squatters are connected once, in the background; worlds that go through
+	// one wait for that. Nothing is retried.
+	s.boot.Add(1)
+	go func() {
+		defer s.boot.Done()
+		s.startSquatters()
+		if s.ctx.Err() == nil {
+			auto(true)
+		}
+	}()
 }
 
 // Shutdown gracefully closes all sessions and stops event delivery.
 func (s *Service) Shutdown() {
 	s.once.Do(func() {
-		s.eng.Close() // closes sessions (client_quit) and the subscription channel
-		if s.cancel != nil {
-			s.cancel()
+		s.cancel() // abort squatter connects in flight
+		s.boot.Wait()
+		// closes direct sessions (client_quit) and only DETACHES from squatters:
+		// the daemon keeps those sessions running
+		s.eng.Close()
+		if s.unsub != nil {
+			s.unsub()
 			<-s.pumpDone
 		}
 	})
@@ -133,6 +159,9 @@ func (s *Service) Shutdown() {
 
 func toEngineWorld(w config.World, defaultEnc string) engine.World {
 	ew := engine.World{ID: w.ID, Name: w.Name, Host: w.Host, Port: w.Port, TLS: w.TLS, TLSVerify: w.TLSVerify, Encoding: w.Encoding}
+	if w.Via != "" && w.Via != "direct" {
+		ew.Via = w.Via
+	}
 	if ew.Encoding == "" {
 		ew.Encoding = defaultEnc
 	}
@@ -254,6 +283,18 @@ func (s *Service) deliver(batch []engine.Event) {
 			s.emit("notice", Notice{Level: ev.Level, Text: ev.Text, Session: ev.Session})
 		case engine.EvBell:
 			s.emit("bell", map[string]string{"session": ev.Session})
+		case engine.EvSquatter:
+			if ev.Squatter != nil {
+				s.emit("squatter", ev.Squatter)
+			}
+		case engine.EvSuspend:
+			s.emit("suspend", map[string]bool{"suspended": ev.Suspended})
+		case engine.EvAway:
+			s.emit("away", map[string]any{"sessions": ev.Away})
+		case engine.EvWindow:
+			if s.win != nil {
+				s.win(ev.Text)
+			}
 		case engine.EvQuit:
 			s.emit("quit", map[string]string{})
 			if s.quit != nil {

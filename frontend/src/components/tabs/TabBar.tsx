@@ -41,6 +41,11 @@ export function TabBar() {
                 </span>
               )}
               {s.state === 'ended' && <span className="badge ended">ended</span>}
+              {s.state !== 'ended' && s.link && s.link !== 'attached' && (
+                <span className={`badge link ${s.link}`} title={`Squatter link: ${s.link}`}>
+                  {s.link}
+                </span>
+              )}
             </button>
             <button
               type="button"
@@ -99,13 +104,7 @@ export function TabBar() {
       >
         &#9881;
       </button>
-      <button
-        type="button"
-        className="tabadd"
-        title="Help (F1)"
-        aria-label="Help"
-        onClick={() => openHelp()}
-      >
+      <button type="button" className="tabadd" title="Help (F1)" aria-label="Help" onClick={() => openHelp()}>
         ?
       </button>
     </div>

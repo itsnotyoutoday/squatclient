@@ -7,7 +7,7 @@ export function SquattersDialog() {
   const engine = useUi((s) => s.engine);
   const squatters = useUi((s) => s.squatters);
   const [host, setHost] = useState('');
-  const [port, setPort] = useState('7443');
+  const [port, setPort] = useState('10327');
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
   const [pending, setPending] = useState<{ id: string; fingerprint: string } | null>(null);
@@ -61,8 +61,28 @@ export function SquattersDialog() {
                   {s.host}:{s.port}
                 </span>
                 {!s.paired && <em> (not paired)</em>}
+                {s.state && (
+                  <span className={`badge sqstate ${s.state}`} data-testid={`sqstate-${s.id}`}>
+                    {s.state}
+                  </span>
+                )}
+                {s.message && s.state !== 'connected' && <div className="err">{s.message}</div>}
                 {s.fingerprint && <code className="fp">{s.fingerprint}</code>}
               </span>
+              {s.paired && s.state !== 'connected' && s.state !== 'connecting' && s.state !== 'refused' && (
+                <button
+                  type="button"
+                  aria-label={`Reconnect ${s.name}`}
+                  onClick={() =>
+                    void engine
+                      ?.reconnectSquatter(s.id)
+                      .then(refresh)
+                      .catch((x: unknown) => setErr(x instanceof Error ? x.message : String(x)))
+                  }
+                >
+                  Reconnect
+                </button>
+              )}
               <button
                 type="button"
                 className="danger"

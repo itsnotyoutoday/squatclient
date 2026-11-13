@@ -44,6 +44,9 @@ describe('WailsEngine adapter', () => {
     await e.search('s1', 'x', { regex: true });
     await e.ack('s1', 7);
     await e.dismiss('s1');
+    await e.reconnectSquatter('sq1');
+    await e.suspend();
+    await e.resume();
     expect(calls).toEqual([
       ['Connect', [{ worldId: 'w' }]],
       ['Input', ['s1', 'look']],
@@ -52,6 +55,9 @@ describe('WailsEngine adapter', () => {
       ['Search', ['s1', 'x', { regex: true }]],
       ['Ack', ['s1', 7]],
       ['Dismiss', ['s1']],
+      ['ReconnectSquatter', ['sq1']],
+      ['Suspend', []],
+      ['Resume', []],
     ]);
   });
 

@@ -33,18 +33,24 @@ type fixture struct {
 	mu   sync.Mutex
 	evs  []captured
 	quit chan struct{}
+
+	windows []string
 }
 
-func newFixture(t *testing.T) *fixture {
+func newFixture(t *testing.T) *fixture { return newFixtureAt(t, t.TempDir(), secrets.NewMemory()) }
+
+// newFixtureAt builds a service on an existing directory and keychain (to
+// model an app restart).
+func newFixtureAt(t *testing.T, dir string, sec *secrets.Memory) *fixture {
 	t.Helper()
-	dir := t.TempDir()
 	cs, err := config.Open(filepath.Join(dir, "cfg"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	f := &fixture{t: t, sec: secrets.NewMemory(), cfg: cs, dir: dir, quit: make(chan struct{}, 1)}
+	f := &fixture{t: t, sec: sec, cfg: cs, dir: dir, quit: make(chan struct{}, 1)}
 	svc, err := New(Options{
 		Config: cs, Secrets: f.sec, OnQuit: func() { f.quit <- struct{}{} },
+		OnWindow: func(a string) { f.mu.Lock(); f.windows = append(f.windows, a); f.mu.Unlock() },
 		Emit: func(name string, p any) {
 			b, _ := json.Marshal(p)
 			f.mu.Lock()
@@ -301,19 +307,6 @@ func TestColoursByteExactThroughApp(t *testing.T) {
 		}
 	}
 	t.Fatal("no colour line")
-}
-
-func TestSquattersNotAvailable(t *testing.T) {
-	f := newFixture(t)
-	if _, err := f.svc.PairSquatter("h", 1, "n", "code"); !errors.Is(err, ErrNotAvailable) {
-		t.Fatal(err)
-	}
-	if err := f.svc.ConfirmSquatter("x", true); !errors.Is(err, ErrNotAvailable) {
-		t.Fatal(err)
-	}
-	if l, err := f.svc.ListSquatters(); err != nil || l == nil && false {
-		t.Fatal(err)
-	}
 }
 
 func TestSettingsAndQuit(t *testing.T) {

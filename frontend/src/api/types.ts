@@ -29,6 +29,8 @@ export interface Line {
 
 export type SessionState = 'connecting' | 'connected' | 'ended';
 
+export type SessionLink = 'attached' | 'detached' | 'unreachable';
+
 export interface SessionInfo {
   id: string;
   name: string;
@@ -43,6 +45,8 @@ export interface SessionInfo {
   attached: number;
   remoteEcho: boolean;
   via: 'direct' | string;
+  /** Squatter sessions only: attached (live), detached (suspended / closed on purpose) or unreachable (connection lost). */
+  link?: SessionLink;
   /** Id of the world this session was opened from (absent for quick connects). */
   worldId?: string;
   endedAt?: number;
@@ -81,6 +85,26 @@ export interface SquatterConfig {
   port: number;
   fingerprint?: string;
   paired: boolean;
+  /** Live connection state (absent in older engines / mock). */
+  state?: SquatterState;
+  /** fingerprint_mismatch | auth_failed | unreachable | rate_limited | connection_lost */
+  problem?: string;
+  message?: string;
+  sessions?: number;
+}
+
+export type SquatterState = 'idle' | 'connecting' | 'connected' | 'disconnected' | 'unreachable' | 'refused';
+
+/** One entry of the "While you were away" summary. */
+export interface AwayItem {
+  session: string;
+  name: string;
+  squatter: string;
+  unread: number;
+  ended: boolean;
+  endReason?: string;
+  endedAt?: number;
+  lastText?: string;
 }
 
 export interface Settings {
@@ -128,6 +152,25 @@ export interface EngineEvents {
   reset: { session: string };
   /** A native menu item was chosen. */
   menu: { action: string };
+  /** A squatter's connection state changed. */
+  squatter: SquatterConfigState;
+  /** /suspend detached the squatter sessions (true) or Resume re-attached them (false). */
+  suspend: { suspended: boolean };
+  /** Sessions with unread output after (re)attaching to a squatter. */
+  away: { sessions: AwayItem[] };
+}
+
+/** Payload of the `squatter` event (engine SquatterInfo). */
+export interface SquatterConfigState {
+  id: string;
+  name: string;
+  host: string;
+  port: number;
+  state: SquatterState;
+  problem?: string;
+  message?: string;
+  sessions: number;
+  suspended?: boolean;
 }
 
 export type EngineEventName = keyof EngineEvents;
@@ -148,6 +191,12 @@ export interface EngineAPI {
   ): Promise<{ id: string; fingerprint: string }>;
   confirmSquatter(id: string, accept: boolean): Promise<void>;
   removeSquatter(id: string): Promise<void>;
+  /** Explicit reconnect of a squatter (the app never reconnects by itself). */
+  reconnectSquatter(id: string): Promise<void>;
+  /** /suspend: detach squatter sessions (they keep running) and minimise; returns how many were detached. */
+  suspend(): Promise<number>;
+  /** Re-attach suspended squatter sessions; what was missed is replayed. */
+  resume(): Promise<void>;
   connect(target: ConnectTarget): Promise<SessionInfo>;
   disconnect(sessionId: string): Promise<void>;
   dismiss(sessionId: string): Promise<void>;

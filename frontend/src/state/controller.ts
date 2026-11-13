@@ -104,6 +104,23 @@ export async function startController(
       dropBuffer(id);
       useSessions.getState().remove(id);
     }),
+    engine.on('squatter', (q) => {
+      useUi.getState().patchSquatter({
+        id: q.id,
+        state: q.state,
+        problem: q.problem,
+        message: q.message,
+        sessions: q.sessions,
+      });
+      if (q.suspended !== undefined) useUi.getState().setSuspended(q.suspended);
+    }),
+    engine.on('suspend', ({ suspended }) => useUi.getState().setSuspended(suspended)),
+    engine.on('away', ({ sessions }) => {
+      const ids = sessions.map((a) => a.session).filter((id) => !!useSessions.getState().sessions[id]);
+      if (ids.length === 0) return;
+      useUi.getState().setAway(ids);
+      useUi.getState().openDialog('away');
+    }),
     engine.on('foreground', ({ session }) => {
       const s = useSessions.getState();
       if (s.sessions[session] && s.fg !== session) s.setFg(session);

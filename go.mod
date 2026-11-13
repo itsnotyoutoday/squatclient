@@ -4,7 +4,10 @@ go 1.24
 
 require github.com/wailsapp/wails/v2 v2.10.2
 
-require github.com/yuin/gopher-lua v1.1.2 // indirect
+require (
+	github.com/coder/websocket v1.8.15 // indirect
+	github.com/yuin/gopher-lua v1.1.2 // indirect
+)
 
 require (
 	github.com/bep/debounce v1.2.1 // indirect

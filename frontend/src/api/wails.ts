@@ -49,6 +49,9 @@ export class WailsEngine implements EngineAPI {
     call<{ id: string; fingerprint: string }>('PairSquatter', host, port, name, code);
   confirmSquatter = (id: string, accept: boolean) => call<void>('ConfirmSquatter', id, accept);
   removeSquatter = (id: string) => call<void>('RemoveSquatter', id);
+  reconnectSquatter = (id: string) => call<void>('ReconnectSquatter', id);
+  suspend = () => call<number>('Suspend');
+  resume = () => call<void>('Resume');
   connect = (t: ConnectTarget) => call<Awaited<ReturnType<EngineAPI['connect']>>>('Connect', t);
   disconnect = (id: string) => call<void>('Disconnect', id);
   dismiss = (id: string) => call<void>('Dismiss', id);

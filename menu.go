@@ -19,6 +19,9 @@ func buildMenu(a *App) *menu.Menu {
 	session.AddText("Worlds...", keys.CmdOrCtrl("o"), act("worlds"))
 	session.AddText("Settings...", keys.CmdOrCtrl(","), act("settings"))
 	session.AddSeparator()
+	session.AddText("Suspend (detach from squatters)", keys.Combo("d", keys.CmdOrCtrlKey, keys.ShiftKey), func(*menu.CallbackData) { a.report(a.suspendErr()) })
+	session.AddText("Resume", keys.Combo("r", keys.CmdOrCtrlKey, keys.ShiftKey), func(*menu.CallbackData) { go func() { a.report(a.Resume()) }() })
+	session.AddSeparator()
 	session.AddText("Close Session", keys.CmdOrCtrl("w"), func(*menu.CallbackData) { a.closeSession() })
 
 	m.Append(menu.EditMenu()) // Undo/Redo, Cut, Copy, Paste, Select All

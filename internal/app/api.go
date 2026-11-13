@@ -32,7 +32,7 @@ type SearchOpts struct {
 	CaseSensitive bool `json:"caseSensitive,omitempty"`
 }
 
-// PairResult is pairSquatter's return value.
+// PairResult is pairSquatter's return value (the fingerprint to be confirmed).
 type PairResult struct {
 	ID          string `json:"id"`
 	Fingerprint string `json:"fingerprint"`
@@ -98,28 +98,6 @@ func (s *Service) SaveSettings(in config.Settings) error {
 	return nil
 }
 
-// ---- squatters -----------------------------------------------------------
-
-// ListSquatters returns the stored squatters.
-func (s *Service) ListSquatters() ([]config.Squatter, error) {
-	out := s.cfg.Squatters()
-	if out == nil {
-		out = []config.Squatter{} // JSON [] not null: the UI maps over this
-	}
-	return out, nil
-}
-
-// PairSquatter is not available yet.
-func (s *Service) PairSquatter(host string, port int, name, pairCode string) (PairResult, error) {
-	return PairResult{}, ErrNotAvailable
-}
-
-// ConfirmSquatter is not available yet.
-func (s *Service) ConfirmSquatter(id string, accept bool) error { return ErrNotAvailable }
-
-// RemoveSquatter removes a stored squatter entry.
-func (s *Service) RemoveSquatter(id string) error { return s.cfg.DeleteSquatter(id) }
-
 // ---- sessions --------------------------------------------------------------
 
 // Connect opens a session to a world (login automation + keychain password)
@@ -132,7 +110,9 @@ func (s *Service) Connect(t ConnectTarget) (engine.SessionInfo, error) {
 			return engine.SessionInfo{}, fmt.Errorf("unknown world: %w", err)
 		}
 		if w.Via != "" && w.Via != "direct" {
-			return engine.SessionInfo{}, ErrNotAvailable
+			if err := s.ensureSquatter(w.Via); err != nil {
+				return engine.SessionInfo{}, err
+			}
 		}
 		pw := ""
 		if w.Login != nil && w.Login.HasPassword {

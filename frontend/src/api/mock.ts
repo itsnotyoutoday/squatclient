@@ -349,6 +349,16 @@ export class MockEngine implements EngineAPI {
   async removeSquatter(id: string): Promise<void> {
     this.squatters = this.squatters.filter((s) => s.id !== id);
   }
+  async reconnectSquatter(id: string): Promise<void> {
+    if (!this.squatters.some((s) => s.id === id)) throw new Error(`no such squatter: ${id}`);
+  }
+  async suspend(): Promise<number> {
+    this.emit('suspend', { suspended: true });
+    return 0;
+  }
+  async resume(): Promise<void> {
+    this.emit('suspend', { suspended: false });
+  }
 
   // ---- sessions
   async connect(target: ConnectTarget): Promise<SessionInfo> {
