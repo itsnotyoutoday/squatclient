@@ -1,4 +1,5 @@
 import { openHelp } from '../../help/command';
+import { toggleEditorView } from '../../lib/editor/view';
 import { useSessions, useUi } from '../../state/stores';
 import { useControllerRef } from '../../state/controller-context';
 
@@ -94,6 +95,15 @@ export function TabBar() {
         onClick={() => useUi.getState().setSearch(true)}
       >
         &#9906;
+      </button>
+      <button
+        type="button"
+        className="tabadd"
+        title="Object editor (Cmd/Ctrl-E, or /edit)"
+        aria-label="Editor"
+        onClick={() => toggleEditorView()}
+      >
+        Editor
       </button>
       <button
         type="button"
