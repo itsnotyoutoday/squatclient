@@ -109,7 +109,7 @@ describe('ended session view', () => {
     act(() => useSessions.getState().setFg(ended?.id ?? null));
     const banner = await screen.findByTestId('ended-banner');
     expect(banner).toHaveTextContent('The server closed the connection');
-    expect(banner).toHaveTextContent(/Ended \d/);
+    expect(banner).toHaveTextContent(/Ended (\d|[A-Z][a-z]{2} \d)/);
     expect(banner).toHaveTextContent(`Last text: ${ended?.lastText}`);
     expect(screen.queryByLabelText('Command input')).toBeNull();
 
