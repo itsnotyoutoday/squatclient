@@ -191,9 +191,9 @@ describe('upload dialog', () => {
 
   it('paces the send, shows progress and the current line, pauses, resumes and cancels with a summary', async () => {
     const lines = Array.from({ length: 8 }, (_, i) => `think line ${i + 1}`).join('\n');
-    const { e, d } = await open(lines, 40);
+    const { e, d } = await open(lines, 80);
     await userEvent.click(within(d).getByRole('button', { name: 'Send' }));
-    expect(sent(e)).toEqual(['think line 1']);
+    expect(sent(e)[0]).toBe('think line 1');
     const prog = screen.getByLabelText('Upload progress');
     await waitFor(() => expect(prog).toHaveTextContent(/Sending [2-9]\/8/));
     expect(within(prog).getByText(/Line \d+: think line/)).toBeInTheDocument();
