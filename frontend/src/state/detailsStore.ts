@@ -8,8 +8,16 @@ import type {
   EngineAPI,
 } from '../api/types';
 import { worldKey } from '../lib/worldkey';
-import { loadRecent, pushRecent } from '../lib/editor/props';
-import { announce, describeFailure, gameText, getObject, setAttrFlags, syncHeader } from './editorStore';
+import { loadOverviewCollapsed, loadRecent, pushRecent, saveOverviewCollapsed } from '../lib/editor/props';
+import {
+  announce,
+  describeFailure,
+  gameText,
+  getObject,
+  setAttrFlags,
+  showDetails,
+  syncHeader,
+} from './editorStore';
 import { useSessions, useUi } from './stores';
 
 /**
@@ -70,6 +78,16 @@ export interface DetailsState {
   attrAction: { sid: string; dbref: string; attr: string; kind: 'rename' | 'delete' | 'owner' } | null;
   /** the lock editor; type '' = a new lock */
   lockEditor: { sid: string; dbref: string; type: string } | null;
+  /** overview header collapsed, by world key (remembered in localStorage) */
+  collapsed: Record<string, boolean>;
+  /** a request from the overview header to show a section of the details view */
+  jump: {
+    sid: string;
+    dbref: string;
+    section: 'flags' | 'powers' | 'locks';
+    add: boolean;
+    tick: number;
+  } | null;
 }
 
 export const useDetails = create<DetailsState>(() => ({
@@ -81,6 +99,8 @@ export const useDetails = create<DetailsState>(() => ({
   attrMenu: null,
   attrAction: null,
   lockEditor: null,
+  collapsed: {},
+  jump: null,
 }));
 
 export const detailsKey = (sid: string, dbref: string): string => `${sid}|${dbref}`;
@@ -126,7 +146,7 @@ export function describeMutation(r: {
 /** Read the details of an object (`quiet`: keep showing the current ones while reloading). */
 export async function loadDetails(sid: string, dbref: string): Promise<void> {
   const eng = engine();
-  if (!eng) return;
+  if (!eng || getEntry(sid, dbref)?.loading) return;
   patchEntry(sid, dbref, (e) => ({ ...e, loading: true, error: undefined, errorCode: undefined }));
   const r = await eng.editDetails(sid, dbref);
   if (r.ok) {
@@ -354,5 +374,43 @@ export function resetDetails(): void {
     attrMenu: null,
     attrAction: null,
     lockEditor: null,
+    collapsed: {},
+    jump: null,
   });
+}
+
+// ---------------------------------------------------------------- overview header
+
+/** Make sure the details of an object are loaded (one fetch shared by the header and the details view). */
+export function ensureDetails(sid: string, dbref: string): void {
+  const e = getEntry(sid, dbref);
+  if (!e || (!e.data && !e.loading && !e.error)) void loadDetails(sid, dbref);
+}
+
+const worldKeyOf = (sid: string): string => {
+  const s = useSessions.getState().sessions[sid];
+  return s ? worldKey(s) : sid;
+};
+
+export function isOverviewCollapsed(sid: string): boolean {
+  const k = worldKeyOf(sid);
+  return useDetails.getState().collapsed[k] ?? loadOverviewCollapsed(k);
+}
+
+export function setOverviewCollapsed(sid: string, v: boolean): void {
+  const k = worldKeyOf(sid);
+  saveOverviewCollapsed(k, v);
+  useDetails.setState((s) => ({ collapsed: { ...s.collapsed, [k]: v } }));
+}
+
+let jumpTick = 0;
+/** Show the details view of an object at one section; `add` also starts the add flow there. */
+export function jumpToSection(
+  sid: string,
+  dbref: string,
+  section: 'flags' | 'powers' | 'locks',
+  add = false,
+): void {
+  showDetails(sid, dbref);
+  useDetails.setState({ jump: { sid, dbref, section, add, tick: ++jumpTick } });
 }

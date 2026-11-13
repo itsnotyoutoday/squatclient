@@ -167,6 +167,8 @@ Decisions worth knowing:
   dedicated "Close Tab" accelerator.
 - Cmd-click on macOS also adds a CodeMirror cursor; go to definition removes it again with `goTo`.
 
+**Overview header.** `components/editor/OverviewHeader.tsx`: an always-visible `region` "Object overview" above the list and editor (identity line; Flags/Powers/Locks chips with counts, +N more, jump and `+` add flows; read-only badge; skeleton/error+Retry; collapse remembered per world in `squat.editor.overview.v1.<worldKey>`). It shares the details fetch (`detailsStore`) with the Object details view.
+
 **Object details (phase 3, built).** The first entry of the attribute list, "Object details", shows identity, location,
 relations, flags, powers, locks (with lock flags, a lock editor with a Test button), warnings (+ `@wcheck`), contents,
 exits and a raw `examine` tab; a Move/Set home/Set destination dialog (search, nearby, recently used, look-around without

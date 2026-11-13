@@ -39,7 +39,9 @@ export function Section({
   return (
     <section className="ew-sec" aria-labelledby={id}>
       <header className="ew-sechead">
-        <h3 id={id}>{title}</h3>
+        <h3 id={id} tabIndex={-1}>
+          {title}
+        </h3>
         {actions && <div className="ew-secactions">{actions}</div>}
       </header>
       <div className="ew-secbody">{children}</div>

@@ -17,7 +17,8 @@
     "pretest": "npm run help:build",
     "smoke": "vitest run tests/smoke.test.tsx",
     "gen:functions": "node scripts/gen-mush-functions.mjs",
-    "help:probe": "bash scripts/webkit-probe/run.sh"
+    "help:probe": "bash scripts/webkit-probe/run.sh",
+    "editor:probe": "bash scripts/webkit-probe/editor-run.sh"
   },
   "dependencies": {
     "@codemirror/autocomplete": "6.20.4",

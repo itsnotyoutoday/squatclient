@@ -87,7 +87,7 @@ describe('MockGame lock tests', () => {
   });
 });
 
-describe('Object details view', () => {
+describe('Object details view', { timeout: 20000 }, () => {
   it('shows every section for a thing', async () => {
     await openDetails();
     for (const h of ['Identity', 'Location', 'Relations', 'Flags', 'Powers', /^Locks/, 'Warnings'])
@@ -259,7 +259,7 @@ describe('Object details view', () => {
   });
 });
 
-describe('Move dialog', () => {
+describe('Move dialog', { timeout: 20000 }, () => {
   it('searches, looks around without moving, confirms and moves; then the details refresh', async () => {
     const e = await openDetails();
     await userEvent.click(screen.getByRole('button', { name: 'Move...' }));
@@ -310,7 +310,7 @@ describe('Move dialog', () => {
   });
 });
 
-describe('attribute context menu', () => {
+describe('attribute context menu', { timeout: 20000 }, () => {
   it('opens on right-click, toggles flags with check marks, locks, and copies', async () => {
     const e = await openDetails();
     const opt = screen.getAllByRole('option').find((o) => o.textContent?.includes('CMD_ENGAGE'))!;

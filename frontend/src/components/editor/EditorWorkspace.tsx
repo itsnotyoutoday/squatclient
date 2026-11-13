@@ -23,12 +23,13 @@ import { ObjectTabs } from './ObjectTabs';
 import { AttrList } from './AttrList';
 import { AttrEditor } from './AttrEditor';
 import { DetailsPane } from './DetailsPane';
+import { OverviewHeader } from './OverviewHeader';
 import { PlaceDialog } from './PlaceDialog';
 import { PickDialog } from './PickDialog';
 import { AttrMenu } from './AttrMenu';
 import { AttrActionDialog } from './AttrActionDialog';
 import { LockEditor } from './LockEditor';
-import { openPlaceDialog } from '../../state/detailsStore';
+import { ensureDetails, openPlaceDialog } from '../../state/detailsStore';
 import { CloseConfirm, CompareDialog, ConflictDialog, QuickOpen } from './EditorDialogs';
 import '../../styles/editorworkspace.css';
 
@@ -43,6 +44,10 @@ export default function EditorWorkspace() {
   const announcement = useEditor((s) => s.announcement);
 
   useEffect(() => startPersistence(), []);
+  const activeDbref = obj?.dbref;
+  useEffect(() => {
+    if (sid && activeDbref && state === 'connected') ensureDetails(sid, activeDbref);
+  }, [sid, activeDbref, state]);
   useEffect(() => {
     if (sid && state === 'connected') void restoreWorkspace(sid);
   }, [sid, state]);
@@ -107,6 +112,7 @@ export default function EditorWorkspace() {
       {sid ? (
         <>
           <ObjectTabs sid={sid} />
+          {obj && <OverviewHeader sid={sid} obj={obj} />}
           <div className="ew-body">
             {obj ? (
               <>

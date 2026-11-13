@@ -1238,3 +1238,176 @@
 .ew-chain {
   font-size: 12px;
 }
+
+/* ---- object overview header */
+.ew-overview {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  border-bottom: 1px solid var(--ui-border);
+  background: var(--ui-panel);
+  min-width: 0;
+}
+.ew-ovline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 28px;
+  padding: 2px 8px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.ew-ovgroups {
+  min-height: 26px;
+  border-top: 1px solid var(--ui-border);
+  gap: 14px;
+  background: var(--ui-panel-alt);
+}
+.ew-ovname {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 40%;
+}
+.ew-ovbadge {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  line-height: 16px;
+  padding: 0 7px;
+  border: 1px solid var(--ui-border);
+  border-radius: 9px;
+  color: var(--ui-text-dim);
+}
+.ew-ovro {
+  color: var(--ui-warn);
+  border-color: var(--ui-warn);
+}
+.ew-ovref {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 12.5px;
+}
+.ew-ovbtn {
+  flex: none;
+  padding: 0 7px;
+  min-width: 24px;
+}
+.ew-ovwarn {
+  color: var(--ui-warn);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ew-ovgroup {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  flex: 0 1 auto;
+}
+.ew-ovlabel {
+  flex: none;
+  border: 0;
+  background: none;
+  padding: 0 2px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ui-text-dim);
+}
+.ew-ovlabel:hover,
+.ew-ovlabel:focus-visible {
+  color: var(--ui-text);
+}
+.ew-ovcount {
+  color: var(--ui-text);
+}
+.ew-ovplus {
+  flex: none;
+  border: 1px solid var(--ui-border);
+  border-radius: 9px;
+  background: none;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  line-height: 14px;
+  color: var(--ui-text-dim);
+}
+.ew-ovplus:hover:not(:disabled),
+.ew-ovplus:focus-visible {
+  color: var(--ui-text);
+  border-color: var(--ui-accent);
+}
+.ew-ovchips {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+  overflow: hidden;
+}
+.ew-ovchip,
+.ew-ovmore {
+  flex: none;
+  font-size: 11.5px;
+  line-height: 16px;
+  padding: 0 7px;
+  border: 1px solid var(--ui-border);
+  border-radius: 9px;
+  background: var(--ui-panel);
+  white-space: nowrap;
+}
+.ew-ovmore {
+  color: var(--ui-text-dim);
+  background: none;
+}
+.ew-ovchip:hover,
+.ew-ovchip:focus-visible,
+.ew-ovmore:hover,
+.ew-ovmore:focus-visible {
+  border-color: var(--ui-accent);
+}
+.ew-ovopen {
+  flex-wrap: wrap;
+}
+.ew-ovopen .ew-ovchips {
+  flex-wrap: wrap;
+}
+.ew-ovnone {
+  font-size: 12px;
+}
+.ew-skel {
+  display: inline-block;
+  height: 12px;
+  width: 90px;
+  border-radius: 6px;
+  background: var(--ui-border);
+  opacity: 0.6;
+  animation: ew-pulse 1.2s ease-in-out infinite;
+}
+.ew-skel-wide {
+  width: 180px;
+}
+@keyframes ew-pulse {
+  50% {
+    opacity: 0.25;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ew-skel {
+    animation: none;
+  }
+}
+@media (max-width: 760px) {
+  .ew-ovgroups {
+    flex-wrap: wrap;
+    row-gap: 2px;
+    gap: 4px 10px;
+  }
+  .ew-ovline {
+    overflow: hidden;
+  }
+}

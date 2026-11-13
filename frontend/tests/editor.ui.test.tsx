@@ -611,7 +611,8 @@ describe('failure modes', () => {
       await screen.findByText(/not allowed to see #15/, undefined, { timeout: 3000 }),
     ).toBeInTheDocument();
     engine.game.latencyMs = 0;
-    expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
+    // the tab banner and the overview header both offer Retry
+    expect(screen.getAllByRole('button', { name: 'Retry' }).length).toBeGreaterThan(0);
   });
 
   it('a load failure of an attribute is shown with Retry', async () => {

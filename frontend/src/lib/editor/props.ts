@@ -166,3 +166,46 @@ export function pushRecent(worldKey: string, p: EditPlace): EditPlace[] {
   }
   return next;
 }
+
+// ---------------------------------------------------------------- overview header
+
+/** Shorten a lock key for a chip: keeps the start, adds an ellipsis. */
+export function shortExpr(x: string, max = 26): string {
+  const t = x.replace(/\s+/g, ' ').trim();
+  return t.length <= max ? t : `${t.slice(0, Math.max(1, max - 1))}\u2026`;
+}
+
+/** How many chips fit a character budget (at least one when there are any); the rest become "+N more". */
+export function fitChips<T>(
+  items: T[],
+  text: (t: T) => string,
+  budget: number,
+): { shown: T[]; more: number } {
+  const shown: T[] = [];
+  let used = 0;
+  for (const it of items) {
+    const w = text(it).length + 3;
+    if (shown.length > 0 && used + w > budget) break;
+    shown.push(it);
+    used += w;
+  }
+  return { shown, more: items.length - shown.length };
+}
+
+export const overviewKey = (worldKey: string): string => `squat.editor.overview.v1.${worldKey}`;
+
+export function loadOverviewCollapsed(worldKey: string): boolean {
+  try {
+    return localStorage.getItem(overviewKey(worldKey)) === '1';
+  } catch {
+    return false;
+  }
+}
+
+export function saveOverviewCollapsed(worldKey: string, collapsed: boolean): void {
+  try {
+    localStorage.setItem(overviewKey(worldKey), collapsed ? '1' : '0');
+  } catch {
+    /* private mode: not remembered */
+  }
+}

@@ -78,6 +78,28 @@ export function DetailsPane({ sid, obj }: { sid: string; obj: OpenObject }) {
     void openTarget(sid, dbref);
   };
   const anyBusy = Object.keys(busy).length > 0;
+  const jump = useDetails((s) => s.jump);
+  useEffect(() => {
+    if (!jump || jump.sid !== sid || jump.dbref !== obj.dbref) return;
+    if (tab !== 'overview') {
+      setTab('overview');
+      return;
+    }
+    if (!d) return;
+    const n = obj.dbref.slice(1);
+    const head = document.getElementById(`ew-h-${jump.section}-${n}`);
+    const sec = head?.closest('section');
+    sec?.scrollIntoView?.({ block: 'start' });
+    if (jump.add && jump.section === 'locks') {
+      openLockEditor(sid, obj.dbref, '');
+    } else if (jump.add) {
+      sec?.querySelector<HTMLInputElement>('input[role="combobox"]')?.focus();
+    } else {
+      (head as HTMLElement | null)?.focus();
+    }
+    useDetails.setState({ jump: null });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jump, d, tab]);
 
   return (
     <section

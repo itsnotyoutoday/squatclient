@@ -13,3 +13,12 @@ It builds the front end with `vite build` into a temporary folder, serves it on 
 that the sidebar has many tree items inside its rectangle, the page text is non-empty and inside its pane, the content
 does not overlap the sidebar or leave the window, and nothing overflows horizontally. Exit code 0 means all topics
 passed.
+
+## Object Editor probe
+
+`npm run editor:probe` (same requirements; prints "skipped" off macOS) opens the Object Editor in mock mode with real
+key and mouse events (`NSEvent` through `NSApp.sendEvent`): types `/edit #12`, clicks **Object details**, checks that
+every section is inside the scroll pane with non-zero size and no horizontal overflow at 1000, 900 and 600 px, opens the
+**Move** dialog (search, results and the Nearby list inside the dialog, confirmation sentence, 600 px, Escape), opens the
+lock editor and presses **Test**, then right-clicks an attribute and checks that the context menu appears inside the window,
+is not covered, and that an item can be clicked. Exit code 0 = all passed.

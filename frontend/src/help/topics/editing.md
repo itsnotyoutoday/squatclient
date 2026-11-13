@@ -57,6 +57,10 @@ Long softcode is easier to read indented. **Expand** and **Collapse** (also Cmd-
 
 **Wrap** wraps long lines. **Compare** shows the game's current value next to yours.
 
+## Object overview header
+
+Across the top of the editor, above whatever you are editing, a compact header always shows the selected object: its name, number, type, owner and location (click the owner or location to open it), then its **Flags**, **Powers** and **Locks** as small chips with their counts (a lock chip reads like `Basic: =#45 | flag^WIZARD`; hover for the full key and the lock's flags). Long groups end in **+N more**, which expands them. Click a chip or a group name to jump to that section of Object details; the **+** next to a group starts adding one. A padlock badge marks an object you cannot change. **Refresh** reads the object again, and the arrow collapses the header to one line (remembered for each world). The header shares one quiet read with Object details and updates after any change you make.
+
 ## Object details
 
 The first entry of the left list, **Object details**, shows everything about the object itself instead of one attribute (Cmd-Shift-D). The **Overview** tab has these sections:
