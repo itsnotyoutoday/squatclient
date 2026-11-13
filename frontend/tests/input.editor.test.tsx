@@ -37,7 +37,7 @@ async function boot(): Promise<MockEngine> {
 const sent = (e: MockEngine): string[] => e.sent.map((s) => s.text);
 const fg = (): string => useSessions.getState().fg ?? '';
 const enterEditor = async (): Promise<HTMLElement> => {
-  await userEvent.click(screen.getByRole('button', { name: 'Editor mode' }));
+  await userEvent.click(screen.getByRole('button', { name: 'Multi-line mode' }));
   await waitEditor();
   return content();
 };

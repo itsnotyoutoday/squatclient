@@ -1,7 +1,7 @@
 ---
 title: Using the client
 order: 4
-keywords: editor mode, upload, /upload, drag and drop, expand, collapse, brackets, code editor, resize, history browser, softcode, output, scrollback, search, pause, more, input, history, tabs, status bar, themes, colours, colors, 256, truecolor, utf-8, links, find
+keywords: multi-line mode, upload, /upload, drag and drop, expand, collapse, brackets, code editor, resize, history browser, softcode, output, scrollback, search, pause, more, input, history, tabs, status bar, themes, colours, colors, 256, truecolor, utf-8, links, find
 aliases: output, scrollback, input, history, tabs, status, statusbar, themes, theme, search, pause, more
 ---
 
@@ -57,7 +57,7 @@ Press Ctrl-R (or Cmd-Shift-H), or click **History** next to the input, to search
 
 Drag the thin bar above the input upwards to make the command window taller (up to about 70% of the window); the output shrinks to match. Focus the bar and use Up and Down (PageUp and PageDown for five lines, Home for the tallest, End for the smallest). Double-click it to reset. The height is remembered.
 
-## Editor mode
+## Multi-line mode
 
 For big pieces of code press **Editor** (or Cmd/Ctrl-Shift-E): the input becomes a large **code editor** made for MUSH softcode. It loads the first time you open it.
 
@@ -92,7 +92,7 @@ When the game turns off echo (for a password prompt) the input becomes a masked 
 `/upload` sends a text file to the game, for example a softcode installer. Type `/upload` to choose the file in the system file dialog (it starts in the folder you used last; text and code files such as `.txt` `.mush` `.mu` `.tf` `.lua` `.md` are listed first, All Files is one click away), or `/upload ~/code/install.mush` to give the path yourself (`~/` is your home folder; use quotes if the path has spaces). You can also **drag a text file onto the window**. Nothing is sent yet: a dialog opens first.
 
 - The dialog shows the file name, size, line count and a scrollable preview with line numbers (a second tab shows exactly what will be sent). Large files stay responsive.
-- It follows the same rules as editor mode: _join continuation lines_ and _skip blank and @@ comment lines_ start from your settings, and you can change them for this upload. The number of commands that will be sent is shown. _Delay per line_ starts from your setting, or 50 ms when that is 0, so the game is not flooded; an optional _prefix_ is put in front of every command.
+- It follows the same rules as multi-line mode: _join continuation lines_ and _skip blank and @@ comment lines_ start from your settings, and you can change them for this upload. The number of commands that will be sent is shown. _Delay per line_ starts from your setting, or 50 ms when that is 0, so the game is not flooded; an optional _prefix_ is put in front of every command.
 - The commands go to the world shown as **Send to** (the one in front), one line at a time. If the code has unbalanced brackets the first problems are listed and the button reads **Send anyway**.
 - While it runs you see a progress bar, the current line and the elapsed time, with **Pause**, **Resume** and **Cancel**. At the end a summary says how many commands were sent and skipped, or where it was cancelled. Closing the dialog while sending cancels the rest.
 - Command history gets one entry, `/upload install.mush`, not the whole file.

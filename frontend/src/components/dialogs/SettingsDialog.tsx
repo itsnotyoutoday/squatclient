@@ -187,7 +187,7 @@ export function SettingsDialog() {
         </div>
         <Field
           label="Delay between block lines (ms, 0 = none)"
-          hint="Editor mode: paces big blocks so they do not flood the game"
+          hint="Multi-line mode: paces big blocks so they do not flood the game"
         >
           <input
             type="number"

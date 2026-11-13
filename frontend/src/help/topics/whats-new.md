@@ -10,7 +10,7 @@ Recent additions you can see and use.
 ## Command window
 
 - **Resizable command window.** Drag the bar above the input to make it taller, up to about 70% of the window. Double-click the bar to reset it. See [Using the client](help:using#resizing-the-command-window).
-- **Editor mode.** A larger editor for writing several lines at once. Press the **Editor** button or Cmd/Ctrl-Shift-E. See [Using the client](help:using#editor-mode).
+- **Multi-line mode.** A larger editor for writing several lines at once. Press the **Multi-line** button or Cmd/Ctrl-Shift-E. See [Using the client](help:using#multi-line-mode).
 - **Command history browser.** Press Ctrl-R (or Cmd-Shift-H) to search everything you have sent to a world, with regular expression and case options. See [Using the client](help:using#history-browser).
 - **Command history size.** Choose how many entries each world keeps in [Settings](help:settings).
 

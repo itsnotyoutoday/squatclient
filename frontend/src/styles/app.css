@@ -759,12 +759,15 @@ body.resizing {
 }
 .inputline .ibtns {
   display: flex;
+  flex-direction: column; /* History above Multi-line */
+  align-items: stretch;
   gap: 4px;
   align-self: flex-start;
 }
 .inputline .ibtns button {
   padding: 2px 8px;
   font-size: 12px;
+  white-space: nowrap;
 }
 .inputline.editor {
   flex-direction: column;

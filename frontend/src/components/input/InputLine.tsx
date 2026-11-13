@@ -525,10 +525,10 @@ export function InputLine({ sessionId, remoteEcho, disabled, keymap = DEFAULT_KE
             type="button"
             onClick={() => setEditor(true)}
             aria-pressed={false}
-            title={`Editor mode for big pieces of code (${modLabel()}+Shift+E)`}
-            aria-label="Editor mode"
+            title={`Multi-line mode for big pieces of code (${modLabel()}+Shift+E)`}
+            aria-label="Multi-line mode"
           >
-            Editor
+            Multi-line
           </button>
         </span>
       </div>
