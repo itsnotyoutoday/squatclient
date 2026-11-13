@@ -121,6 +121,39 @@ export interface Settings {
   pauseOnScroll: boolean;
   defaultEncoding: 'utf-8' | 'latin1';
   truecolor: true;
+  /** Height in px of the single-line input area; 0 = automatic (one line, grows to 8). */
+  inputHeight: number;
+  /** Height in px of the editor-mode area. */
+  editorHeight: number;
+  /** Editor mode: lines starting with whitespace continue the previous line. */
+  softcodeJoin: boolean;
+  /** Editor mode: drop blank lines and `@@` comment-only lines. */
+  stripBlankLines: boolean;
+  /** Editor mode: pause between the lines of a block (ms; 0 = send at once). */
+  sendLineDelayMs: number;
+  /** History entries kept per world. */
+  historyMax: number;
+}
+
+/** One remembered input. A multi-line editor block is ONE entry (text contains newlines). */
+export interface HistoryEntry {
+  id: number;
+  /** unix milliseconds */
+  ts: number;
+  text: string;
+}
+
+export interface HistoryQueryOpts {
+  regex?: boolean;
+  caseSensitive?: boolean;
+  limit?: number;
+  offset?: number;
+}
+
+/** A newest-first window onto the matching history entries; `total` counts all matches. */
+export interface HistoryPage {
+  entries: HistoryEntry[];
+  total: number;
 }
 
 export type ConnectTarget = { worldId: string } | { host: string; port: number; tls: boolean };
@@ -211,6 +244,12 @@ export interface EngineAPI {
     opts: { regex?: boolean; caseSensitive?: boolean },
   ): Promise<SearchHit[]>;
   ack(sessionId: string, seq: number): Promise<void>;
+  /** Remember one input (a multi-line block is one entry). Never stores secret lines or text typed while echo is off. */
+  recordHistory(sessionId: string, text: string): Promise<void>;
+  /** The session's WORLD history, newest first; rejects with the reason when `regex` is invalid. */
+  history(sessionId: string, query: string, opts: HistoryQueryOpts): Promise<HistoryPage>;
+  deleteHistory(sessionId: string, id: number): Promise<void>;
+  clearHistory(sessionId: string): Promise<void>;
   on<E extends EngineEventName>(event: E, cb: (payload: EngineEvents[E]) => void): () => void;
 }
 
@@ -230,4 +269,10 @@ export const DEFAULT_SETTINGS: Settings = {
   pauseOnScroll: true,
   defaultEncoding: 'utf-8',
   truecolor: true,
+  inputHeight: 0,
+  editorHeight: 240,
+  softcodeJoin: true,
+  stripBlankLines: true,
+  sendLineDelayMs: 0,
+  historyMax: 20000,
 };

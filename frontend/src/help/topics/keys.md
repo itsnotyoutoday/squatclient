@@ -36,6 +36,45 @@ These are the default bindings of the input line. They follow Emacs and TinyFugu
 
 Up, Down, Ctrl-P, Ctrl-N and Shift-Enter are disabled while a password is being typed.
 
+## Editor mode
+
+Toggle with Cmd-Shift-E or Ctrl-Shift-E (or the Editor button). In the editor the Emacs keys above are not used; the browser's normal text editing applies.
+
+| Key                               | Action                                        |
+| --------------------------------- | --------------------------------------------- |
+| Cmd-Shift-E, Ctrl-Shift-E         | switch editor mode on or off                  |
+| Enter                             | insert a new line                             |
+| Cmd-Enter, Ctrl-Enter             | send the whole buffer                         |
+| Cmd-Shift-Enter, Ctrl-Shift-Enter | send the selection or the current line        |
+| Tab                               | insert two spaces (indent the selected lines) |
+| Shift-Tab                         | outdent                                       |
+| Escape                            | back to the single line (the text is kept)    |
+
+## Resizing the command window
+
+Focus the bar above the input (Tab to it), then:
+
+| Key              | Action                      |
+| ---------------- | --------------------------- |
+| Up, Down         | one line taller, shorter    |
+| PageUp, PageDown | five lines taller, shorter  |
+| Home, End        | tallest, smallest           |
+| double-click     | reset to the default height |
+
+## History browser
+
+| Key                 | Action                                                         |
+| ------------------- | -------------------------------------------------------------- |
+| Ctrl-R, Cmd-Shift-H | open the history browser                                       |
+| Up, Down            | select the previous, next entry                                |
+| PageUp, PageDown    | move eight entries                                             |
+| Ctrl-Home, Ctrl-End | newest, oldest entry                                           |
+| Enter               | load the entry into the input (editor if it has several lines) |
+| Shift-Enter         | send the entry now                                             |
+| Cmd-C, Ctrl-C       | copy the entry (when no text is selected)                      |
+| Delete              | remove the entry                                               |
+| Escape              | close                                                          |
+
 ## Windows and sessions
 
 | Key                      | Action                                        |

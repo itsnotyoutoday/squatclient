@@ -1,7 +1,7 @@
 ---
 title: Using the client
 order: 4
-keywords: output, scrollback, search, pause, more, input, history, tabs, status bar, themes, colours, colors, 256, truecolor, utf-8, links, find
+keywords: editor mode, resize, history browser, softcode, output, scrollback, search, pause, more, input, history, tabs, status bar, themes, colours, colors, 256, truecolor, utf-8, links, find
 aliases: output, scrollback, input, history, tabs, status, statusbar, themes, theme, search, pause, more
 ---
 
@@ -37,10 +37,42 @@ The input line understands the Emacs editing keys TinyFugue users know. The full
 - Shift-Enter inserts a new line so you can write several lines before sending.
 - Pasting several lines sends them one by one.
 - Escape clears the line.
+- Ctrl-R opens the history browser; Cmd/Ctrl-Shift-E switches to the editor.
 
 ### History
 
 Up and Down (or Ctrl-P and Ctrl-N) walk through lines you sent earlier. If you typed something first, only lines starting with it are offered, so typing `/def` and pressing Up finds your last `/def` command.
+
+History is kept **per world**, on disk, so it survives restarts and is shared by every tab of the same world. A multi-line block is one entry. Passwords and anything typed while the game has echo off are never stored. How many entries are kept is the _Command history size_ setting (default 20,000; see [Settings](help:settings)).
+
+### History browser
+
+Press Ctrl-R (or Cmd-Shift-H), or click **History** next to the input, to search everything you have sent to this world.
+
+- Type to filter at once. **.\*** switches to regular expressions and **Aa** to case-sensitive matching; matches are highlighted.
+- Up and Down select (PageUp, PageDown, Ctrl-Home, Ctrl-End jump), Enter puts the entry into the input (into the editor if it has several lines), Shift-Enter sends it now, Cmd/Ctrl-C copies it, Delete removes it, Escape closes.
+- Click selects, double-click loads. **Clear history** asks for confirmation first.
+
+## Resizing the command window
+
+Drag the thin bar above the input upwards to make the command window taller (up to about 70% of the window); the output shrinks to match. Focus the bar and use Up and Down (PageUp and PageDown for five lines, Home for the tallest, End for the smallest). Double-click it to reset. The height is remembered.
+
+## Editor mode
+
+For big pieces of code press **Editor** (or Cmd/Ctrl-Shift-E): the input becomes a large monospace editor.
+
+- Enter inserts a new line; **Cmd/Ctrl-Enter sends the whole buffer**; **Cmd/Ctrl-Shift-Enter** (or the _Send line / selection_ button) sends only the selection, or the line under the cursor together with the indented lines that continue it.
+- Tab inserts two spaces (with a selection it indents every selected line); Shift-Tab outdents. Line numbers, the line and column, and _Wrap_ (off by default) are in the toolbar.
+- Escape returns to the single line and keeps your text. Unsent text is kept as a **draft** for the world, across tab switches and restarts.
+- Pasting several lines inserts them into the editor instead of sending them.
+
+### Sending blocks
+
+Every resulting line is sent to the game separately, in order:
+
+- **Indented lines continue the previous line** (setting _Editor: join indented lines_, on by default). A line starting with a space or tab has its leading whitespace removed and is appended directly to the line before it, with no space added, so indent freely for readability: `&FN obj=[add(1,` followed by `  2)]` is sent as `&FN obj=[add(1,2)]`. Add a space yourself where the code needs one.
+- **Blank lines and lines holding only an `@@` comment are dropped** (setting _Editor: drop blank and @@ comment lines_, on by default), also between a line and its continuation. Trailing spaces are always removed.
+- With _Delay between block lines_ above 0 the lines go out one per interval so a big block does not flood the game; a progress bar and a **Cancel** button show while it runs (lines already sent cannot be taken back).
 
 ### Passwords
 

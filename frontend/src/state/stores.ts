@@ -101,7 +101,7 @@ export const useSettings = create<SettingsState>((set) => ({
 
 // ---------------------------------------------------------------- ui
 
-export type DialogId = 'worlds' | 'quick' | 'settings' | 'squatters' | 'help' | 'away' | null;
+export type DialogId = 'worlds' | 'quick' | 'settings' | 'squatters' | 'help' | 'away' | 'history' | null;
 
 export interface Toast {
   id: number;

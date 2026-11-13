@@ -20,7 +20,11 @@ interface WorldConfig { id: string; name: string; group?: string; host: string; 
 interface SquatterConfig { id: string; name: string; host: string; port: number; fingerprint?: string; paired: boolean }
 interface Settings { theme: string; fontFamily: string; fontSize: number; scrollbackLines: number; timestamps: boolean;
   boldAsBright: boolean; minContrast: number /*0=off*/; linkify: boolean; notifications: boolean; screenReader: boolean;
-  pauseOnScroll: boolean; defaultEncoding: "utf-8"|"latin1"; truecolor: true }
+  pauseOnScroll: boolean; defaultEncoding: "utf-8"|"latin1"; truecolor: true;
+  inputHeight: number /*px, 0=auto*/; editorHeight: number /*px*/; softcodeJoin: boolean; stripBlankLines: boolean;
+  sendLineDelayMs: number /*0..10000*/; historyMax: number /*entries per world, 100..1000000*/ }
+interface HistoryEntry { id: number; ts: number /*unix ms*/; text: string /*multi-line block = one entry*/ }
+interface HistoryPage { entries: HistoryEntry[] /*newest first*/; total: number /*all matches*/ }
 
 interface EngineAPI {
   // worlds + settings
@@ -41,6 +45,10 @@ interface EngineAPI {
   scrollback(sessionId: string, opts: { beforeSeq?: number; limit: number }): Promise<Line[]>;
   search(sessionId: string, query: string, opts: { regex?: boolean; caseSensitive?: boolean }): Promise<{ seq: number; preview: string }[]>;
   ack(sessionId: string, seq: number): Promise<void>;
+  recordHistory(sessionId: string, text: string): Promise<void>;
+  history(sessionId: string, query: string, opts: { regex?: boolean; caseSensitive?: boolean; limit?: number; offset?: number }): Promise<HistoryPage>;
+  deleteHistory(sessionId: string, id: number): Promise<void>;
+  clearHistory(sessionId: string): Promise<void>;
   // events (engine -> UI). Returns an unsubscribe function.
   on<E extends keyof EngineEvents>(event: E, cb: (payload: EngineEvents[E]) => void): () => void;
 }

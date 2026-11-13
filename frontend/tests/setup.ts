@@ -7,3 +7,10 @@ if (!('ResizeObserver' in globalThis)) {
     disconnect(): void {}
   };
 }
+
+// jsdom has no scrolling APIs; the virtualised lists call them.
+for (const m of ['scrollBy', 'scrollTo'] as const) {
+  if (typeof Element.prototype[m] !== 'function') {
+    (Element.prototype as unknown as Record<string, unknown>)[m] = function () {};
+  }
+}

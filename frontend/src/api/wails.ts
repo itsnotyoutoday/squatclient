@@ -1,4 +1,13 @@
-import type { ConnectTarget, EngineAPI, EngineEventName, EngineEvents, Settings, WorldConfig } from './types';
+import type {
+  ConnectTarget,
+  EngineAPI,
+  EngineEventName,
+  EngineEvents,
+  HistoryPage,
+  HistoryQueryOpts,
+  Settings,
+  WorldConfig,
+} from './types';
 
 interface WailsApp {
   [method: string]: ((...args: unknown[]) => Promise<unknown>) | undefined;
@@ -64,6 +73,14 @@ export class WailsEngine implements EngineAPI {
   search = (id: string, q: string, opts: { regex?: boolean; caseSensitive?: boolean }) =>
     list(call<Awaited<ReturnType<EngineAPI['search']>> | null>('Search', id, q, opts));
   ack = (id: string, seq: number) => call<void>('Ack', id, seq);
+  recordHistory = (id: string, text: string) => call<void>('RecordHistory', id, text);
+  history = (id: string, q: string, opts: HistoryQueryOpts) =>
+    call<HistoryPage | null>('History', id, q, opts).then((p) => ({
+      entries: p?.entries ?? [],
+      total: p?.total ?? 0,
+    }));
+  deleteHistory = (id: string, entryId: number) => call<void>('DeleteHistory', id, entryId);
+  clearHistory = (id: string) => call<void>('ClearHistory', id);
 
   on<E extends EngineEventName>(event: E, cb: (payload: EngineEvents[E]) => void): () => void {
     const rt = w().runtime;

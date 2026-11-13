@@ -17,13 +17,13 @@ Anything you type that starts with `/` is a command. Everything else is sent to 
 
 ## Handled by the engine
 
-| Command               | Meaning                                                              |
-| --------------------- | -------------------------------------------------------------------- |
-| `/lua code`           | run a line of Lua; see [Lua scripting](help:lua)                     |
-| `/load file`          | load a `.tf` script, or a `.lua` plugin when the name ends in `.lua` |
-| `/reload`             | reload Lua plugins and the startup file                              |
-| `/suspend`, `/detach` | detach squatter-held sessions; see [Squatter](help:squatter)         |
-| `/secret text`        | send text without recording it anywhere (never echoed, stored or logged by a squatter); see [Passwords](help:using#passwords) |
+| Command               | Meaning                                                                                                                                                              |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/lua code`           | run a line of Lua; see [Lua scripting](help:lua)                                                                                                                     |
+| `/load file`          | load a `.tf` script, or a `.lua` plugin when the name ends in `.lua`                                                                                                 |
+| `/reload`             | reload Lua plugins and the startup file                                                                                                                              |
+| `/suspend`, `/detach` | detach squatter-held sessions; see [Squatter](help:squatter)                                                                                                         |
+| `/secret text`        | send text without recording it anywhere (never echoed, stored or logged by a squatter); see [Passwords](help:using#passwords)                                        |
 | `/colortest`          | print every colour mode (16 colours, the full xterm-256 grid, truecolor gradients, text styles, UTF-8) to compare with a terminal; see [Colours](help:using#colours) |
 
 ## TinyFugue-style commands

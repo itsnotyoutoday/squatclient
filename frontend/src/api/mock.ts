@@ -4,6 +4,9 @@ import type {
   EngineAPI,
   EngineEventName,
   EngineEvents,
+  HistoryEntry,
+  HistoryPage,
+  HistoryQueryOpts,
   Line,
   LineKind,
   SearchHit,
@@ -30,6 +33,14 @@ export const MOCK_FINGERPRINT = 'SHA256:3f:9a:1c:de:ad:be:ef:00:11:22:33:44:55:6
 
 type Listener = (p: never) => void;
 
+/** Same rule as engine.MaskSecret: connect/create <name> <password> and @password lines. */
+const SECRET_RES = [
+  /^\s*(?:co|con|conn|conne|connec|connect|cr|cre|crea|creat|create)\s+(?:"[^"]*"|\S+)\s+\S/i,
+  /^\s*@(?:pass|password|newpass|newpassword)\s+\S/i,
+];
+const hasSecret = (text: string): boolean =>
+  text.split('\n').some((l) => SECRET_RES.some((re) => re.test(l.replace(/\r$/, ''))));
+
 interface SessionData {
   info: SessionInfo;
   lines: Line[];
@@ -52,6 +63,8 @@ export class MockEngine implements EngineAPI {
   private fg = '';
   /** Every input sent, for tests and demos. */
   readonly sent: { session: string; text: string }[] = [];
+  /** Per-world command history, oldest first (key: world id, else host:port). */
+  private histories = new Map<string, { list: HistoryEntry[]; next: number }>();
 
   constructor(opts: MockOptions = {}) {
     this.opts = {
@@ -460,6 +473,54 @@ export class MockEngine implements EngineAPI {
     return sd.lines
       .filter((l) => test(plain(l.spans)))
       .map((l) => ({ seq: l.seq, preview: plain(l.spans).slice(0, 200) }));
+  }
+  private histKey(sessionId: string): { key: string; sd: SessionData } {
+    const sd = this.must(sessionId);
+    const i = sd.info;
+    return { key: i.worldId ? `w-${i.worldId}` : `h-${i.host.toLowerCase()}:${i.port}`, sd };
+  }
+  private hist(key: string): { list: HistoryEntry[]; next: number } {
+    let h = this.histories.get(key);
+    if (!h) this.histories.set(key, (h = { list: [], next: 1 }));
+    return h;
+  }
+  async recordHistory(sessionId: string, text: string): Promise<void> {
+    const { key, sd } = this.histKey(sessionId);
+    if (sd.info.remoteEcho || hasSecret(text) || !text.trim()) return;
+    const h = this.hist(key);
+    if (h.list.at(-1)?.text === text) return;
+    h.list.push({ id: h.next++, ts: Date.now(), text });
+    const max = Math.min(1_000_000, Math.max(100, this.settings.historyMax || 100));
+    if (h.list.length > max) h.list.splice(0, h.list.length - max);
+  }
+  async history(sessionId: string, query: string, opts: HistoryQueryOpts): Promise<HistoryPage> {
+    const { key } = this.histKey(sessionId);
+    let test: (s: string) => boolean = () => true;
+    if (query && opts.regex) {
+      let re: RegExp;
+      try {
+        re = new RegExp(query, opts.caseSensitive ? '' : 'i');
+      } catch (e) {
+        throw new Error(`invalid regular expression: ${e instanceof Error ? e.message : String(e)}`);
+      }
+      test = (s) => re.test(s);
+    } else if (query) {
+      const q = opts.caseSensitive ? query : query.toLowerCase();
+      test = (s) => (opts.caseSensitive ? s : s.toLowerCase()).includes(q);
+    }
+    const all = this.hist(key)
+      .list.filter((e) => test(e.text))
+      .reverse();
+    const off = Math.max(0, opts.offset ?? 0);
+    const lim = opts.limit && opts.limit > 0 ? opts.limit : 50000;
+    return { entries: all.slice(off, off + lim).map((e) => ({ ...e })), total: all.length };
+  }
+  async deleteHistory(sessionId: string, id: number): Promise<void> {
+    const h = this.hist(this.histKey(sessionId).key);
+    h.list = h.list.filter((e) => e.id !== id);
+  }
+  async clearHistory(sessionId: string): Promise<void> {
+    this.hist(this.histKey(sessionId).key).list = [];
   }
   async ack(sessionId: string, seq: number): Promise<void> {
     const sd = this.must(sessionId);

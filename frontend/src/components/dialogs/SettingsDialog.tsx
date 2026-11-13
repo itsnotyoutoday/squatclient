@@ -1,6 +1,7 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
-import { useSettings, useUi, setBufferCap } from '../../state/stores';
+import { useSessions, useSettings, useUi, setBufferCap } from '../../state/stores';
+import { seedHistory } from '../../state/history';
 import type { Settings } from '../../api/types';
 import { DEFAULT_FONT } from '../../api/types';
 import { allThemes, parseThemeJson, registerTheme } from '../../themes';
@@ -12,6 +13,37 @@ export function SettingsDialog() {
   const [err, setErr] = useState('');
   const [, force] = useState(0);
   const file = useRef<HTMLInputElement>(null);
+  const fg = useSessions((s) => s.fg);
+  const [stored, setStored] = useState<number | null>(null);
+  const [confirmClear, setConfirmClear] = useState(false);
+
+  // how many commands the foreground world has stored (refreshed when the size setting changes)
+  useEffect(() => {
+    if (!engine || !fg) {
+      setStored(null);
+      return;
+    }
+    let live = true;
+    void engine
+      .history(fg, '', { limit: 1 })
+      .then((p) => live && setStored(p.total))
+      .catch(() => live && setStored(null));
+    return () => {
+      live = false;
+    };
+  }, [engine, fg, settings.historyMax]);
+
+  const clearHistory = (): void => {
+    if (!engine || !fg) return;
+    void engine
+      .clearHistory(fg)
+      .then(() => {
+        setStored(0);
+        setConfirmClear(false);
+        void seedHistory(engine, fg);
+      })
+      .catch((e: unknown) => setErr(String(e)));
+  };
 
   // Settings apply live (instant theme/font switching) and persist through the engine.
   const update = (patch: Partial<Settings>): void => {
@@ -22,7 +54,11 @@ export function SettingsDialog() {
   };
 
   const num =
-    (k: 'fontSize' | 'scrollbackLines' | 'minContrast', min: number, max: number) =>
+    (
+      k: 'fontSize' | 'scrollbackLines' | 'minContrast' | 'sendLineDelayMs' | 'historyMax',
+      min: number,
+      max: number,
+    ) =>
     (e: ChangeEvent<HTMLInputElement>) => {
       const v = Number(e.target.value);
       if (Number.isFinite(v)) update({ [k]: Math.min(max, Math.max(min, v)) });
@@ -113,7 +149,62 @@ export function SettingsDialog() {
             <option value="latin1">Latin-1</option>
           </select>
         </Field>
+        <Field
+          label="Command history size (entries per world)"
+          hint="Stored on disk for each world and shared by all its sessions. Older entries are dropped first; lowering this trims on the next write and at startup."
+        >
+          <input
+            type="number"
+            min={100}
+            max={1000000}
+            step={1000}
+            value={settings.historyMax}
+            onChange={num('historyMax', 100, 1_000_000)}
+          />
+        </Field>
+        <div className="field">
+          <span className="lbl">History of the current world</span>
+          {fg === null || stored === null ? (
+            <span className="hint">Open a session to see its stored entries.</span>
+          ) : confirmClear ? (
+            <span role="alert">
+              Delete all {stored} stored commands?{' '}
+              <button type="button" onClick={() => setConfirmClear(false)}>
+                Cancel
+              </button>{' '}
+              <button type="button" className="danger" onClick={clearHistory}>
+                Clear history
+              </button>
+            </span>
+          ) : (
+            <span>
+              {stored} stored{' '}
+              <button type="button" onClick={() => setConfirmClear(true)} disabled={stored === 0}>
+                Clear history
+              </button>
+            </span>
+          )}
+        </div>
+        <Field
+          label="Delay between block lines (ms, 0 = none)"
+          hint="Editor mode: paces big blocks so they do not flood the game"
+        >
+          <input
+            type="number"
+            min={0}
+            max={10000}
+            step={10}
+            value={settings.sendLineDelayMs}
+            onChange={num('sendLineDelayMs', 0, 10000)}
+          />
+        </Field>
         <div className="checks">
+          {check(
+            'softcodeJoin',
+            'Editor: join indented lines to the previous line',
+            '(softcode continuation)',
+          )}
+          {check('stripBlankLines', 'Editor: drop blank and @@ comment lines')}
           {check('timestamps', 'Show timestamps')}
           {check('boldAsBright', 'Bold text uses bright colours')}
           {check('linkify', 'Make bare URLs clickable')}

@@ -13,6 +13,7 @@ internal/secrets             go-keyring (MIT) keychain store + in-memory fake; n
 * Game passwords: OS keychain, service `com.itsnotyoutoday.squatclient`, key `world:<id>`. `login.hasPassword` in worlds.json is only a flag. If the keychain fails, connecting to a world that needs a password fails with an error (never an empty password).
 * Device key (ed25519 seed, base64): OS keychain, same service, key `device-key`; created on first pairing; never written to a file. If the keychain is unavailable pairing fails (no plaintext fallback).
 * Squatters: `squatters.json` holds id, name, host, port, pinned TLS fingerprint and the `paired` flag only (never the pairing code or the key).
+* Command history: `history/<worldKey>.ndjson` in the config dir (mode 0600), one `{id, ts, text}` per line; `<worldKey>` is `w-<worldId>` or `h-<host>:<port>` (file-name sanitised, hash suffix when sanitising changed it). Appends are single `O_APPEND` writes; deletes and cap compaction rewrite atomically (temp + fsync + rename); torn or corrupt lines are skipped on load. Capped at `settings.historyMax` (default 20,000, 100..1,000,000), oldest dropped first (in memory at once, on disk when the file exceeds the cap by 25% and at startup). Consecutive duplicates are collapsed; blank text is ignored. Password lines (`engine.MaskSecret`) and anything typed while the server has echo off are never stored: the entry is skipped entirely, not stored masked. Bound methods: `RecordHistory`, `History`, `DeleteHistory`, `ClearHistory`.
 * Scrollback is memory-only (`settings.scrollbackLines` lines per session, applied at app start).
 
 ## Squatters (optional remote relay)
@@ -41,3 +42,10 @@ make lint      # gofmt, go vet, staticcheck, tsc, eslint
 open build/bin/squatclient.app
 ```
 `go.mod` has `replace github.com/itsnotyoutoday/squatClientDaemon => ../squatClientDaemon` (Wails runs `go mod tidy`, which ignores go.work); drop it once the engine is tagged. Regenerate the icon with `make icon`.
+
+## Command window (front end)
+* **Resize**: a drag handle on the top edge of the input (also a keyboard separator: Up/Down one line, PageUp/PageDown five, Home tallest, End smallest; double-click resets). Height is clamped from one line to 70% of the window and stored in `settings.inputHeight` (single line; 0 = automatic, grows to 8 lines) or `settings.editorHeight` (editor mode, default 240).
+* **Editor mode** (button, Cmd/Ctrl+Shift+E; Escape returns to one line and keeps the text): Enter = newline, Cmd/Ctrl+Enter sends the buffer, Cmd/Ctrl+Shift+Enter sends the selection or the current logical line, Tab/Shift+Tab indent/outdent by two spaces, optional line numbers (hidden when wrapping) and Ln/Col, Wrap toggle (default off).
+* **Block rules** (`frontend/src/lib/softcode.ts`, pure and unit-tested): CRLF/CR/LF end lines; trailing whitespace is removed; with `stripBlankLines` blank lines and `@@` comment-only lines are dropped BEFORE joining; with `softcodeJoin` a line starting with a space or tab is appended DIRECTLY (no space inserted) to the previous sent line after removing its leading whitespace; with blank lines kept, an empty line ends a continuation. Each resulting line goes to `engine.input` separately; `sendLineDelayMs > 0` paces them with a progress indicator and Cancel (lines already sent cannot be recalled).
+* **Drafts**: the editor flag and unsent editor (or multi-line) text are kept per world in localStorage (`squat.input.<worldKey>`), restored on tab switches and restarts. Password input has its own state and is never drafted.
+* **History browser**: Ctrl+R / Cmd+Shift+H or the History button; virtualised, paged (300 per request), newest first.

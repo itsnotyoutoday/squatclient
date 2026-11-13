@@ -19,6 +19,7 @@ import { SettingsDialog } from './components/dialogs/SettingsDialog';
 import { WorldManager } from './components/dialogs/WorldManager';
 import { SquattersDialog } from './components/dialogs/SquattersDialog';
 import { AwayDialog } from './components/dialogs/AwayDialog';
+import HistoryBrowser from './components/history/HistoryBrowser';
 import { useGlobalKeys } from './global-keys';
 import './styles/app.css';
 
@@ -44,6 +45,8 @@ function Dialogs() {
       );
     case 'away':
       return <AwayDialog />;
+    case 'history':
+      return <HistoryBrowser />;
     default:
       return null;
   }

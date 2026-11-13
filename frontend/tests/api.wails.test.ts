@@ -43,6 +43,10 @@ describe('WailsEngine adapter', () => {
     await e.scrollback('s1', { beforeSeq: 9, limit: 50 });
     await e.search('s1', 'x', { regex: true });
     await e.ack('s1', 7);
+    await e.recordHistory('s1', 'x');
+    await e.history('s1', 'q', { regex: true, limit: 5 });
+    await e.deleteHistory('s1', 3);
+    await e.clearHistory('s1');
     await e.dismiss('s1');
     await e.reconnectSquatter('sq1');
     await e.suspend();
@@ -54,6 +58,10 @@ describe('WailsEngine adapter', () => {
       ['Scrollback', ['s1', { beforeSeq: 9, limit: 50 }]],
       ['Search', ['s1', 'x', { regex: true }]],
       ['Ack', ['s1', 7]],
+      ['RecordHistory', ['s1', 'x']],
+      ['History', ['s1', 'q', { regex: true, limit: 5 }]],
+      ['DeleteHistory', ['s1', 3]],
+      ['ClearHistory', ['s1']],
       ['Dismiss', ['s1']],
       ['ReconnectSquatter', ['sq1']],
       ['Suspend', []],

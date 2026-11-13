@@ -72,7 +72,7 @@ const (
 	DefaultEditorH     = 240
 	MaxSendLineDelayMs = 10000
 	MinHistoryMax      = 100
-	MaxHistoryMax      = 200000
+	MaxHistoryMax      = 1000000
 	DefaultHistoryMax  = 20000
 )
 
@@ -91,10 +91,7 @@ func (s *Settings) clampCommandWindow() {
 	s.InputHeight = clampInt(s.InputHeight, 0, MaxInputHeight)
 	s.EditorHeight = clampInt(s.EditorHeight, 0, MaxInputHeight)
 	s.SendLineDelayMs = clampInt(s.SendLineDelayMs, 0, MaxSendLineDelayMs)
-	if s.HistoryMax == 0 {
-		s.HistoryMax = DefaultHistoryMax
-	}
-	s.HistoryMax = clampInt(s.HistoryMax, MinHistoryMax, MaxHistoryMax)
+	s.HistoryMax = clampInt(s.HistoryMax, MinHistoryMax, MaxHistoryMax) // 0 is not allowed: it clamps to the minimum
 }
 
 // DefaultSettings matches DEFAULT_SETTINGS in the front end.

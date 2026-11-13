@@ -36,6 +36,10 @@ const API_METHODS: (keyof EngineAPI)[] = [
   'scrollback',
   'search',
   'ack',
+  'recordHistory',
+  'history',
+  'deleteHistory',
+  'clearHistory',
   'on',
 ];
 
@@ -220,6 +224,63 @@ describe('MockEngine implements the EngineAPI contract', () => {
     const text = spans.map((x) => x.s).join('');
     expect(text).toMatch(/\p{Extended_Pictographic}/u);
     expect(text).toMatch(/[぀-ヿ一-鿿]/);
+  });
+});
+
+describe('MockEngine history contract', () => {
+  const sid = async (e: MockEngine): Promise<string> =>
+    (await e.listSessions()).find((s) => s.state === 'connected')?.id ?? '';
+
+  it('records newest-first, collapses consecutive duplicates, keeps multi-line as one entry', async () => {
+    const e = make();
+    const s = await sid(e);
+    for (const t of ['a', 'a', 'b', 'x\ny', 'a', '  ']) await e.recordHistory(s, t);
+    const p = await e.history(s, '', {});
+    expect(p.entries.map((x) => x.text)).toEqual(['a', 'x\ny', 'b', 'a']);
+    expect(p.total).toBe(4);
+    expect(new Set(p.entries.map((x) => x.id)).size).toBe(4);
+  });
+  it('searches (substring, case, regex), pages, and rejects a bad regex', async () => {
+    const e = make();
+    const s = await sid(e);
+    for (const t of ['Look', 'look at', 'say Hi']) await e.recordHistory(s, t);
+    expect((await e.history(s, 'look', {})).total).toBe(2);
+    expect((await e.history(s, 'look', { caseSensitive: true })).total).toBe(1);
+    expect((await e.history(s, '^(Look|say)', { regex: true, caseSensitive: true })).total).toBe(2);
+    const pg = await e.history(s, '', { limit: 1, offset: 1 });
+    expect(pg.entries.map((x) => x.text)).toEqual(['look at']);
+    expect(pg.total).toBe(3);
+    await expect(e.history(s, '(', { regex: true })).rejects.toThrow(/invalid/i);
+  });
+  it('is per world, not per session', async () => {
+    const e = make();
+    const a = await e.connect({ worldId: 'w-moon' });
+    const b = await e.connect({ worldId: 'w-moon' });
+    await e.recordHistory(a.id, 'shared');
+    expect((await e.history(b.id, '', {})).total).toBe(1);
+  });
+  it('never stores secret lines or text typed with echo off', async () => {
+    const e = make();
+    const s = await sid(e);
+    for (const t of ['connect bob hunter2', '@password a=b', 'say hi\nco bob pw', 'connect guest'])
+      await e.recordHistory(s, t);
+    expect((await e.history(s, '', {})).entries.map((x) => x.text)).toEqual(['connect guest']);
+    const pw = (await e.listSessions()).find((x) => x.remoteEcho);
+    await e.recordHistory(pw?.id ?? '', 'sekrit');
+    expect((await e.history(pw?.id ?? '', '', {})).total).toBe(0);
+  });
+  it('honours the cap (historyMax, min 100), delete and clear', async () => {
+    const e = make();
+    const s = await sid(e);
+    await e.saveSettings({ ...(await e.getSettings()), historyMax: 100 });
+    for (let i = 0; i < 130; i++) await e.recordHistory(s, `c${i}`);
+    const p = await e.history(s, '', {});
+    expect(p.total).toBe(100);
+    expect(p.entries[0].text).toBe('c129');
+    await e.deleteHistory(s, p.entries[0].id);
+    expect((await e.history(s, '', {})).total).toBe(99);
+    await e.clearHistory(s);
+    expect((await e.history(s, '', {})).total).toBe(0);
   });
 });
 

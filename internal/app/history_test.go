@@ -12,6 +12,7 @@ import (
 	"github.com/itsnotyoutoday/squatClientDaemon/pkg/testutil/fakemush"
 
 	"github.com/itsnotyoutoday/squatclient/internal/config"
+	"github.com/itsnotyoutoday/squatclient/internal/secrets"
 )
 
 func newHist(t *testing.T, max int) (*historyStore, string) {
@@ -350,5 +351,66 @@ func TestSettingsCommandWindowClampAndDefaults(t *testing.T) {
 	got, _ := f.svc.GetSettings()
 	if got.InputHeight != config.MaxInputHeight || got.EditorHeight != 0 || got.SendLineDelayMs != config.MaxSendLineDelayMs || got.HistoryMax != config.MinHistoryMax {
 		t.Fatalf("clamp %+v", got)
+	}
+}
+
+func TestServiceRestartKeepsHistoryAndCapFollowsSetting(t *testing.T) {
+	dir := t.TempDir()
+	sec := secrets.NewMemory()
+	srv := fakemush.New(t)
+	f := newFixtureAt(t, dir, sec)
+	w, _ := f.svc.SaveWorld(config.World{Name: "T", Host: srv.Host(), Port: srv.Port()})
+	s1, err := f.svc.Connect(ConnectTarget{WorldID: w.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.waitConnected(s1.ID)
+	for i := 0; i < 150; i++ {
+		f.svc.RecordHistory(s1.ID, fmt.Sprintf("cmd %d", i))
+	}
+	f.svc.RecordHistory(s1.ID, "block\n  two")
+	f.svc.Shutdown()
+
+	// "restart": a new service on the same config dir; a new session of the same world sees it all
+	f2 := newFixtureAt(t, dir, sec)
+	s2, err := f2.svc.Connect(ConnectTarget{WorldID: w.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	f2.waitConnected(s2.ID)
+	p, _ := f2.svc.History(s2.ID, "", HistoryOpts{})
+	if p.Total != 151 || p.Entries[0].Text != "block\n  two" || p.Entries[150].Text != "cmd 0" {
+		t.Fatalf("after restart: total %d", p.Total)
+	}
+	// lowering the setting takes effect on the next write: oldest entries are dropped first
+	st, _ := f2.svc.GetSettings()
+	st.HistoryMax = 100
+	if err := f2.svc.SaveSettings(st); err != nil {
+		t.Fatal(err)
+	}
+	f2.svc.RecordHistory(s2.ID, "newest")
+	p, _ = f2.svc.History(s2.ID, "", HistoryOpts{})
+	if p.Total != 100 || p.Entries[0].Text != "newest" || p.Entries[99].Text != "cmd 52" {
+		t.Fatalf("cap after setting change: total %d last %q", p.Total, p.Entries[len(p.Entries)-1].Text)
+	}
+	// and persisted capped across another restart
+	f2.svc.Shutdown()
+	f3 := newFixtureAt(t, dir, sec)
+	s3, _ := f3.svc.Connect(ConnectTarget{WorldID: w.ID})
+	f3.waitConnected(s3.ID)
+	if p, _ := f3.svc.History(s3.ID, "", HistoryOpts{}); p.Total != 100 {
+		t.Fatalf("restart after cap: %d", p.Total)
+	}
+	// clamping: 0 is not allowed, upper bound is 1,000,000
+	st, _ = f3.svc.GetSettings()
+	st.HistoryMax = 0
+	f3.svc.SaveSettings(st)
+	if g, _ := f3.svc.GetSettings(); g.HistoryMax != 100 {
+		t.Fatalf("0 -> %d", g.HistoryMax)
+	}
+	st.HistoryMax = 5_000_000
+	f3.svc.SaveSettings(st)
+	if g, _ := f3.svc.GetSettings(); g.HistoryMax != 1_000_000 {
+		t.Fatalf("max -> %d", g.HistoryMax)
 	}
 }

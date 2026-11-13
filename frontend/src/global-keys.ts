@@ -3,6 +3,7 @@ import type { Controller } from './state/controller';
 import type { OutputHandle } from './components/output/handle';
 import { useSessions, useUi } from './state/stores';
 import { openHelp } from './help/command';
+import { toggleEditor } from './lib/inputevents';
 
 /** UI-level shortcuts only. Everything else typed goes to engine.input untouched. */
 export function useGlobalKeys(controller: Controller | null, getOutput: () => OutputHandle | null): void {
@@ -40,6 +41,21 @@ export function useGlobalKeys(controller: Controller | null, getOutput: () => Ou
       ) {
         e.preventDefault();
         ui.setSearch(true);
+        return;
+      }
+      const k = e.key.toLowerCase();
+      if (
+        s.fg &&
+        ((e.ctrlKey && !e.shiftKey && !e.altKey && !e.metaKey && k === 'r') ||
+          (e.metaKey && e.shiftKey && !e.altKey && k === 'h'))
+      ) {
+        e.preventDefault();
+        ui.openDialog('history');
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && !e.altKey && k === 'e') {
+        e.preventDefault();
+        toggleEditor();
         return;
       }
       if (e.ctrlKey && !e.shiftKey && e.key.toLowerCase() === 'o') {
