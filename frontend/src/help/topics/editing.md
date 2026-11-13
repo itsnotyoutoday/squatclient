@@ -9,12 +9,12 @@ The Object Editor lets you work on objects and their attributes in a game as if 
 
 ## Which games it is for
 
-The Object Editor is the module for MU* games: PennMUSH, CobraMUSH, TinyMUX, TinyMUSH and RhostMUSH. Other kinds of game do not get it: there is no button, Cmd-E does nothing, and `/edit` answers "no such command".
+The Object Editor is the module for MU* games: PennMUSH, CobraMUSH, TinyMUX, TinyMUSH, TinyMUSE and RhostMUSH. Other kinds of game do not get it: there is no button, Cmd-E does nothing, and `/edit` answers "no such command".
 
 SquatClient finds out what kind of game a world is by itself: it recognises the server's name (or, for Diku-style games, the classic "By what name do you wish to be known?" prompt) in the first lines the game prints, and after you log in it quietly asks the game for its version (nothing appears in the output). A game that is not logged in yet is not detected yet, so the editor shows up a moment after you connect. If detection gets it wrong, or the game hides its version, set it yourself:
 
 - in the world's settings (Worlds, then **Game type**), which is remembered, or
-- with `/gametype pennmush` (or `cobramush`, `tinymux`, `tinymush`, `rhostmush`, `mush` for any other MU*) for the current connection. Other kinds of game have types too (`circlemud`, `rom`, `smaug`, `diku`, `lpmud`, `lambdamoo`, `evennia`, `muck`, `tinymuse`, `coldmud`, `coffeemud`, `ironrealms`, `custom`), and `other` means none of these. They never get the Object Editor. `/gametype` alone shows the current type and `/gametype auto` detects it again.
+- with `/gametype pennmush` (or `cobramush`, `tinymux`, `tinymush`, `rhostmush`, `tinymuse`, `mush` for any other MU*) for the current connection. Other kinds of game have types too (`circlemud`, `rom`, `smaug`, `diku`, `lpmud`, `lambdamoo`, `evennia`, `muck`, `coldmud`, `coffeemud`, `ironrealms`, `custom`), and `other` means none of these. They never get the Object Editor. `/gametype` alone shows the current type and `/gametype auto` detects it again.
 
 ## Opening the editor
 
