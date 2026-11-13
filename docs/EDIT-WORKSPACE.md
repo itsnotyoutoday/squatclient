@@ -167,5 +167,14 @@ Decisions worth knowing:
   dedicated "Close Tab" accelerator.
 - Cmd-click on macOS also adds a CodeMirror cursor; go to definition removes it again with `goTo`.
 
-Not done: phase 3 (attribute flags/locks/parent in the list, rename/delete attributes, richer object info; Compare and
+**Object details (phase 3, built).** The first entry of the attribute list, "Object details", shows identity, location,
+relations, flags, powers, locks (with lock flags, a lock editor with a Test button), warnings (+ `@wcheck`), contents,
+exits and a raw `examine` tab; a Move/Set home/Set destination dialog (search, nearby, recently used, look-around without
+moving); an attribute context menu (flags, `@atrlock`, chown, rename, delete, copy, open). Code: `state/detailsStore.ts`,
+`components/editor/{DetailsPane,PropWidgets,PlaceDialog,PickDialog,LockEditor,AttrMenu,AttrActionDialog,RawExamine}.tsx`,
+`lib/editor/props.ts`, mock in `api/mock-game.ts`; engine/app API in `docs/EDIT.md` section 11. Real-WebKit check:
+`npm run editor:probe`. "Open in a new tab" of an attribute opens it in the editor (tabs are per object).
+Not verified against a live game: see EDIT.md section 11.
+
+Not done: (attribute flags/locks/parent in the list are now done above; rename/delete attributes, richer object info; Compare and
 search-across-attributes are done), phase 4, drag-reordering by keyboard, detachable window.

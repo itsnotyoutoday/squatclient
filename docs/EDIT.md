@@ -227,3 +227,70 @@ export interface EditAttrInfoResult extends EditResult {
   known: boolean; flags: string; flagNames: string; owner: string; writable: 'true' | 'false' | 'unknown';
 }
 ```
+
+## 11. Object details (Object Editor details view)
+
+Engine: `pkg/engine/mushobj_props.go` (details, catalogues), `mushobj_props_mut.go` (mutations), `mushobj_props_search.go`
+(search, nearby), `mushobj_props_attr.go` (lock flags, lock test, attribute operations, warnings, examine). App:
+`internal/app/props.go`, `app_props.go`. Everything is silent (Capture), never typed input, validated before sending,
+verified by re-reading. Results never reject: check `ok`; `reply` is the game's exact answer; codes as section 9 plus
+`rejected` (the game refused) and `mismatch` (accepted but the state did not change).
+
+| Operation | Softcode / command | Verified by |
+|---|---|---|
+| `EditDetails` | one capture: `num name type owner parent zone loc home money words(lattr)`, names of those refs, `ctime/created/mtime`, `lflags/flags`, `lpowers/powers`, `iter(llocks) lock lockflags`, `warnings`, parents of parents, player `ALIAS/channels/quota`, `iter(lcon)`, `iter(lexits)` | (read) |
+| `EditListFlags/Powers` | `list(flags)` + `@list flags` (table, `NAME(C) text`, `NAME - text`, `Flags: A B`), cached per session | (read) |
+| `EditSetFlag/Power` | `@set obj=FLAG` / `!FLAG`, `@power obj=POWER` / `!POWER` | re-read flags/powers |
+| `EditSetAttrFlag` | `@set obj/ATTR=FLAG` / `!FLAG` | `lflags(obj/ATTR)` |
+| `EditRename`, `EditChown` | `@name obj=name`, `@chown obj=owner` (a name is resolved to a dbref first) | name / owner |
+| `EditSetParent/Zone` | `@parent obj[=#n]`, `@chzone obj=#n|none` | parent / zone |
+| `EditSetLock` | `@lock/Type obj=key`, `@unlock/Type obj` (Type may be `user:name`) | lock list |
+| `EditSetLockFlag` | `@lset obj/Type=flag` / `!flag` | `lockflags(obj/Type)` |
+| `EditTestLock` | `elock(obj/Type,target)` (target validated) | n/a |
+| `EditSetHome/Destination` | `@link obj=#room` | home / destination |
+| `EditMove` | `@tel obj=#dest` (an exit's source room changes) | `loc()` (exit: `home()`) |
+| `EditSetAttrLock` | `@atrlock obj/ATTR=on|off` | `atrlock()` else attribute flags |
+| `EditAttrChown` | `@atrchown obj/ATTR=player` | `owner(obj/ATTR)` |
+| `EditRenameAttr` | copy (`&NEW`), verify, clear the old; refuses an existing target | both reads |
+| `EditDeleteAttr` | `&ATTR obj=` | attribute gone |
+| `EditSetWarnings`, `EditWCheck` | `@warnings obj=list`, `@wcheck obj` | `warnings()` |
+| `EditSearchRooms` | `lsearch(all,type,room)` filtered by `strmatch`, else `lsearch(me,...)`, plus `locate()`; `restricted` says which | n/a |
+| `EditNearby` | room of the object (or the room itself): name/owner/type, `DESCRIBE`, exits with destinations, contents | n/a |
+| `EditExamine` | `examine[/all|/brief] obj`, coloured lines | n/a |
+
+Replies of mutations are free text and differ per game, so everything between the markers except obvious chatter
+(pages, speech, channel lines, arrivals) is taken as the reply. The window is only the game's processing time of the
+command; an ambient emit in that instant would be taken too.
+
+```ts
+export interface EditDetails {
+  dbref: string; name: string; type: string; owner: string; parent: string; zone: string;
+  location: string; home: string; destination: string; pennies: number | null;
+  created: string; modified: string; flags: string[]; flagLetters: string; powers: string[];
+  locks: { type: string; expr: string; flags: string[] }[];
+  contents: EditObjRef[]; exits: EditObjRef[]; attrCount: number;   // -1 unknown
+  names: Record<string, string>; warnings: string; parentChain: EditObjRef[]; extra: Record<string, string>;
+}
+export interface EditDetailsResult extends EditResult { reply: string; details: EditDetails }   // all mutations
+export interface EditCatalogResult extends EditResult { known: boolean; items: { name; letter; desc }[] }
+export interface EditSearchResult extends EditResult { items: EditPlace[]; restricted: boolean; truncated: boolean }
+export interface EditNearbyResult extends EditResult { room: EditPlace; desc: string; exits: EditNearbyExit[]; contents: EditPlace[] }
+export interface EditAttrFlagResult extends EditResult { reply: string; known: boolean; flags: string; flagNames: string }
+export interface EditTestLockResult extends EditResult { result: Tri; raw: string }
+export interface EditAttrLockResult extends EditResult { locked: Tri; reply: string }
+export interface EditAttrOwnerResult extends EditResult { owner: string; reply: string }
+export interface EditReplyResult extends EditResult { reply: string }
+export interface EditLinesResult extends EditResult { lines: string[] }
+export interface EditExamineResult extends EditResult { lines: Span[][] }
+// App methods: EditDetails(sid,dbref) EditListFlags(sid) EditListPowers(sid) EditSetFlag(sid,dbref,flag,on)
+// EditSetPower EditSetAttrFlag(sid,dbref,attr,flag,on) EditRename(sid,dbref,name) EditChown(sid,dbref,owner)
+// EditSetParent(sid,dbref,parent) EditSetZone EditSetLock(sid,dbref,type,expr) EditSetLockFlag(sid,dbref,type,flag,on)
+// EditTestLock(sid,dbref,type,target) EditSetHome EditSetDestination EditMove(sid,dbref,dest)
+// EditSearchRooms(sid,query) EditNearby(sid,dbref) EditSetAttrLock(sid,dbref,attr,on) EditAttrChown(sid,dbref,attr,player)
+// EditRenameAttr(sid,dbref,from,to) EditDeleteAttr(sid,dbref,attr) EditSetWarnings(sid,dbref,list)
+// EditWCheck(sid,dbref) EditExamine(sid,dbref,mode)
+```
+
+Input rules: object arguments of mutations are real dbrefs (`^#\d+$`); flag/power names `^[A-Za-z0-9_-]{1,64}$`; lock types
+`^[A-Za-z][A-Za-z0-9_]{0,31}$` or `user:name`; lock keys have no control characters and none of `[ ] { } ; % \`;
+new names have none of `[ ] ( ) { } , ; % \ = ^ |`; warnings are letters, `-`, `_`, `!` and spaces.

@@ -73,6 +73,9 @@ Open it with `/edit`, the Object Editor button in the top bar, or Cmd-E (Ctrl-E 
 | Alt-1 to Alt-9            | switch world                                            |
 | Cmd-click, F12            | go to the attribute a call like `u(#12/ATTR)` refers to |
 | Cmd-Shift-F, Ctrl-Shift-F | search all attributes of the object                     |
+| Cmd-Shift-D, Ctrl-Shift-D | show Object details                                     |
+| Cmd-Shift-M, Ctrl-Shift-M | Move the object (in Object details)                     |
+| Shift-F10, Menu key, F    | attribute menu for the attribute in the list            |
 | Cmd-Alt-], Cmd-Alt-[      | expand, collapse                                        |
 | Escape                    | back to the terminal (nothing selected, no dialog open) |
 
