@@ -40,20 +40,39 @@ Up, Down, Ctrl-P, Ctrl-N and Shift-Enter are disabled while a password is being 
 
 Toggle with Cmd-Shift-E or Ctrl-Shift-E (or the Editor button). The editor is a code editor: the Emacs keys above are not used; it has the usual code-editor keys instead.
 
-| Key                               | Action                                                                  |
-| --------------------------------- | ----------------------------------------------------------------------- |
-| Cmd-Shift-E, Ctrl-Shift-E         | switch editor mode on or off                                            |
-| Enter                             | insert a new line                                                       |
-| Cmd-Enter, Ctrl-Enter             | send the whole buffer                                                   |
-| Cmd-Shift-Enter, Ctrl-Shift-Enter | send the selection or the current line                                  |
-| Tab                               | insert two spaces (indent the selected lines)                           |
-| Shift-Tab                         | outdent                                                                 |
-| Cmd-Alt-], Ctrl-Alt-]             | expand the selection (or everything) over indented lines                |
-| Cmd-Alt-[, Ctrl-Alt-[             | collapse it again                                                       |
-| Cmd-F, Ctrl-F                     | search (and replace) inside the editor; Escape closes it                |
-| Cmd-Z, Ctrl-Z                     | undo                                                                    |
-| Cmd-Shift-Z, Ctrl-Y               | redo                                                                    |
-| Escape                            | back to the single line (the text is kept), when no search is open      |
+| Key                               | Action                                                             |
+| --------------------------------- | ------------------------------------------------------------------ |
+| Cmd-Shift-E, Ctrl-Shift-E         | switch editor mode on or off                                       |
+| Enter                             | insert a new line                                                  |
+| Cmd-Enter, Ctrl-Enter             | send the whole buffer                                              |
+| Cmd-Shift-Enter, Ctrl-Shift-Enter | send the selection or the current line                             |
+| Tab                               | insert two spaces (indent the selected lines)                      |
+| Shift-Tab                         | outdent                                                            |
+| Cmd-Alt-], Ctrl-Alt-]             | expand the selection (or everything) over indented lines           |
+| Cmd-Alt-[, Ctrl-Alt-[             | collapse it again                                                  |
+| Cmd-F, Ctrl-F                     | search (and replace) inside the editor; Escape closes it           |
+| Cmd-Z, Ctrl-Z                     | undo                                                               |
+| Cmd-Shift-Z, Ctrl-Y               | redo                                                               |
+| Escape                            | back to the single line (the text is kept), when no search is open |
+
+## The editor view
+
+Open it with `/edit`, the Editor button in the top bar, or Cmd-E (Ctrl-E from anywhere except the input line). See [Editing objects and attributes](help:editing).
+
+| Key                       | Action                                                  |
+| ------------------------- | ------------------------------------------------------- |
+| Cmd-E, Ctrl-E             | switch between the terminal and the editor              |
+| Cmd-S, Ctrl-S             | save the current attribute                              |
+| Cmd-Shift-S, Ctrl-Shift-S | save every changed attribute of the object              |
+| Cmd-P, Ctrl-P             | go to an attribute by name                              |
+| Cmd-T, Ctrl-T             | open another object                                     |
+| Cmd-W, Ctrl-W             | close the current object tab                            |
+| Cmd-1 to Cmd-9            | switch object tab                                       |
+| Alt-1 to Alt-9            | switch world                                            |
+| Cmd-click, F12            | go to the attribute a call like `u(#12/ATTR)` refers to |
+| Cmd-Shift-F, Ctrl-Shift-F | search all attributes of the object                     |
+| Cmd-Alt-], Cmd-Alt-[      | expand, collapse                                        |
+| Escape                    | back to the terminal (nothing selected, no dialog open) |
 
 ## Resizing the command window
 

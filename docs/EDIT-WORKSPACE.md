@@ -1,6 +1,6 @@
 # Editor workspace (`/edit`): design spec
 
-Status: approved by the owner 2026-11-13; build starts when the foundations land
+Status: phases 1 and 2 built 2026-11-13 (see "Implementation status" at the end); original note: approved by the owner 2026-11-13; build starts when the foundations land
 (code editor: `frontend/src/components/codeeditor/**` + `frontend/src/lib/mushcode/**`;
 engine capture/object API: `pkg/engine/capture*.go`, `mushobj*.go`, bound as `EditFetchObject`,
 `EditFetchAttr`, `EditSaveAttr`; command window/history agent: `components/input/**`, `components/history/**`).
@@ -131,3 +131,41 @@ mode announces save results and rejections.
 ## 7. Out of scope for the first cut
 Object creation/destruction, flag/lock editing UI, exits/contents browser, version history. (All fit the same
 workspace later.)
+
+## 8. Implementation status (phases 1 and 2)
+
+Built and covered by tests; **not verified against a real game or in the real window** (only jsdom and the
+scripted fake MUSH in the engine tests). Phases 3 and 4 are not started except where noted.
+
+Where things live:
+
+| What | Where |
+|---|---|
+| view toggle (`uiStore.view`), `/edit` interception, Cmd/Ctrl-E, top-bar button | `state/stores.ts`, `lib/editor/command.ts` + `view.ts`, `components/input/InputLine.tsx` (`sendOne`), `global-keys.ts`, `components/tabs/TabBar.tsx`, `App.tsx` (lazy) |
+| workspace state, open/save/conflict/search/persistence | `state/editorStore.ts` (zustand: `useEditor` data, `useEditorUi` transient UI) |
+| pure libraries | `lib/editor/`: `escapes` (mirror of the engine), `serialize` (what is sent), `diff`, `refs` (go to definition), `fuzzy`, `search`, `validate`, `persist` |
+| components | `components/editor/`: `EditorWorkspace`, `WorldTabs`, `ObjectTabs` (+ `[+]` prompt), `AttrList` (virtualised listbox), `AttrEditor`, `SearchPanel`, `EditorDialogs` (conflict, compare, quick-open, close confirm), `SideBySide` |
+| styles | `styles/editorworkspace.css` (every class prefixed `ew-`) |
+| fake game | `api/mock-game.ts` (`MockEngine.game`: latency, `rejectRate`, `failNext`, `alterOnSave`, `externalSet`, the `RACE` attribute that changes on every read) |
+| engine/app | engine `pkg/engine/mushobj_ctl.go`; app `internal/app/edit2.go`, `app_edit2.go`; API shapes in `docs/EDIT.md` section 10 |
+
+Decisions worth knowing:
+
+- **Two views of one value.** The buffer is either `code` (the text is the stored value; newlines are formatting and the
+  value sent is `collapse(text)`, spec 4.4) or `lines` (`%r`/`%t` shown as newlines; sent as `compressEscapes(text)`;
+  no code formatting). Collapsing a `%r` newline would change meaning, so the two must never mix. Values the game stored
+  with real newlines open in `lines`. Dirty = packed text differs from the stored value, so Expand alone never makes a buffer dirty.
+- **Save = re-read, compare with `original`, `EditSaveAttr` (the engine verifies by reading back), mismatch -> re-read and keep dirty.**
+  A rejected save never touches the text. The game's reply is shown with the engine's `engine: ...:` prefix stripped.
+- **Per-session runtime state, per-world persistence**: workspaces are keyed by session id and stored under
+  `squat.editor.v1.<worldKey>` (drafts, tabs, active attribute, view modes). Two sessions of the same world share the stored key (last writer wins).
+- **Editors stay mounted (hidden) for the last 6 visited attributes** so undo history survives switching; older ones are
+  re-created from the buffer text.
+- **Cmd-W** is a native menu accelerator ("Close Session", `menu.go`): the webview never sees it on macOS. The `close-session`
+  menu event is therefore routed to "close object tab" while the editor view is showing (`state/controller.ts`).
+  TODO (needs Go menu code): a View > Editor item emitting `menu` action `editor` (already handled), and optionally a
+  dedicated "Close Tab" accelerator.
+- Cmd-click on macOS also adds a CodeMirror cursor; go to definition removes it again with `goTo`.
+
+Not done: phase 3 (attribute flags/locks/parent in the list, rename/delete attributes, richer object info; Compare and
+search-across-attributes are done), phase 4, drag-reordering by keyboard, detachable window.
