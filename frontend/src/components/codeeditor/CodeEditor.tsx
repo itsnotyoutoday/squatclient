@@ -257,6 +257,15 @@ export const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function
           ? cursorOf(viewRef.current.state)
           : { line: 1, col: 1, offset: 0, selected: 0, lines: 1 },
       getIssues: () => issues.current,
+      goTo: (offset) => {
+        const view = viewRef.current;
+        if (!view) return;
+        view.dispatch({
+          selection: { anchor: Math.max(0, Math.min(offset, view.state.doc.length)) },
+          scrollIntoView: true,
+        });
+        view.focus();
+      },
       expand: () => {
         if (viewRef.current) expandSelection(viewRef.current);
       },

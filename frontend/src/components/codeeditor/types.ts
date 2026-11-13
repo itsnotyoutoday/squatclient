@@ -46,6 +46,8 @@ export interface CodeEditorHandle {
   getSelection(): string;
   getCursor(): CursorInfo;
   getIssues(): BalanceIssue[];
+  /** Move the cursor to a document offset, scroll it into view and focus the editor. */
+  goTo(offset: number): void;
   /** Expand the selection, or the whole document when nothing is selected. */
   expand(): void;
   /** Collapse the selection (every newline removed) or, with no selection, join continuation lines. */
