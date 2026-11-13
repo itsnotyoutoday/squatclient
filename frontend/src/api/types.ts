@@ -53,6 +53,11 @@ export interface SessionInfo {
   endReason?: string;
   endDetail?: string;
   lastText?: string;
+  /** Kind of game ("pennmush", "cobramush", "tinymux", "tinymush", "rhostmush", "mush", "other"); absent until detected. */
+  gameType?: string;
+  /** Module family of the game: "mush" for the MU* family; absent when unknown or not a MU*. */
+  gameFamily?: string;
+  gameTypeSource?: 'world' | 'user' | 'banner' | 'probe';
 }
 
 export interface WorldLogin {
@@ -76,6 +81,8 @@ export interface WorldConfig {
   login?: WorldLogin;
   autoConnect?: boolean;
   macrosFile?: string;
+  /** Overrides game-type detection ("" = detect). */
+  gameType?: string;
 }
 
 export interface SquatterConfig {
@@ -424,6 +431,8 @@ export interface EngineAPI {
   reconnectSquatter(id: string): Promise<void>;
   /** Retry lost squatter links immediately (wake, window shown, network back); returns how many it is retrying. */
   nudgeSquatters(): Promise<number>;
+  /** Set what kind of game a session is ("" or "auto" detects it again). */
+  setGameType(sessionId: string, gameType: string): Promise<void>;
   /** /suspend: detach squatter sessions (they keep running) and minimise; returns how many were detached. */
   suspend(): Promise<number>;
   /** Re-attach suspended squatter sessions; what was missed is replayed. */

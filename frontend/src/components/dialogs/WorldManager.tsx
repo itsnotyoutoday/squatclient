@@ -168,6 +168,21 @@ export function WorldManager() {
                   ))}
                 </select>
               </Field>
+              <Field
+                label="Game type"
+                hint="Decides which modules apply (the Object Editor is for MU* games)"
+              >
+                <select value={draft.gameType ?? ''} onChange={(e) => set('gameType', e.target.value)}>
+                  <option value="">Detect automatically</option>
+                  <option value="pennmush">PennMUSH</option>
+                  <option value="cobramush">CobraMUSH</option>
+                  <option value="tinymux">TinyMUX</option>
+                  <option value="tinymush">TinyMUSH</option>
+                  <option value="rhostmush">RhostMUSH</option>
+                  <option value="mush">Other MU*</option>
+                  <option value="other">Not a MU* (MUD, MOO...)</option>
+                </select>
+              </Field>
               <Field label="Encoding">
                 <select
                   value={draft.encoding}

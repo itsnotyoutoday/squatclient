@@ -620,13 +620,29 @@ describe('failure modes', () => {
     expect(await screen.findByText(/not allowed to see #14\/SECRET/)).toBeInTheDocument();
   });
 
-  it('without a connected world the view explains itself', async () => {
+  it('without a MU* world the editor view closes itself', async () => {
     engine = new MockEngine({ scenario: 'empty' });
     render(<App engine={engine} />);
     await waitFor(() => expect(useSettings.getState().loaded).toBe(true));
     act(() => useUi.getState().setView('editor'));
-    expect(await screen.findByText(/Connect to a world to edit its objects/)).toBeInTheDocument();
-    expect(screen.queryByRole('tablist', { name: 'Open objects' })).toBeNull();
+    await waitFor(() => expect(useUi.getState().view).toBe('terminal'));
+    expect(screen.queryByTestId('editor-workspace')).toBeNull();
+  });
+
+  it('is not offered for a game that is not a MU*: no button, and /edit does not exist', async () => {
+    const e = await boot();
+    const sid = useSessions.getState().fg!;
+    expect(screen.getByRole('button', { name: 'Object Editor' })).toBeInTheDocument();
+    await act(async () => e.setGameType(sid, 'other'));
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Object Editor' })).toBeNull());
+    await typeCommand('/edit #12');
+    await waitFor(() =>
+      expect(useUi.getState().toasts.map((t) => t.text)).toContain('no such command. Type /help for help.'),
+    );
+    expect(useUi.getState().view).toBe('terminal');
+    // choosing a MU* type brings it back
+    await act(async () => e.setGameType(sid, 'cobramush'));
+    expect(await screen.findByRole('button', { name: 'Object Editor' })).toBeInTheDocument();
   });
 });
 

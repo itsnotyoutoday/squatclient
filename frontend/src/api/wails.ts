@@ -136,6 +136,7 @@ export class WailsEngine implements EngineAPI {
   removeSquatter = (id: string) => call<void>('RemoveSquatter', id);
   reconnectSquatter = (id: string) => call<void>('ReconnectSquatter', id);
   nudgeSquatters = () => call<number>('NudgeSquatters');
+  setGameType = (id: string, t: string) => call<void>('SetGameType', id, t);
   suspend = () => call<number>('Suspend');
   resume = () => call<void>('Resume');
   connect = (t: ConnectTarget) => call<Awaited<ReturnType<EngineAPI['connect']>>>('Connect', t);

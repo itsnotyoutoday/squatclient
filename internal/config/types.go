@@ -28,6 +28,9 @@ type World struct {
 	Login       *Login `json:"login,omitempty"`
 	AutoConnect bool   `json:"autoConnect,omitempty"`
 	MacrosFile  string `json:"macrosFile,omitempty"`
+	// GameType overrides detection of the kind of game: pennmush, cobramush, tinymux, tinymush,
+	// rhostmush, mush (an unrecognised MU*) or other (not a MU*). Empty means detect.
+	GameType string `json:"gameType,omitempty"`
 }
 
 // Squatter is a remote daemon entry (stored now, used when squatter

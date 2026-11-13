@@ -38,3 +38,13 @@ Last updated 2026-11-13. Owner-approved items, in rough order. "Running" items a
 - GUI behaviour is only tested in simulated pages and a few real-WebKit probes; no automated test drives the real window.
 - Estimated colours in the default dark theme (black, blue, magenta, white, bright red, bright yellow): replace with measured values.
 - One engine test failed once under load and could not be reproduced in 14 further runs.
+
+## Game modules
+
+Client features that only fit one family of games are modules, gated by the session's game type
+(`SessionInfo.gameType` / `gameFamily`, detected by the engine or set per world / with `/gametype`).
+`frontend/src/lib/modules.ts` is the registry. The Object Editor is the module for the MU* family
+(PennMUSH, CobraMUSH, TinyMUX, TinyMUSH, RhostMUSH) and is not offered for any other game. Other game
+families can get their own modules later. To do: a native-menu item that follows the module (the
+View > Object Editor entry is still always enabled and just reports when it does not apply), and
+per-flavour differences inside the MU* module (function names, `@list flags` formats) keyed on `gameType`.

@@ -7,6 +7,15 @@ aliases: edit, /edit, Object Editor, editor view, attributes, editing objects
 
 The Object Editor lets you work on objects and their attributes in a game as if they were files: a list of attributes on the left, a full code editor on the right, and tabs for every object you have open. It needs a connected world, because it reads and writes through the game itself.
 
+## Which games it is for
+
+The Object Editor is the module for MU* games: PennMUSH, CobraMUSH, TinyMUX, TinyMUSH and RhostMUSH. Other kinds of game do not get it: there is no button, Cmd-E does nothing, and `/edit` answers "no such command".
+
+SquatClient finds out what kind of game a world is by itself: it recognises the server's name in what the game prints, and after you log in it quietly asks the game for its version (nothing appears in the output). A game that is not logged in yet is not detected yet, so the editor shows up a moment after you connect. If detection gets it wrong, or the game hides its version, set it yourself:
+
+- in the world's settings (Worlds, then **Game type**), which is remembered, or
+- with `/gametype pennmush` (or `cobramush`, `tinymux`, `tinymush`, `rhostmush`, `mush` for any other MU*, `other` for a game that is not one) for the current connection. `/gametype` alone shows the current type and `/gametype auto` detects it again.
+
 ## Opening the editor
 
 | How                          | What happens                                                            |

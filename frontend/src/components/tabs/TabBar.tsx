@@ -1,6 +1,7 @@
 import { openHelp } from '../../help/command';
 import { toggleEditorView } from '../../lib/editor/view';
 import { useSessions, useUi } from '../../state/stores';
+import { OBJECT_EDITOR, fgHasModule } from '../../lib/modules';
 import { useControllerRef } from '../../state/controller-context';
 
 export function TabBar() {
@@ -8,6 +9,8 @@ export function TabBar() {
   const sessions = useSessions((s) => s.sessions);
   const fg = useSessions((s) => s.fg);
   const engine = useUi((s) => s.engine);
+  const canEdit = useSessions(fgHasModule(OBJECT_EDITOR));
+  const view = useUi((s) => s.view);
   const controller = useControllerRef();
 
   const close = (id: string): void => {
@@ -96,15 +99,17 @@ export function TabBar() {
       >
         &#9906;
       </button>
-      <button
-        type="button"
-        className="tabadd"
-        title="Object Editor (Cmd+E)"
-        aria-label="Object Editor"
-        onClick={() => toggleEditorView()}
-      >
-        Object Editor
-      </button>
+      {(canEdit || view === 'editor') && (
+        <button
+          type="button"
+          className="tabadd"
+          title="Object Editor (Cmd+E)"
+          aria-label="Object Editor"
+          onClick={() => toggleEditorView()}
+        >
+          Object Editor
+        </button>
+      )}
       <button
         type="button"
         className="tabadd"

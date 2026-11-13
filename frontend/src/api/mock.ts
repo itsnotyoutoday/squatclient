@@ -232,6 +232,10 @@ export class MockEngine implements EngineAPI {
       remoteEcho: false,
       via: this.worlds.find((w) => w.id === worldId)?.via ?? 'direct',
       ...(worldId ? { worldId } : {}),
+      // the mock game is a PennMUSH-like one (what the Object Editor module is for)
+      gameType: 'pennmush',
+      gameFamily: 'mush',
+      gameTypeSource: 'probe',
     };
     const sd: SessionData = { info, lines: [], acked: 0, tick: 0 };
     this.sessions.set(id, sd);
@@ -389,6 +393,21 @@ export class MockEngine implements EngineAPI {
   }
   async nudgeSquatters(): Promise<number> {
     return 0;
+  }
+  async setGameType(id: string, t: string): Promise<void> {
+    const sd = this.sessions.get(id);
+    if (!sd) throw new Error(`no such session: ${id}`);
+    const auto = t === '' || t === 'auto';
+    const family = ['pennmush', 'cobramush', 'tinymux', 'tinymush', 'rhostmush', 'mush'].includes(t)
+      ? 'mush'
+      : undefined;
+    sd.info = {
+      ...sd.info,
+      gameType: auto ? undefined : t,
+      gameFamily: auto ? undefined : family,
+      gameTypeSource: auto ? undefined : 'user',
+    };
+    this.emit('session', sd.info);
   }
   async suspend(): Promise<number> {
     this.emit('suspend', { suspended: true });

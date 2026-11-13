@@ -162,7 +162,7 @@ func (s *Service) Shutdown() {
 // ---- engine conversions ---------------------------------------------------
 
 func toEngineWorld(w config.World, defaultEnc string) engine.World {
-	ew := engine.World{ID: w.ID, Name: w.Name, Host: w.Host, Port: w.Port, TLS: w.TLS, TLSVerify: w.TLSVerify, Encoding: w.Encoding}
+	ew := engine.World{ID: w.ID, Name: w.Name, Host: w.Host, Port: w.Port, TLS: w.TLS, TLSVerify: w.TLSVerify, Encoding: w.Encoding, GameType: w.GameType}
 	if w.Via != "" && w.Via != "direct" {
 		ew.Via = w.Via
 	}

@@ -44,6 +44,10 @@ export default function EditorWorkspace() {
   const announcement = useEditor((s) => s.announcement);
 
   useEffect(() => startPersistence(), []);
+  // the module applies to MU* worlds only: when the last one ends or turns out not to be one, go back to the terminal
+  useEffect(() => {
+    if (!sid) leaveEditor();
+  }, [sid]);
   const activeDbref = obj?.dbref;
   useEffect(() => {
     if (sid && activeDbref && state === 'connected') ensureDetails(sid, activeDbref);

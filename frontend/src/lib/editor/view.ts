@@ -8,10 +8,15 @@ import {
   useEditorUi,
 } from '../../state/editorStore';
 import type { EditCommand } from './command';
+import { OBJECT_EDITOR, hasModule, sessionHasModule } from '../modules';
 
-/** The world the editor works on: the foreground session while it is connected, else the first connected one. */
+/**
+ * The world the editor works on: the foreground session while it is connected, else the first
+ * connected one. Only worlds of a game type the Object Editor module covers (the MU* family) count.
+ */
 export function pickEditorSession(s: Pick<SessionsState, 'fg' | 'order' | 'sessions'>): string | null {
-  const live = (id: string | null): boolean => !!id && !!s.sessions[id] && s.sessions[id].state !== 'ended';
+  const live = (id: string | null): boolean =>
+    !!id && !!s.sessions[id] && s.sessions[id].state !== 'ended' && hasModule(OBJECT_EDITOR, s.sessions[id]);
   if (live(s.fg)) return s.fg;
   return s.order.find((id) => live(id)) ?? null;
 }
@@ -20,9 +25,19 @@ export const activeEditorSession = (): string | null => pickEditorSession(useSes
 
 /** Show the editor view and restore the last tabs of the active world. The terminal keeps running underneath. */
 export function enterEditor(): void {
-  useUi.getState().setView('editor');
   const sid = activeEditorSession();
-  if (sid) void restoreWorkspace(sid);
+  // the editor is opened from a MU* world; from another kind of game it does not exist
+  if (!sid || !sessionHasModule(OBJECT_EDITOR, useSessions.getState().fg)) {
+    useUi
+      .getState()
+      .toast(
+        'info',
+        'The Object Editor is for MU* games (PennMUSH, CobraMUSH, TinyMUX, TinyMUSH...). The foreground world is not one, or its type is not known yet.',
+      );
+    return;
+  }
+  useUi.getState().setView('editor');
+  void restoreWorkspace(sid);
 }
 
 export function leaveEditor(): void {
@@ -42,8 +57,9 @@ export async function runEditCommand(cmd: EditCommand): Promise<void> {
     return;
   }
   const sid = activeEditorSession();
-  if (cmd.target && !sid) {
-    ui.toast('warn', 'Connect to a world first: /edit needs the game to look the object up');
+  if (!sid || !sessionHasModule(OBJECT_EDITOR, useSessions.getState().fg)) {
+    // not a MU*: the command does not exist for this game
+    ui.toast('warn', 'no such command. Type /help for help.');
     return;
   }
   enterEditor();
