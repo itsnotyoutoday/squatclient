@@ -148,3 +148,19 @@ func TestPartialSettingsKeepDefaults(t *testing.T) {
 		t.Fatalf("%+v", st)
 	}
 }
+
+func TestOldSettingsFileGetsCommandWindowDefaults(t *testing.T) {
+	dir := t.TempDir()
+	old := `{"version":1,"settings":{"theme":"light","fontFamily":"x","fontSize":14,"scrollbackLines":20000,"defaultEncoding":"utf-8","truecolor":true}}`
+	if err := os.WriteFile(filepath.Join(dir, "settings.json"), []byte(old), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	s, err := Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	st := s.Settings()
+	if st.Theme != "light" || !st.SoftcodeJoin || !st.StripBlankLines || st.HistoryMax != 20000 || st.EditorHeight != 240 || st.InputHeight != 0 {
+		t.Fatalf("%+v", st)
+	}
+}

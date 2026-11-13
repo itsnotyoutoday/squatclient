@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -55,6 +56,7 @@ type Service struct {
 	boot   sync.WaitGroup
 	keyMu  sync.Mutex
 	pair   pairing
+	hist   *historyStore
 
 	fgMu     sync.Mutex
 	uiFg     string // foreground the UI last chose or was told about
@@ -89,6 +91,7 @@ func New(o Options) (*Service, error) {
 	s := &Service{cfg: o.Config, sec: o.Secrets, emit: o.Emit, log: o.Logger, quit: o.OnQuit, win: o.OnWindow, flush: o.FlushInterval,
 		pumpDone: make(chan struct{})}
 	s.ctx, s.cancel = context.WithCancel(context.Background())
+	s.hist = newHistoryStore(filepath.Join(o.Config.Dir(), "history"), func() int { return o.Config.Settings().HistoryMax })
 	eo.PasswordFor = func(worldID string) string {
 		pw, err := s.sec.Get(secrets.WorldKey(worldID))
 		if err != nil {

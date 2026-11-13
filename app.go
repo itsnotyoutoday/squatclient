@@ -368,6 +368,42 @@ func (a *App) Scrollback(id string, opts app.ScrollbackOpts) ([]proto.Line, erro
 	return s.Scrollback(id, opts)
 }
 
+// RecordHistory remembers one input (a block is one entry); see app.Service.RecordHistory.
+func (a *App) RecordHistory(id, text string) error {
+	s, err := a.service()
+	if err != nil {
+		return err
+	}
+	return s.RecordHistory(id, text)
+}
+
+// History returns the world's command history, newest first.
+func (a *App) History(id, query string, opts app.HistoryOpts) (app.HistoryPage, error) {
+	s, err := a.service()
+	if err != nil {
+		return app.HistoryPage{Entries: []app.HistoryEntry{}}, err
+	}
+	return s.History(id, query, opts)
+}
+
+// DeleteHistory removes one history entry.
+func (a *App) DeleteHistory(id string, entryID uint64) error {
+	s, err := a.service()
+	if err != nil {
+		return err
+	}
+	return s.DeleteHistory(id, entryID)
+}
+
+// ClearHistory removes the world's whole command history.
+func (a *App) ClearHistory(id string) error {
+	s, err := a.service()
+	if err != nil {
+		return err
+	}
+	return s.ClearHistory(id)
+}
+
 // Search searches a session's history.
 func (a *App) Search(id, query string, opts app.SearchOpts) ([]engine.Hit, error) {
 	s, err := a.service()

@@ -56,6 +56,45 @@ type Settings struct {
 	PauseOnScroll   bool    `json:"pauseOnScroll"`
 	DefaultEncoding string  `json:"defaultEncoding"`
 	Truecolor       bool    `json:"truecolor"`
+
+	// Command window / editor / history (see docs/APP.md "Command window").
+	InputHeight     int  `json:"inputHeight"`     // px of the single-line input area; 0 = automatic (1 line, grows to 8)
+	EditorHeight    int  `json:"editorHeight"`    // px of the editor-mode area
+	SoftcodeJoin    bool `json:"softcodeJoin"`    // editor mode: indented lines continue the previous line
+	StripBlankLines bool `json:"stripBlankLines"` // editor mode: drop blank and @@-comment-only lines
+	SendLineDelayMs int  `json:"sendLineDelayMs"` // editor mode: pause between lines of a block (0 = none)
+	HistoryMax      int  `json:"historyMax"`      // entries kept per world
+}
+
+// Limits of the command-window settings (SaveSettings clamps into them).
+const (
+	MaxInputHeight     = 4000
+	DefaultEditorH     = 240
+	MaxSendLineDelayMs = 10000
+	MinHistoryMax      = 100
+	MaxHistoryMax      = 200000
+	DefaultHistoryMax  = 20000
+)
+
+func clampInt(v, lo, hi int) int {
+	if v < lo {
+		return lo
+	}
+	if v > hi {
+		return hi
+	}
+	return v
+}
+
+// clampCommandWindow forces the command-window settings into their ranges.
+func (s *Settings) clampCommandWindow() {
+	s.InputHeight = clampInt(s.InputHeight, 0, MaxInputHeight)
+	s.EditorHeight = clampInt(s.EditorHeight, 0, MaxInputHeight)
+	s.SendLineDelayMs = clampInt(s.SendLineDelayMs, 0, MaxSendLineDelayMs)
+	if s.HistoryMax == 0 {
+		s.HistoryMax = DefaultHistoryMax
+	}
+	s.HistoryMax = clampInt(s.HistoryMax, MinHistoryMax, MaxHistoryMax)
 }
 
 // DefaultSettings matches DEFAULT_SETTINGS in the front end.
@@ -64,6 +103,7 @@ func DefaultSettings() Settings {
 		Theme: "dark", FontFamily: "JetBrains Mono, SF Mono, Menlo, Consolas, monospace", FontSize: 14,
 		ScrollbackLines: 20000, Notifications: true, Linkify: true, PauseOnScroll: true,
 		DefaultEncoding: "utf-8", Truecolor: true,
+		EditorHeight: DefaultEditorH, SoftcodeJoin: true, StripBlankLines: true, HistoryMax: DefaultHistoryMax,
 	}
 }
 
