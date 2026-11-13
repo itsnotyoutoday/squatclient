@@ -201,11 +201,16 @@ export function SettingsDialog() {
         <div className="checks">
           {check(
             'softcodeJoin',
-            'Editor: join indented lines to the previous line',
+            'Multi-line: join indented lines to the previous line',
             '(softcode continuation)',
           )}
-          {check('stripBlankLines', 'Editor: drop blank and @@ comment lines')}
-          {check('warnUnbalanced', 'Editor: ask before sending unbalanced brackets')}
+          {check('stripBlankLines', 'Multi-line: drop blank and @@ comment lines')}
+          {check('warnUnbalanced', 'Multi-line: ask before sending unbalanced brackets')}
+          {check(
+            'autoReconnectSquatters',
+            'Reconnect to squatters automatically',
+            '(after sleep or a network drop)',
+          )}
           {check('timestamps', 'Show timestamps')}
           {check('boldAsBright', 'Bold text uses bright colours')}
           {check('linkify', 'Make bare URLs clickable')}

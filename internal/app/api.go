@@ -94,6 +94,7 @@ func (s *Service) SaveSettings(in config.Settings) error {
 		return err
 	}
 	s.eng.SetCaps(capsFor(s.cfg.Settings()))
+	s.eng.SetAutoReconnectSquatters(s.cfg.Settings().AutoReconnectSquatters)
 	s.syncWorlds()
 	return nil
 }

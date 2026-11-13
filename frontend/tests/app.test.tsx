@@ -300,7 +300,8 @@ describe('dialogs', () => {
     await boot();
     await userEvent.keyboard('{Escape}');
     act(() => useUi.getState().openDialog('help'));
-    const dlg = await screen.findByRole('dialog', { name: 'SquatClient Help' });
+    // the help browser is lazy-loaded: give a busy machine (parallel test runs) more than the default 1s
+    const dlg = await screen.findByRole('dialog', { name: 'SquatClient Help' }, { timeout: 5000 });
     expect(dlg).toHaveAttribute('aria-modal', 'true');
     const close = within(dlg).getByRole('button', { name: 'Close dialog' });
     close.focus();

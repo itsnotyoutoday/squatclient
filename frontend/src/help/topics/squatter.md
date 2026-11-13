@@ -18,7 +18,8 @@ You do not need a squatter to use SquatClient. Without one, connections are **di
 What a squatter does **not** do:
 
 - It **never logs in for you** and **stores no game passwords**. SquatClient sends the login lines each time.
-- It **never reconnects by itself**. If the game closes the connection, the session is shown as ended, with the reason, until you dismiss it.
+- It **never reconnects to a game by itself**. If the game closes the connection, the session is shown as ended, with the reason, until you dismiss it.
+- **SquatClient does reconnect to the squatter by itself.** If your laptop sleeps or the network drops, the squatter keeps your games connected; the app reconnects to it a moment after the network is back (or the window is shown again) and catches up on everything you missed. You can turn this off in [Settings](help:settings), and the Squatters dialog has a Reconnect button to do it right away.
 
 ## Setting it up
 

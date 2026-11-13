@@ -220,6 +220,27 @@ export async function startController(
   }
   if (fg) ackLater(fg);
 
+  // After sleep or a network change the link to a squatter is usually dead: retry at once when the
+  // window is shown again or the network returns, instead of waiting out the backoff.
+  let lastNudge = 0;
+  const nudge = (): void => {
+    const now = Date.now();
+    if (disposed || now - lastNudge < 2000) return;
+    lastNudge = now;
+    void engine.nudgeSquatters().catch(() => undefined);
+  };
+  const onVisible = (): void => {
+    if (document.visibilityState === 'visible') nudge();
+  };
+  window.addEventListener('online', nudge);
+  window.addEventListener('focus', nudge);
+  document.addEventListener('visibilitychange', onVisible);
+  offs.push(() => {
+    window.removeEventListener('online', nudge);
+    window.removeEventListener('focus', nudge);
+    document.removeEventListener('visibilitychange', onVisible);
+  });
+
   const controller: Controller = {
     dispose() {
       disposed = true;

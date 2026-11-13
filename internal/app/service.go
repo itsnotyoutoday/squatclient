@@ -101,6 +101,7 @@ func New(o Options) (*Service, error) {
 		return pw
 	}
 	s.eng = engine.New(eo)
+	s.eng.SetAutoReconnectSquatters(o.Config.Settings().AutoReconnectSquatters)
 	s.syncWorlds()
 	return s, nil
 }

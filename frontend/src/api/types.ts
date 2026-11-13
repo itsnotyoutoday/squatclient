@@ -135,6 +135,8 @@ export interface Settings {
   historyMax: number;
   /** Editor mode: ask before sending a buffer with bracket problems. */
   warnUnbalanced: boolean;
+  /** Bring a lost link to a squatter back by itself (laptop sleep, network drop). */
+  autoReconnectSquatters: boolean;
 }
 
 /** Result of `readTextFile` (the /upload command). Failures are reported inside the result. */
@@ -301,8 +303,10 @@ export interface EngineAPI {
   ): Promise<{ id: string; fingerprint: string }>;
   confirmSquatter(id: string, accept: boolean): Promise<void>;
   removeSquatter(id: string): Promise<void>;
-  /** Explicit reconnect of a squatter (the app never reconnects by itself). */
+  /** Reconnect a squatter right now (the app also does this by itself unless turned off in Settings). */
   reconnectSquatter(id: string): Promise<void>;
+  /** Retry lost squatter links immediately (wake, window shown, network back); returns how many it is retrying. */
+  nudgeSquatters(): Promise<number>;
   /** /suspend: detach squatter sessions (they keep running) and minimise; returns how many were detached. */
   suspend(): Promise<number>;
   /** Re-attach suspended squatter sessions; what was missed is replayed. */
@@ -365,4 +369,5 @@ export const DEFAULT_SETTINGS: Settings = {
   sendLineDelayMs: 0,
   historyMax: 20000,
   warnUnbalanced: true,
+  autoReconnectSquatters: true,
 };

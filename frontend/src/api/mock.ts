@@ -376,6 +376,9 @@ export class MockEngine implements EngineAPI {
   async reconnectSquatter(id: string): Promise<void> {
     if (!this.squatters.some((s) => s.id === id)) throw new Error(`no such squatter: ${id}`);
   }
+  async nudgeSquatters(): Promise<number> {
+    return 0;
+  }
   async suspend(): Promise<number> {
     this.emit('suspend', { suspended: true });
     return 0;
