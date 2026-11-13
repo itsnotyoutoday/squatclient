@@ -951,3 +951,159 @@ body.resizing {
     transition: none;
   }
 }
+
+/* session tab menu and connection settings */
+.tabmenu {
+  position: fixed;
+  z-index: 60;
+  min-width: 190px;
+  padding: 4px;
+  background: var(--bg-elev, #2b2b2b);
+  color: var(--fg, #ddd);
+  border: 1px solid var(--border, #555);
+  border-radius: 6px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+.tabmenu button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 5px 10px;
+  background: none;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  border-radius: 4px;
+  cursor: default;
+}
+.tabmenu button:hover,
+.tabmenu button:focus {
+  background: var(--accent, #3a6ea5);
+  color: #fff;
+  outline: none;
+}
+.tabmenu hr {
+  margin: 4px 0;
+  border: 0;
+  border-top: 1px solid var(--border, #555);
+}
+.sset fieldset {
+  margin: 0 0 10px;
+}
+.sset-row {
+  display: flex;
+  gap: 12px;
+  padding: 2px 0;
+}
+.sset-label {
+  width: 90px;
+  opacity: 0.7;
+}
+.sset-lock {
+  margin-left: 6px;
+}
+
+/* in-window menu bar (Windows and Linux; macOS has the native one) */
+.menubar {
+  display: flex;
+  align-items: stretch;
+  flex: none;
+  background: var(--bg-elev, #232323);
+  border-bottom: 1px solid var(--border, #3a3a3a);
+  font-family: system-ui, 'Segoe UI', 'Cantarell', 'Ubuntu', sans-serif;
+  font-size: 13px;
+  user-select: none;
+}
+.menubar .mb-menu {
+  position: relative;
+}
+.menubar .mb-top {
+  height: 28px;
+  padding: 0 10px;
+  background: none;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  cursor: default;
+}
+.menubar .mb-top:hover,
+.menubar .mb-top.on {
+  background: var(--hover, rgba(255, 255, 255, 0.1));
+}
+.menubar .mb-drop {
+  position: absolute;
+  left: 0;
+  top: 100%;
+  z-index: 70;
+  min-width: 300px;
+  padding: 4px 0;
+  background: var(--bg-elev, #2b2b2b);
+  border: 1px solid var(--border, #555);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+.menubar .mb-drop button {
+  display: flex;
+  justify-content: space-between;
+  gap: 28px;
+  width: 100%;
+  padding: 5px 14px;
+  background: none;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: default;
+}
+.menubar .mb-drop button:hover:not(:disabled),
+.menubar .mb-drop button:focus {
+  background: var(--accent, #3a6ea5);
+  color: #fff;
+  outline: none;
+}
+.menubar .mb-drop button:disabled {
+  opacity: 0.45;
+}
+.menubar .mb-text,
+.menubar .mb-key {
+  white-space: nowrap;
+}
+.menubar .mb-key {
+  opacity: 0.7;
+}
+.menubar .mb-drop hr {
+  margin: 4px 0;
+  border: 0;
+  border-top: 1px solid var(--border, #555);
+}
+/* Windows 11 look: rounded, softer */
+.menubar.windows {
+  font-family: 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg, #1f1f1f);
+  border-bottom: 0;
+}
+.menubar.windows .mb-top {
+  margin: 2px 1px;
+  height: 24px;
+  border-radius: 4px;
+}
+.menubar.windows .mb-drop {
+  margin-top: 2px;
+  padding: 4px;
+  border-radius: 8px;
+}
+.menubar.windows .mb-drop button {
+  border-radius: 4px;
+  padding: 6px 12px;
+}
+.menubar.windows .mb-drop button:hover:not(:disabled),
+.menubar.windows .mb-drop button:focus {
+  background: var(--hover, rgba(255, 255, 255, 0.12));
+  color: inherit;
+}
+/* GTK / GNOME look: flat, square, accent-coloured selection */
+.menubar.linux {
+  font-family: 'Cantarell', 'Ubuntu', 'Noto Sans', system-ui, sans-serif;
+}
+.menubar.linux .mb-drop {
+  border-radius: 0 0 6px 6px;
+}

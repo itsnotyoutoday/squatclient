@@ -18,6 +18,11 @@ type ConnectTarget struct {
 	Host    string `json:"host,omitempty"`
 	Port    int    `json:"port,omitempty"`
 	TLS     bool   `json:"tls,omitempty"`
+	// Optional settings of an ad-hoc connection (a reconnect of a quick connect keeps them).
+	Name      string `json:"name,omitempty"`
+	TLSVerify string `json:"tlsVerify,omitempty"`
+	Encoding  string `json:"encoding,omitempty"`
+	Via       string `json:"via,omitempty"` // "" / direct, or a squatter id
 }
 
 // ScrollbackOpts is `{beforeSeq?, limit}`.
@@ -128,8 +133,24 @@ func (s *Service) Connect(t ConnectTarget) (engine.SessionInfo, error) {
 	if host == "" || t.Port < 1 || t.Port > 65535 {
 		return engine.SessionInfo{}, errors.New("host and a port between 1 and 65535 are required")
 	}
-	return s.eng.Dial(engine.World{Name: fmt.Sprintf("%s:%d", host, t.Port), Host: host, Port: t.Port, TLS: t.TLS,
-		TLSVerify: "strict", Encoding: s.cfg.Settings().DefaultEncoding}, "")
+	w := engine.World{Name: fmt.Sprintf("%s:%d", host, t.Port), Host: host, Port: t.Port, TLS: t.TLS,
+		TLSVerify: "strict", Encoding: s.cfg.Settings().DefaultEncoding}
+	if t.Name != "" {
+		w.Name = t.Name
+	}
+	if t.TLSVerify == "insecure" {
+		w.TLSVerify = "insecure"
+	}
+	if t.Encoding == "utf-8" || t.Encoding == "latin1" {
+		w.Encoding = t.Encoding
+	}
+	if t.Via != "" && t.Via != "direct" {
+		if err := s.ensureSquatter(t.Via); err != nil {
+			return engine.SessionInfo{}, err
+		}
+		w.Via = t.Via
+	}
+	return s.eng.Dial(w, "")
 }
 
 // Disconnect closes a session's connection (it stays listed, ended).

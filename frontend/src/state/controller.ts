@@ -130,48 +130,7 @@ export async function startController(
     engine.on('reset', ({ session }) => {
       void reloadSession(session);
     }),
-    engine.on('menu', ({ action }) => {
-      const u = useUi.getState();
-      const s = useSessions.getState();
-      switch (action) {
-        case 'quick-connect':
-          u.openDialog('quick');
-          break;
-        case 'worlds':
-          u.openDialog('worlds');
-          break;
-        case 'settings':
-          u.openDialog('settings');
-          break;
-        case 'help':
-          u.openDialog('help');
-          break;
-        case 'search':
-          u.setSearch(true);
-          break;
-        case 'editor':
-          toggleEditorView();
-          break;
-        case 'undo':
-        case 'redo':
-          runUndoRedo(action);
-          break;
-        case 'close-session': {
-          // in the editor view Cmd-W closes the active object tab, never the connection
-          if (u.view === 'editor') {
-            closeActiveEditorTab();
-            break;
-          }
-          const cur = s.fg ? s.sessions[s.fg] : undefined;
-          if (!cur) break;
-          if (cur.state === 'ended') void controller.dismiss(cur.id);
-          else void engine.disconnect(cur.id).catch(() => undefined);
-          break;
-        }
-        default:
-          break;
-      }
-    }),
+    engine.on('menu', ({ action }) => handleMenuAction(action, controller)),
     engine.on('bell', (b) => {
       const s = useSessions.getState();
       if (!useSettings.getState().settings.notifications || b.session === s.fg) return;
@@ -276,4 +235,68 @@ export async function startController(
     },
   };
   return controller;
+}
+
+/**
+ * A menu item was chosen. The native menu (macOS) sends it as a `menu` event; the in-window menu bar
+ * (Windows and Linux) calls this directly.
+ */
+export function handleMenuAction(action: string, controller: Controller): void {
+  const u = useUi.getState();
+  const s = useSessions.getState();
+  const engine = u.engine;
+  switch (action) {
+    case 'quick-connect':
+      u.openDialog('quick');
+      break;
+    case 'worlds':
+      u.openDialog('worlds');
+      break;
+    case 'settings':
+      u.openDialog('settings');
+      break;
+    case 'session-settings':
+      if (s.fg && s.sessions[s.fg]) u.openSessionSettings(s.fg);
+      else u.toast('info', 'No connection is open: there are no connection settings to show.');
+      break;
+    case 'help':
+      u.openDialog('help');
+      break;
+    case 'about':
+      u.openDialog('about');
+      break;
+    case 'search':
+      u.setSearch(true);
+      break;
+    case 'editor':
+      toggleEditorView();
+      break;
+    case 'undo':
+    case 'redo':
+      runUndoRedo(action);
+      break;
+    case 'suspend':
+      void engine?.suspend().catch((e: unknown) => u.toast('error', String(e)));
+      break;
+    case 'resume':
+      void engine?.resume().catch((e: unknown) => u.toast('error', String(e)));
+      break;
+    case 'quit':
+      void engine?.quit().catch(() => undefined);
+      break;
+    case 'close-session': {
+      // in the editor view Cmd-W closes the active object tab, never the connection
+      if (u.view === 'editor') {
+        closeActiveEditorTab();
+        break;
+      }
+      const cur = s.fg ? s.sessions[s.fg] : undefined;
+      if (!cur) break;
+      if (cur.state === 'ended') void controller.dismiss(cur.id);
+      else void engine?.disconnect(cur.id).catch(() => undefined);
+      break;
+    }
+    default:
+      break;
+  }
 }

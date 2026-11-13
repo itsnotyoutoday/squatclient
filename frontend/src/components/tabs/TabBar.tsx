@@ -1,6 +1,8 @@
 import { openHelp } from '../../help/command';
 import { toggleEditorView } from '../../lib/editor/view';
+import { useState } from 'react';
 import { useSessions, useUi } from '../../state/stores';
+import { TabMenu } from './TabMenu';
 import { OBJECT_EDITOR, fgHasModule } from '../../lib/modules';
 import { useControllerRef } from '../../state/controller-context';
 
@@ -12,6 +14,7 @@ export function TabBar() {
   const canEdit = useSessions(fgHasModule(OBJECT_EDITOR));
   const view = useUi((s) => s.view);
   const controller = useControllerRef();
+  const [menu, setMenu] = useState<{ id: string; x: number; y: number } | null>(null);
 
   const close = (id: string): void => {
     const s = sessions[id];
@@ -28,7 +31,14 @@ export function TabBar() {
         const active = id === fg;
         const unread = active ? 0 : s.unread;
         return (
-          <div key={id} className={`tab ${s.state}${active ? ' active' : ''}`}>
+          <div
+            key={id}
+            className={`tab ${s.state}${active ? ' active' : ''}`}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              setMenu({ id, x: e.clientX, y: e.clientY });
+            }}
+          >
             <button
               type="button"
               role="tab"
@@ -36,6 +46,13 @@ export function TabBar() {
               className="tabmain"
               title={`${s.name} (${s.host}:${s.port}) - Alt-${i + 1}`}
               onClick={() => controller?.switchTo(id)}
+              onKeyDown={(e) => {
+                if (e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10')) {
+                  e.preventDefault();
+                  const r = e.currentTarget.getBoundingClientRect();
+                  setMenu({ id, x: r.left, y: r.bottom });
+                }
+              }}
             >
               {s.state === 'connecting' && <span className="spinner" aria-label="connecting" role="img" />}
               <span className="tabname">{s.name}</span>
@@ -71,6 +88,15 @@ export function TabBar() {
       >
         +
       </button>
+      {menu && sessions[menu.id] && (
+        <TabMenu
+          session={sessions[menu.id]}
+          x={menu.x}
+          y={menu.y}
+          onClose={() => setMenu(null)}
+          onCloseSession={close}
+        />
+      )}
       <span className="grow" />
       <button
         type="button"

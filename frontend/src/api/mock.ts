@@ -395,6 +395,12 @@ export class MockEngine implements EngineAPI {
   async nudgeSquatters(): Promise<number> {
     return 0;
   }
+  async setSessionWorld(id: string, worldId: string): Promise<void> {
+    const sd = this.sessions.get(id);
+    if (!sd) throw new Error(`no such session: ${id}`);
+    sd.info = { ...sd.info, ...(worldId ? { worldId } : {}) };
+    this.emit('session', sd.info);
+  }
   async setGameType(id: string, t: string): Promise<void> {
     const sd = this.sessions.get(id);
     if (!sd) throw new Error(`no such session: ${id}`);
@@ -414,6 +420,12 @@ export class MockEngine implements EngineAPI {
   }
   async resume(): Promise<void> {
     this.emit('suspend', { suspended: false });
+  }
+  async appVersion(): Promise<string> {
+    return '0.0.0-mock';
+  }
+  async quit(): Promise<void> {
+    /* nothing to quit in the mock */
   }
 
   // ---- sessions

@@ -106,16 +106,17 @@ Focus the bar above the input (Tab to it), then:
 
 ## Windows and sessions
 
-| Key                       | Action                                                    |
-| ------------------------- | --------------------------------------------------------- |
-| Alt-1 to Alt-9            | switch to session 1 to 9                                  |
-| Ctrl-Tab, Ctrl-Shift-Tab  | next and previous session                                 |
-| Cmd-N, Ctrl-N             | quick connect (menu: Session, New Connection)             |
-| Ctrl-O, Cmd-O             | world manager                                             |
-| Ctrl-, and Cmd-,          | settings                                                  |
-| Cmd-W                     | close the session                                         |
-| Cmd-Shift-D, Ctrl-Shift-D | suspend: detach from squatters (menu: Session, Suspend)   |
-| Cmd-Shift-R, Ctrl-Shift-R | resume: attach to squatters again (menu: Session, Resume) |
+| Key                       | Action                                                                    |
+| ------------------------- | ------------------------------------------------------------------------- |
+| Alt-1 to Alt-9            | switch to session 1 to 9                                                  |
+| Ctrl-Tab, Ctrl-Shift-Tab  | next and previous session                                                 |
+| Cmd-N, Ctrl-Shift-N       | quick connect (macOS menu: Session, New Connection; Windows, Linux: File) |
+| Ctrl-O, Cmd-O             | world manager                                                             |
+| Ctrl-, and Cmd-,          | the application's settings (macOS: SquatClient menu, Settings...)         |
+| Cmd-W, Ctrl-Shift-W       | close the session                                                         |
+| Cmd-I, Alt-Enter          | settings of this connection (macOS menu: Session; Windows, Linux: File)   |
+| Cmd-Shift-D, Ctrl-Shift-D | suspend: detach from squatters (menu: Session, Suspend)                   |
+| Cmd-Shift-R, Ctrl-Shift-R | resume: attach to squatters again (menu: Session, Resume)                 |
 
 ## Output and search
 

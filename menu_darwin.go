@@ -24,10 +24,15 @@ func goEditAction(action C.int) {
 	if h == nil {
 		return
 	}
-	if action == 0 {
+	switch action {
+	case 0:
 		h("undo")
-	} else {
+	case 1:
 		h("redo")
+	case 2:
+		h("settings") // the application menu's Settings... item
+	case 3:
+		h("about") // the application menu's About item
 	}
 }
 

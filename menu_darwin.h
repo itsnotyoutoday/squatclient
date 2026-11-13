@@ -3,7 +3,8 @@
 
 // squatFixEditMenu re-wires the Edit menu's Undo and Redo items so they no longer claim Cmd+Z and
 // Shift+Cmd+Z: the page (code editor or text field) handles those keys itself. The items stay in the
-// menu and, when clicked, call goEditAction (0 = undo, 1 = redo).
+// menu and, when clicked, call goEditAction (0 = undo, 1 = redo). It also adds the application menu's "Settings..." item
+// (Cmd-,), which calls goEditAction(2).
 void squatFixEditMenu(void);
 
 #endif

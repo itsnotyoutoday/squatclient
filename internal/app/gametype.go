@@ -5,3 +5,13 @@ package app
 func (s *Service) SetGameType(sessionID, gameType string) error {
 	return s.eng.SetGameType(sessionID, gameType)
 }
+
+// SetSessionWorld links a session to a saved world (after "Save as world" on a quick connect).
+func (s *Service) SetSessionWorld(sessionID, worldID string) error {
+	if worldID != "" {
+		if _, err := s.cfg.World(worldID); err != nil {
+			return err
+		}
+	}
+	return s.eng.SetSessionWorld(sessionID, worldID)
+}

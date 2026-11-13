@@ -64,10 +64,7 @@ func main() {
 			Appearance:           mac.NSAppearanceNameDarkAqua,
 			WebviewIsTransparent: false,
 			WindowIsTranslucent:  false,
-			About: &mac.AboutInfo{
-				Title:   appName,
-				Message: "A graphical MU*/MUSH client.\nVersion " + version + "\nGPL-3.0-or-later",
-			},
+			// no native About panel: the About item opens the page's own dialog (menu_darwin.m)
 		},
 	})
 	if err != nil {

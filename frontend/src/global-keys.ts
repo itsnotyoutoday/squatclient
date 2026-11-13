@@ -1,5 +1,7 @@
 import { useEffect } from 'react';
+import { handleMenuAction } from './state/controller';
 import type { Controller } from './state/controller';
+import { detectPlatform } from './lib/platform';
 import type { OutputHandle } from './components/output/handle';
 import { useSessions, useUi } from './state/stores';
 import { openHelp } from './help/command';
@@ -83,6 +85,31 @@ export function useGlobalKeys(controller: Controller | null, getOutput: () => Ou
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && !e.altKey && k === 'e') {
         e.preventDefault();
         toggleEditor();
+        return;
+      }
+      // Windows and Linux have no native menu (the in-window menu bar shows these): Ctrl+Shift keeps the
+      // Emacs keys of the input line (Ctrl-N, Ctrl-W, Ctrl-D, Ctrl-R) free
+      if (controller && !e.metaKey && !e.altKey) {
+        const act =
+          e.ctrlKey && e.shiftKey
+            ? (
+                { n: 'quick-connect', w: 'close-session', d: 'suspend', r: 'resume' } as Record<
+                  string,
+                  string
+                >
+              )[k]
+            : e.ctrlKey && k === 'q' && detectPlatform() === 'linux'
+              ? 'quit'
+              : undefined;
+        if (act) {
+          e.preventDefault();
+          handleMenuAction(act, controller);
+          return;
+        }
+      }
+      if (e.altKey && !e.ctrlKey && !e.metaKey && e.key === 'Enter' && controller) {
+        e.preventDefault();
+        handleMenuAction('session-settings', controller);
         return;
       }
       if (e.ctrlKey && !e.shiftKey && e.key.toLowerCase() === 'o') {

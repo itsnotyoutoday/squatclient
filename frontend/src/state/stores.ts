@@ -101,7 +101,8 @@ export const useSettings = create<SettingsState>((set) => ({
 
 // ---------------------------------------------------------------- ui
 
-export type DialogId = 'worlds' | 'quick' | 'settings' | 'squatters' | 'help' | 'away' | 'history' | null;
+export type DialogId =
+  'worlds' | 'quick' | 'settings' | 'squatters' | 'help' | 'away' | 'history' | 'session' | 'about' | null;
 
 export interface Toast {
   id: number;
@@ -121,6 +122,10 @@ export interface UiState {
   squatters: SquatterConfig[];
   suspended: boolean;
   awayIds: string[];
+  /** The session the "Connection settings" dialog is about. */
+  sessionDialog: string | null;
+  /** A world the Worlds dialog should select when it opens. */
+  editWorldId: string | null;
   toasts: Toast[];
   now: number;
   setEngine(e: EngineAPI): void;
@@ -132,6 +137,8 @@ export interface UiState {
   patchSquatter(p: Partial<SquatterConfig> & { id: string }): void;
   setSuspended(v: boolean): void;
   setAway(ids: string[]): void;
+  openSessionSettings(id: string): void;
+  setEditWorld(id: string | null): void;
   toast(level: Toast['level'], text: string): void;
   dismissToast(id: number): void;
   tick(): void;
@@ -147,6 +154,8 @@ export const useUi = create<UiState>((set) => ({
   squatters: [],
   suspended: false,
   awayIds: [],
+  sessionDialog: null,
+  editWorldId: null,
   toasts: [],
   now: Date.now(),
   setEngine: (engine) => set({ engine }),
@@ -159,6 +168,8 @@ export const useUi = create<UiState>((set) => ({
     set((s) => ({ squatters: s.squatters.map((q) => (q.id === p.id ? { ...q, ...p } : q)) })),
   setSuspended: (suspended) => set({ suspended }),
   setAway: (awayIds) => set({ awayIds }),
+  openSessionSettings: (id) => set({ sessionDialog: id, dialog: 'session' }),
+  setEditWorld: (editWorldId) => set({ editWorldId }),
   toast: (level, text) => set((s) => ({ toasts: [...s.toasts.slice(-3), { id: ++toastId, level, text }] })),
   dismissToast: (id) => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
   tick: () => set({ now: Date.now() }),

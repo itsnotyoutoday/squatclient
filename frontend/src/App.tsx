@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useState } from 'react';
+import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import type { EngineAPI } from './api/types';
 import { startController } from './state/controller';
 import type { Controller } from './state/controller';
@@ -12,11 +12,15 @@ import { getOutput } from './components/output/handle';
 import { InputLine } from './components/input/InputLine';
 import { StatusBar } from './components/statusbar/StatusBar';
 import { TabBar } from './components/tabs/TabBar';
+import { MenuBar } from './components/menu/MenuBar';
+import { detectPlatform } from './lib/platform';
 import { EndedBanner } from './components/tabs/EndedBanner';
 import { SearchBar } from './components/search/SearchBar';
 import { QuickConnect } from './components/dialogs/QuickConnect';
 import { SettingsDialog } from './components/dialogs/SettingsDialog';
 import { WorldManager } from './components/dialogs/WorldManager';
+import { SessionSettings } from './components/dialogs/SessionSettings';
+import { AboutDialog } from './components/dialogs/AboutDialog';
 import { SquattersDialog } from './components/dialogs/SquattersDialog';
 import { AwayDialog } from './components/dialogs/AwayDialog';
 import HistoryBrowser from './components/history/HistoryBrowser';
@@ -50,6 +54,10 @@ function Dialogs() {
       return <AwayDialog />;
     case 'history':
       return <HistoryBrowser />;
+    case 'session':
+      return <SessionSettings />;
+    case 'about':
+      return <AboutDialog />;
     default:
       return null;
   }
@@ -152,6 +160,7 @@ export function App({ engine }: { engine: EngineAPI }) {
     document.title = unread > 0 ? `(${unread}) SquatClient` : 'SquatClient';
   }, [unread]);
   useGlobalKeys(controller, getOutput);
+  const platform = useMemo(() => detectPlatform(), []);
 
   return (
     <ControllerContext.Provider value={controller}>
@@ -170,6 +179,7 @@ export function App({ engine }: { engine: EngineAPI }) {
           Skip to input
         </a>
         <div className="titlestrip" aria-hidden="true" />
+        {platform !== 'mac' && <MenuBar platform={platform} />}
         {view === 'terminal' && (
           <header>
             <TabBar />

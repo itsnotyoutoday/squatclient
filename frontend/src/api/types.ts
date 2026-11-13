@@ -57,6 +57,9 @@ export interface SessionInfo {
   gameType?: string;
   /** Module family of the game: "mush" for the MU* family; absent when unknown or not a MU*. */
   gameFamily?: string;
+  /** The settings the connection was opened with. */
+  encoding?: string;
+  tlsVerify?: string;
   gameTypeSource?: 'world' | 'user' | 'banner' | 'probe';
 }
 
@@ -180,7 +183,19 @@ export interface HistoryPage {
   total: number;
 }
 
-export type ConnectTarget = { worldId: string } | { host: string; port: number; tls: boolean };
+export type ConnectTarget =
+  | { worldId: string }
+  | {
+      host: string;
+      port: number;
+      tls: boolean;
+      /** Optional settings of an ad-hoc connection (kept when a quick connect is reconnected). */
+      name?: string;
+      tlsVerify?: string;
+      encoding?: string;
+      /** "direct" or a squatter id. */
+      via?: string;
+    };
 
 export interface SearchHit {
   seq: number;
@@ -433,10 +448,16 @@ export interface EngineAPI {
   nudgeSquatters(): Promise<number>;
   /** Set what kind of game a session is ("" or "auto" detects it again). */
   setGameType(sessionId: string, gameType: string): Promise<void>;
+  /** Link a session to a saved world (after saving a quick connect as a world). */
+  setSessionWorld(sessionId: string, worldId: string): Promise<void>;
   /** /suspend: detach squatter sessions (they keep running) and minimise; returns how many were detached. */
   suspend(): Promise<number>;
   /** Re-attach suspended squatter sessions; what was missed is replayed. */
   resume(): Promise<void>;
+  /** Quit the application (File > Quit on Windows and Linux). */
+  quit(): Promise<void>;
+  /** The application version (About dialog). */
+  appVersion(): Promise<string>;
   connect(target: ConnectTarget): Promise<SessionInfo>;
   disconnect(sessionId: string): Promise<void>;
   dismiss(sessionId: string): Promise<void>;

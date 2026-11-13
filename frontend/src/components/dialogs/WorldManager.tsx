@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { GAME_TYPES } from '../../lib/modules';
 import type { FormEvent } from 'react';
 import type { WorldConfig } from '../../api/types';
@@ -40,6 +40,14 @@ export function WorldManager() {
   const [err, setErr] = useState('');
   const groups = useMemo(() => groupWorlds(worlds, filter), [worlds, filter]);
   const close = (): void => useUi.getState().openDialog(null);
+  const editWorldId = useUi((s) => s.editWorldId);
+  useEffect(() => {
+    // "Edit world..." from a tab: select that world when the dialog opens
+    if (!editWorldId) return;
+    const w = worlds.find((x) => x.id === editWorldId);
+    if (w) setDraft(w);
+    useUi.getState().setEditWorld(null);
+  }, [editWorldId, worlds]);
 
   const refresh = async (): Promise<void> => {
     if (engine) useUi.getState().setWorlds(await engine.listWorlds());

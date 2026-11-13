@@ -8,3 +8,12 @@ func (a *App) SetGameType(sessionID, gameType string) error {
 	}
 	return s.SetGameType(sessionID, gameType)
 }
+
+// SetSessionWorld links a session to a saved world (see Service.SetSessionWorld).
+func (a *App) SetSessionWorld(sessionID, worldID string) error {
+	s, err := a.service()
+	if err != nil {
+		return err
+	}
+	return s.SetSessionWorld(sessionID, worldID)
+}
