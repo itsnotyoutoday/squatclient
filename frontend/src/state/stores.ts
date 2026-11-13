@@ -109,8 +109,12 @@ export interface Toast {
   text: string;
 }
 
+export type AppView = 'terminal' | 'editor';
+
 export interface UiState {
   engine: EngineAPI | null;
+  /** which full-window view is showing; the terminal and its connections keep running under the editor */
+  view: AppView;
   dialog: DialogId;
   searchOpen: boolean;
   worlds: WorldConfig[];
@@ -120,6 +124,7 @@ export interface UiState {
   toasts: Toast[];
   now: number;
   setEngine(e: EngineAPI): void;
+  setView(v: AppView): void;
   openDialog(d: DialogId): void;
   setSearch(open: boolean): void;
   setWorlds(w: WorldConfig[]): void;
@@ -135,6 +140,7 @@ export interface UiState {
 let toastId = 0;
 export const useUi = create<UiState>((set) => ({
   engine: null,
+  view: 'terminal',
   dialog: null,
   searchOpen: false,
   worlds: [],
@@ -144,6 +150,7 @@ export const useUi = create<UiState>((set) => ({
   toasts: [],
   now: Date.now(),
   setEngine: (engine) => set({ engine }),
+  setView: (view) => set({ view }),
   openDialog: (dialog) => set({ dialog }),
   setSearch: (searchOpen) => set({ searchOpen }),
   setWorlds: (worlds) => set({ worlds }),
@@ -161,6 +168,7 @@ export function resetStores(): void {
   resetBuffers();
   useSessions.setState({ sessions: {}, order: [], fg: null, versions: {}, status: {}, paused: {} });
   useUi.setState({
+    view: 'terminal',
     dialog: null,
     searchOpen: false,
     awayIds: [],
