@@ -488,6 +488,21 @@ textarea {
   align-items: center;
   padding: 8px 14px;
   border-bottom: 1px solid var(--ui-border);
+  cursor: grab;
+  user-select: none;
+  flex: none;
+}
+.dialog.dragging,
+.dialog.dragging .dhead {
+  cursor: grabbing;
+  user-select: none;
+}
+.dialog.resizable {
+  resize: both;
+  overflow: hidden;
+  min-width: min(360px, 94vw);
+  min-height: 220px;
+  max-width: 98vw;
 }
 .dialog h2 {
   margin: 0;
@@ -506,6 +521,8 @@ textarea {
 .dialog .body {
   padding: 12px 14px;
   overflow: auto;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 .dialog .dfoot {
   padding: 8px 14px;
