@@ -1,5 +1,11 @@
 import type {
   ConnectTarget,
+  EditAttrInfoResult,
+  EditAttrResult,
+  EditControlsResult,
+  EditObjectResult,
+  EditResolveResult,
+  EditResult,
   EngineAPI,
   EngineEventName,
   EngineEvents,
@@ -46,6 +52,18 @@ function call<T>(method: string, ...args: unknown[]): Promise<T> {
   return fn(...args) as Promise<T>;
 }
 
+/** Calls an Edit* binding; a rejected promise becomes `{ok:false, code:'error'}` merged over `empty`. */
+function editCall<T extends EditResult>(
+  method: string,
+  empty: Omit<T, keyof EditResult>,
+  ...args: unknown[]
+): Promise<T> {
+  return call<T>(method, ...args).catch(
+    (e: unknown) =>
+      ({ ...empty, ok: false, code: 'error', error: e instanceof Error ? e.message : String(e) }) as T,
+  );
+}
+
 /** EngineAPI backed by Wails-generated bindings (window.go.main.App.*) and runtime events. */
 export class WailsEngine implements EngineAPI {
   listWorlds = () => list(call<WorldConfig[] | null>('ListWorlds'));
@@ -82,6 +100,37 @@ export class WailsEngine implements EngineAPI {
     }));
   deleteHistory = (id: string, entryId: number) => call<void>('DeleteHistory', id, entryId);
   clearHistory = (id: string) => call<void>('ClearHistory', id);
+  // The Edit* calls never reject on game errors, but a missing binding or a transport failure
+  // must still become a result value so the editor can show it.
+  editFetchObject = (id: string, dbref: string) =>
+    editCall<EditObjectResult>(
+      'EditFetchObject',
+      { dbref, name: '', type: '', owner: '', flags: '', location: '', attrs: [] },
+      id,
+      dbref,
+    ).then((r) => ({ ...r, attrs: r.attrs ?? [] }));
+  editFetchAttr = (id: string, dbref: string, attr: string) =>
+    editCall<EditAttrResult>(
+      'EditFetchAttr',
+      { dbref, name: attr, exists: false, value: '', editable: '' },
+      id,
+      dbref,
+      attr,
+    );
+  editSaveAttr = (id: string, dbref: string, attr: string, value: string) =>
+    editCall<EditResult>('EditSaveAttr', {}, id, dbref, attr, value);
+  editResolve = (id: string, target: string) =>
+    editCall<EditResolveResult>('EditResolve', { dbref: '', name: '' }, id, target);
+  editControls = (id: string, dbref: string) =>
+    editCall<EditControlsResult>('EditControls', { controls: 'unknown' }, id, dbref);
+  editAttrInfo = (id: string, dbref: string, attr: string) =>
+    editCall<EditAttrInfoResult>(
+      'EditAttrInfo',
+      { known: false, flags: '', flagNames: '', owner: '', writable: 'unknown' },
+      id,
+      dbref,
+      attr,
+    );
   pickFile = (title: string) => call<string>('PickFile', title).then((p) => p ?? '');
   readTextFile = (path: string) => call<FileResult>('ReadTextFile', path);
 

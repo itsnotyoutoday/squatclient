@@ -223,6 +223,68 @@ export interface SquatterConfigState {
 
 export type EngineEventName = keyof EngineEvents;
 
+// ---- in-game object/attribute editor (docs/EDIT.md sections 9 and 10)
+
+export type EditCode =
+  | 'no_session'
+  | 'no_such_object'
+  | 'permission'
+  | 'invalid'
+  | 'timeout'
+  | 'session_ended'
+  | 'rejected'
+  | 'mismatch'
+  | 'unsafe_value'
+  | 'bad_reply'
+  | 'ambiguous'
+  | 'error';
+
+export interface EditResult {
+  ok: boolean;
+  error?: string;
+  code?: EditCode;
+}
+
+export interface EditObjectResult extends EditResult {
+  dbref: string;
+  name: string;
+  type: string;
+  owner: string;
+  flags: string;
+  /** '' when none */
+  location: string;
+  attrs: { name: string }[];
+}
+
+export interface EditAttrResult extends EditResult {
+  dbref: string;
+  name: string;
+  exists: boolean;
+  /** raw stored text, literal %r */
+  value: string;
+  /** %r shown as newline, %t as tab */
+  editable: string;
+}
+
+export interface EditResolveResult extends EditResult {
+  dbref: string;
+  name: string;
+}
+
+export type Tri = 'true' | 'false' | 'unknown';
+
+export interface EditControlsResult extends EditResult {
+  controls: Tri;
+}
+
+export interface EditAttrInfoResult extends EditResult {
+  known: boolean;
+  flags: string;
+  flagNames: string;
+  owner: string;
+  writable: Tri;
+}
+
 export interface EngineAPI {
   listWorlds(): Promise<WorldConfig[]>;
   saveWorld(w: WorldConfig): Promise<WorldConfig>;

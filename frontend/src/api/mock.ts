@@ -1,6 +1,12 @@
 import { DEFAULT_SETTINGS } from './types';
 import type {
   ConnectTarget,
+  EditAttrInfoResult,
+  EditAttrResult,
+  EditControlsResult,
+  EditObjectResult,
+  EditResolveResult,
+  EditResult,
   EngineAPI,
   EngineEventName,
   EngineEvents,
@@ -18,6 +24,7 @@ import type {
   WorldConfig,
 } from './types';
 import { chatterLine, roomLines, sampleGroup } from './mock-samples';
+import { MockGame } from './mock-game';
 
 export interface MockOptions {
   /** Stream sample lines into connected sessions on a timer. */
@@ -525,6 +532,60 @@ export class MockEngine implements EngineAPI {
   }
   async clearHistory(sessionId: string): Promise<void> {
     this.hist(this.histKey(sessionId).key).list = [];
+  }
+  // ---- in-game editor (docs/EDIT.md): a fake game with objects, permissions and failure modes
+  /** The fake game behind the Edit* calls: tweak latency, rejections, objects and concurrent changes in tests/demos. */
+  readonly game = new MockGame();
+  private editGate<T extends EditResult>(sessionId: string, rest: Omit<T, keyof EditResult>): T | null {
+    const sd = this.sessions.get(sessionId);
+    if (!sd) return { ...rest, ok: false, code: 'no_session', error: 'engine: no such session' } as T;
+    if (sd.info.state === 'ended')
+      return { ...rest, ok: false, code: 'session_ended', error: 'engine: the session has ended' } as T;
+    return null;
+  }
+  async editFetchObject(sessionId: string, dbref: string): Promise<EditObjectResult> {
+    return (
+      this.editGate<EditObjectResult>(sessionId, {
+        dbref,
+        name: '',
+        type: '',
+        owner: '',
+        flags: '',
+        location: '',
+        attrs: [],
+      }) ?? this.game.fetchObject(dbref)
+    );
+  }
+  async editFetchAttr(sessionId: string, dbref: string, attr: string): Promise<EditAttrResult> {
+    return (
+      this.editGate<EditAttrResult>(sessionId, {
+        dbref,
+        name: attr,
+        exists: false,
+        value: '',
+        editable: '',
+      }) ?? this.game.fetchAttr(dbref, attr)
+    );
+  }
+  async editSaveAttr(sessionId: string, dbref: string, attr: string, value: string): Promise<EditResult> {
+    return this.editGate<EditResult>(sessionId, {}) ?? this.game.saveAttr(dbref, attr, value);
+  }
+  async editResolve(sessionId: string, target: string): Promise<EditResolveResult> {
+    return this.editGate<EditResolveResult>(sessionId, { dbref: '', name: '' }) ?? this.game.resolve(target);
+  }
+  async editControls(sessionId: string, dbref: string): Promise<EditControlsResult> {
+    return this.editGate<EditControlsResult>(sessionId, { controls: 'unknown' }) ?? this.game.controls(dbref);
+  }
+  async editAttrInfo(sessionId: string, dbref: string, attr: string): Promise<EditAttrInfoResult> {
+    return (
+      this.editGate<EditAttrInfoResult>(sessionId, {
+        known: false,
+        flags: '',
+        flagNames: '',
+        owner: '',
+        writable: 'unknown',
+      }) ?? this.game.attrInfo(dbref, attr)
+    );
   }
   /** What the next `pickFile` resolves with ('' = the user cancelled). Test/demo hook. */
   nextPick = '~/demo-script.mush';
