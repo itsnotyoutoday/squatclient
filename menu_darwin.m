@@ -25,20 +25,18 @@ void squatFixEditMenu(void) {
         // "Settings..." (Cmd-,) belongs in the application menu on macOS, after About
         NSArray<NSMenuItem *> *tops = [[NSApp mainMenu] itemArray];
         NSMenu *appMenu = tops.count > 0 ? [tops[0] submenu] : nil;
-        // the native About panel is replaced by the page's own About dialog (same on every platform)
-        for (NSMenuItem *it in (appMenu != nil ? [appMenu itemArray] : @[])) {
-            if ([it action] == NSSelectorFromString(@"About")) {
-                [it setTarget:squatTarget];
-                [it setAction:@selector(squatAbout:)];
-            }
-        }
+        // Wails only builds an About item when it is given a native About panel, which we do not use (the
+        // page has its own About dialog), so the application menu gets its own: About, then Settings...
         if (appMenu != nil && [appMenu indexOfItemWithTarget:squatTarget andAction:@selector(squatSettings:)] < 0) {
+            NSMenuItem *about = [[NSMenuItem alloc] initWithTitle:@"About SquatClient" action:@selector(squatAbout:) keyEquivalent:@""];
+            [about setTarget:squatTarget];
             NSMenuItem *st = [[NSMenuItem alloc] initWithTitle:@"Settings\u2026" action:@selector(squatSettings:) keyEquivalent:@","];
             [st setKeyEquivalentModifierMask:NSEventModifierFlagCommand];
             [st setTarget:squatTarget];
-            NSInteger at = MIN(2, (NSInteger)[appMenu numberOfItems]);
-            [appMenu insertItem:st atIndex:at];
-            [appMenu insertItem:[NSMenuItem separatorItem] atIndex:at + 1];
+            [appMenu insertItem:about atIndex:0];
+            [appMenu insertItem:[NSMenuItem separatorItem] atIndex:1];
+            [appMenu insertItem:st atIndex:2];
+            [appMenu insertItem:[NSMenuItem separatorItem] atIndex:3];
         }
         for (NSMenuItem *top in tops) {
             NSMenu *sub = [top submenu];

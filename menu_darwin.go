@@ -24,16 +24,23 @@ func goEditAction(action C.int) {
 	if h == nil {
 		return
 	}
+	name := ""
 	switch action {
 	case 0:
-		h("undo")
+		name = "undo"
 	case 1:
-		h("redo")
+		name = "redo"
 	case 2:
-		h("settings") // the application menu's Settings... item
+		name = "settings" // the application menu's Settings... item
 	case 3:
-		h("about") // the application menu's About item
+		name = "about" // the application menu's About item
+	default:
+		return
 	}
+	// This runs on the main thread, inside AppKit's menu handling. Calling into Wails from here
+	// (it runs JavaScript through a dispatch block) corrupted memory and crashed the app, so hand
+	// over to another goroutine exactly as Wails does for its own menu callbacks.
+	go h(name)
 }
 
 // fixEditMenu stops the native Edit menu from claiming Cmd+Z / Shift+Cmd+Z (WebKit's own undo
