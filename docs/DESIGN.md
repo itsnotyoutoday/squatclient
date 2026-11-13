@@ -203,6 +203,7 @@ The game serves its own React stations/viewer; the client opens a URL + token wh
 13. **Automation** runs at the client site in v1; daemon-site execution is a designed future step (`docs/AUTOMATION.md`).
 14. **Colour/text requirements are acceptance criteria** (STRUCTURE.md Section 8).
 15. All three platforms build in CI; macOS is the primary dev/test platform for v1.
+16. **Terminal-only TinyFugue features are out of scope** (`wrap`, `more`, `/visual`, terminal geometry, process/suspend commands, etc.): accepted-and-ignored so old scripts still load, with GUI equivalents as UI settings (see `squatClientDaemon/docs/TF-COMPAT.md` section 1a).
 
 ## 12. Risks
 
