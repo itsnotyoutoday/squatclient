@@ -1,10 +1,15 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { ClipboardEvent, KeyboardEvent } from 'react';
 import { handleKey, initialEdit, keyName, NO_NAV, pasteToLines } from '../../lib/keymap';
+import { checkBalance } from '../../lib/mushcode';
+import type { BalanceIssue } from '../../lib/mushcode';
+import type { CodeEditorHandle, CursorInfo } from '../codeeditor';
+import { Dialog } from '../dialogs/Dialog';
+import { parseUploadCommand } from '../../lib/upload/command';
+import { beginUpload } from '../../lib/upload/store';
 import type { EditState, Keymap } from '../../lib/keymap';
 import { DEFAULT_KEYMAP } from '../../lib/keymap';
-import { currentChunk, indentSelection, prepareBlock } from '../../lib/softcode';
-import type { EditResult } from '../../lib/softcode';
+import { currentChunk, lineCol, prepareBlock } from '../../lib/softcode';
 import { sendBlock } from '../../lib/blocksender';
 import type { BlockProgress, BlockSend } from '../../lib/blocksender';
 import { clampInputHeight, heightBounds, lineHeightPx } from '../../lib/inputsize';
@@ -40,6 +45,61 @@ const blockOpts = (): { join: boolean; stripBlank: boolean } => {
 const draftOf = (editor: boolean, text: string): InputDraft =>
   editor || text.includes('\n') ? { editor, text } : { editor: false, text: '' };
 
+interface UnbalancedConfirm {
+  issues: BalanceIssue[];
+  /** Offset in the editor text of the checked code (0 for the whole buffer). */
+  at: number;
+  go(): void;
+}
+
+/** "N bracket problems on lines ...": Send anyway / Fix first. */
+function UnbalancedDialog({
+  confirm,
+  text,
+  onSend,
+  onFix,
+}: {
+  confirm: UnbalancedConfirm;
+  text: string;
+  onSend(): void;
+  onFix(): void;
+}) {
+  const base = lineCol(text, confirm.at).line - 1;
+  const lines = [...new Set(confirm.issues.map((i) => i.line + base))];
+  const n = confirm.issues.length;
+  return (
+    <Dialog
+      title="Unbalanced brackets"
+      onClose={onFix}
+      footer={
+        <>
+          <button type="button" onClick={onSend}>
+            Send anyway
+          </button>
+          <button type="button" className="primary" onClick={onFix} data-autofocus>
+            Fix first
+          </button>
+        </>
+      }
+    >
+      <div className="cw-confirm" role="alert">
+        <p>
+          {n} bracket {n === 1 ? 'problem' : 'problems'} on {lines.length === 1 ? 'line' : 'lines'}{' '}
+          {lines.slice(0, 12).join(', ')}
+          {lines.length > 12 ? ', ...' : ''}.
+        </p>
+        <ul className="cw-list">
+          {confirm.issues.slice(0, 5).map((i, k) => (
+            <li key={k}>
+              Line {i.line + base}: {i.message}
+            </li>
+          ))}
+        </ul>
+      </div>
+    </Dialog>
+  );
+}
+
 export function InputLine({ sessionId, remoteEcho, disabled, keymap = DEFAULT_KEYMAP }: InputLineProps) {
   const engine = useUi((s) => s.engine);
   const settings = useSettings((s) => s.settings);
@@ -51,7 +111,11 @@ export function InputLine({ sessionId, remoteEcho, disabled, keymap = DEFAULT_KE
   const [prefs, setPrefs] = useState<EditorPrefs>(() => loadEditorPrefs());
   const [progress, setProgress] = useState<BlockProgress | null>(null);
   const [winH, setWinH] = useState(() => window.innerHeight);
+  const [problems, setProblems] = useState(0);
+  const [confirm, setConfirm] = useState<UnbalancedConfirm | null>(null);
   const ref = useRef<HTMLTextAreaElement>(null);
+  const edRef = useRef<CodeEditorHandle>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
   const selRef = useRef<[number, number] | null>(null);
   const blockRef = useRef<BlockSend | null>(null);
   const loadedKey = useRef('');
@@ -83,7 +147,7 @@ export function InputLine({ sessionId, remoteEcho, disabled, keymap = DEFAULT_KE
   }, [key, editor, st.text]);
 
   useEffect(() => {
-    if (!remoteEcho) ref.current?.focus();
+    if (!remoteEcho) (editor ? edRef.current : ref.current)?.focus();
   }, [sessionId, editor, remoteEcho]);
 
   useEffect(() => {
@@ -120,6 +184,12 @@ export function InputLine({ sessionId, remoteEcho, disabled, keymap = DEFAULT_KE
         openHelp(help);
         return;
       }
+      // /upload is a UI feature too: the picker / upload dialog, never sent to the game itself.
+      const up = parseUploadCommand(l);
+      if (up !== null) {
+        void beginUpload(engine, sid, up);
+        return;
+      }
       if (!engine) return;
       void engine.input(sid, l).catch((e: unknown) => useUi.getState().toast('error', String(e)));
     },
@@ -153,26 +223,44 @@ export function InputLine({ sessionId, remoteEcho, disabled, keymap = DEFAULT_KE
   const record = (text: string): void => recordHistory(engine, sessionId, text.replace(/\s+$/, ''));
 
   const submit = (text: string): void => {
-    record(text);
+    if (parseUploadCommand(text) === null) record(text); // an upload is recorded by its dialog, as `/upload <file name>`
     for (const l of text.split('\n')) sendOne(sessionId, l);
   };
 
+  /** Check the code for bracket problems first (setting warnUnbalanced); `go` runs when it is fine or confirmed. */
+  const guarded = (code: string, at: number, go: () => void): void => {
+    if (!useSettings.getState().settings.warnUnbalanced) return go();
+    const issues = checkBalance(code, { mode: 'code' });
+    if (issues.length === 0) return go();
+    setConfirm({ issues, at, go });
+  };
+
   const sendBuffer = (): void => {
-    const lines = prepareBlock(st.text, blockOpts());
-    if (lines.length === 0 || blockRef.current) return;
-    record(st.text);
-    setSt((s) => ({ ...initialEdit(), kill: s.kill }));
-    run(lines);
+    if (blockRef.current) return;
+    const text = edRef.current?.getValue() ?? st.text;
+    const lines = prepareBlock(text, blockOpts());
+    if (lines.length === 0) return;
+    guarded(text, 0, () => {
+      record(text);
+      setSt((s) => ({ ...initialEdit(), kill: s.kill }));
+      run(lines);
+    });
   };
 
   const sendChunk = (): void => {
-    const el = ref.current;
-    if (!el || blockRef.current) return;
-    const chunk = currentChunk(st.text, el.selectionStart, el.selectionEnd, blockOpts().join);
+    const h = edRef.current;
+    if (!h || blockRef.current) return;
+    const text = h.getValue();
+    const cur = h.getCursor().offset;
+    const sel = h.getSelection();
+    const chunk = sel !== '' ? sel : currentChunk(text, cur, cur, blockOpts().join);
     const lines = prepareBlock(chunk, blockOpts());
     if (lines.length === 0) return;
-    record(chunk);
-    run(lines);
+    const at = Math.max(0, text.indexOf(chunk)); // where the chunk starts, to number problems by editor line
+    guarded(chunk, at, () => {
+      record(chunk);
+      run(lines);
+    });
   };
 
   // Hooks for events registered once: always call the newest closures.
@@ -187,7 +275,7 @@ export function InputLine({ sessionId, remoteEcho, disabled, keymap = DEFAULT_KE
       load: (text) => {
         if (text.includes('\n')) setEditor(true);
         setSt((s) => ({ ...initialEdit(text), kill: s.kill }));
-        setTimeout(() => ref.current?.focus(), 0);
+        setTimeout(() => (latest.current.editor ? edRef.current : ref.current)?.focus(), 0);
       },
     };
   });
@@ -208,6 +296,10 @@ export function InputLine({ sessionId, remoteEcho, disabled, keymap = DEFAULT_KE
       const d = (ev as CustomEvent<InsertDetail>).detail;
       if (remoteEcho || disabled || !d || d.handled) return;
       d.handled = true;
+      if (latest.current.editor && edRef.current) {
+        edRef.current.insertAtCursor(d.text);
+        return;
+      }
       const at = ref.current?.selectionStart ?? null;
       setSt((s) => {
         const c = Math.min(at ?? s.cursor, s.text.length);
@@ -252,29 +344,6 @@ export function InputLine({ sessionId, remoteEcho, disabled, keymap = DEFAULT_KE
   };
 
   // ---- keys
-
-  const apply = (r: EditResult): void => {
-    selRef.current = [r.start, r.end];
-    setSt((s) => ({ ...s, text: r.text, cursor: r.start, nav: NO_NAV }));
-  };
-
-  const onEditorKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>): void => {
-    if (e.nativeEvent.isComposing || disabled) return;
-    const mod = e.metaKey || e.ctrlKey;
-    if (e.key === 'Enter' && mod) {
-      e.preventDefault();
-      if (e.shiftKey) sendChunk();
-      else sendBuffer();
-    } else if (e.key === 'Tab' && !mod && !e.altKey) {
-      e.preventDefault();
-      const el = e.currentTarget;
-      const r = indentSelection(el.value, el.selectionStart, el.selectionEnd, e.shiftKey);
-      if (r) apply(r);
-    } else if (e.key === 'Escape') {
-      e.preventDefault();
-      setEditor(false); // the text stays: nothing is lost by leaving editor mode
-    }
-  };
 
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>): void => {
     if (e.nativeEvent.isComposing || disabled) return;
@@ -326,7 +395,7 @@ export function InputLine({ sessionId, remoteEcho, disabled, keymap = DEFAULT_KE
   const handle = (
     <ResizeHandle
       value={shown}
-      measure={() => ref.current?.offsetHeight || shown}
+      measure={() => bodyRef.current?.offsetHeight || ref.current?.offsetHeight || shown}
       min={min}
       max={max}
       lineHeight={lh}
@@ -358,7 +427,8 @@ export function InputLine({ sessionId, remoteEcho, disabled, keymap = DEFAULT_KE
         {handle}
         <div className="inputline editor">
           <EditorPane
-            textareaRef={ref}
+            editorRef={edRef}
+            bodyRef={bodyRef}
             text={st.text}
             cursor={st.cursor}
             height={fixed}
@@ -366,14 +436,17 @@ export function InputLine({ sessionId, remoteEcho, disabled, keymap = DEFAULT_KE
             lineNumbers={prefs.lineNumbers}
             disabled={disabled}
             progress={progress}
-            onText={(text, cursor) => setSt((s) => ({ ...s, text, cursor, nav: NO_NAV }))}
-            onSelect={(c) => setSt((s) => (s.cursor === c ? s : { ...s, cursor: c }))}
-            onKeyDown={onEditorKeyDown}
+            problems={problems}
+            onText={(text) => setSt((s) => (s.text === text ? s : { ...s, text, nav: NO_NAV }))}
+            onCursor={(c: CursorInfo) =>
+              setSt((s) => (s.cursor === c.offset ? s : { ...s, cursor: c.offset }))
+            }
+            onIssues={(i: BalanceIssue[]) => setProblems(i.length)}
             onSend={sendBuffer}
             onSendChunk={sendChunk}
             onClear={() => {
               setSt((s) => ({ ...initialEdit(), kill: s.kill }));
-              ref.current?.focus();
+              edRef.current?.focus();
             }}
             onCancel={() => blockRef.current?.cancel()}
             onWrap={(wrap) => setPref({ wrap })}
@@ -381,6 +454,22 @@ export function InputLine({ sessionId, remoteEcho, disabled, keymap = DEFAULT_KE
             onExit={() => setEditor(false)}
             onHistory={openHistory}
           />
+          {confirm && (
+            <UnbalancedDialog
+              confirm={confirm}
+              text={st.text}
+              onSend={() => {
+                const go = confirm.go;
+                setConfirm(null);
+                go();
+              }}
+              onFix={() => {
+                const i = confirm.issues[0];
+                setConfirm(null);
+                setTimeout(() => edRef.current?.goTo(confirm.at + i.index), 0);
+              }}
+            />
+          )}
         </div>
       </div>
     );

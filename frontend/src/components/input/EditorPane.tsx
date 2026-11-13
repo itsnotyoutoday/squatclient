@@ -1,10 +1,14 @@
-import { useMemo, useRef } from 'react';
-import type { ClipboardEvent, KeyboardEvent, RefObject, SyntheticEvent } from 'react';
+import type { KeyboardEvent, RefObject } from 'react';
+import { LazyCodeEditor } from '../codeeditor';
+import type { CodeEditorHandle, CursorInfo } from '../codeeditor';
+import type { BalanceIssue } from '../../lib/mushcode';
 import { lineCol } from '../../lib/softcode';
 import type { BlockProgress } from '../../lib/blocksender';
+import '../../styles/upload.css';
 
 export interface EditorPaneProps {
-  textareaRef: RefObject<HTMLTextAreaElement>;
+  editorRef: RefObject<CodeEditorHandle>;
+  bodyRef: RefObject<HTMLDivElement>;
   text: string;
   cursor: number;
   height: number;
@@ -12,10 +16,11 @@ export interface EditorPaneProps {
   lineNumbers: boolean;
   disabled?: boolean;
   progress: BlockProgress | null;
-  onText(value: string, cursor: number): void;
-  onSelect(cursor: number): void;
-  onKeyDown(e: KeyboardEvent<HTMLTextAreaElement>): void;
-  onPaste?(e: ClipboardEvent<HTMLTextAreaElement>): void;
+  /** Bracket problems currently reported by the editor's linter. */
+  problems: number;
+  onText(value: string): void;
+  onCursor(info: CursorInfo): void;
+  onIssues(issues: BalanceIssue[]): void;
   onSend(): void;
   onSendChunk(): void;
   onClear(): void;
@@ -29,20 +34,24 @@ export interface EditorPaneProps {
 const isMac = (): boolean => /Mac|iPhone|iPad/.test(globalThis.navigator?.platform ?? '');
 export const modLabel = (): string => (isMac() ? 'Cmd' : 'Ctrl');
 
-/** The large multi-line code editor: toolbar, optional line-number gutter, status line. */
+/**
+ * The large multi-line code editor: toolbar plus the CodeMirror softcode editor (loaded lazily).
+ * Enter is a newline, Mod+Enter sends the buffer, Mod+Shift+Enter the selection / logical line,
+ * Mod+F searches inside the editor, Escape (when no search panel is open) returns to the single line.
+ */
 export function EditorPane(p: EditorPaneProps) {
-  const gutter = useRef<HTMLPreElement>(null);
-  const lines = useMemo(() => p.text.split('\n').length, [p.text]);
-  const numbers = useMemo(() => Array.from({ length: lines }, (_, i) => i + 1).join('\n'), [lines]);
   const { line, col } = lineCol(p.text, p.cursor);
-  const showNumbers = p.lineNumbers && !p.wrap; // wrapped lines would misalign the gutter
   const mod = modLabel();
   const prog = p.progress;
   const sending = prog !== null;
   const hasText = p.text.trim() !== '';
 
-  const sync = (e: SyntheticEvent<HTMLTextAreaElement>): void => {
-    if (gutter.current) gutter.current.scrollTop = e.currentTarget.scrollTop;
+  const onKeyDown = (e: KeyboardEvent<HTMLDivElement>): void => {
+    // CodeMirror consumes Escape itself to close its search panel (defaultPrevented); otherwise leave editor mode.
+    if (e.key === 'Escape' && !e.defaultPrevented && !e.nativeEvent.isComposing) {
+      e.preventDefault();
+      p.onExit(); // the text stays: nothing is lost by leaving editor mode
+    }
   };
 
   return (
@@ -64,6 +73,22 @@ export function EditorPane(p: EditorPaneProps) {
           title={`Send the selection, or the current line (${mod}+Shift+Enter)`}
         >
           Send line / selection
+        </button>
+        <button
+          type="button"
+          onClick={() => p.editorRef.current?.expand()}
+          disabled={p.disabled || !hasText}
+          title={`Expand: break long function calls over indented lines, for the selection or everything (${mod}+Alt+])`}
+        >
+          Expand
+        </button>
+        <button
+          type="button"
+          onClick={() => p.editorRef.current?.collapse()}
+          disabled={p.disabled || !hasText}
+          title={`Collapse: join continuation lines again, for the selection or everything (${mod}+Alt+[)`}
+        >
+          Collapse
         </button>
         <button type="button" onClick={p.onClear} disabled={!p.text}>
           Clear
@@ -92,6 +117,11 @@ export function EditorPane(p: EditorPaneProps) {
           </span>
         ) : (
           <>
+            {p.problems > 0 && (
+              <span className="cw-problems" role="status" aria-label="Bracket problems">
+                {p.problems} bracket {p.problems === 1 ? 'problem' : 'problems'}
+              </span>
+            )}
             {hasText && (
               <span className="draft" title="Unsent text is kept for this world">
                 Draft
@@ -109,33 +139,26 @@ export function EditorPane(p: EditorPaneProps) {
           Single line
         </button>
       </div>
-      <div className="editor-body" style={{ height: p.height }}>
-        {showNumbers && (
-          <pre
-            ref={gutter}
-            className="gutter"
-            aria-hidden="true"
-            style={{ minWidth: `${String(lines).length + 1}ch` }}
-          >
-            {numbers}
-          </pre>
-        )}
-        <textarea
-          ref={p.textareaRef}
-          aria-label="Command editor"
-          className={p.wrap ? 'wrap' : 'nowrap'}
+      <div
+        ref={p.bodyRef}
+        className="editor-body cw-editor-body"
+        style={{ height: p.height }}
+        onKeyDown={onKeyDown}
+      >
+        <LazyCodeEditor
+          ref={p.editorRef}
           value={p.text}
-          disabled={p.disabled}
-          spellCheck={false}
-          autoComplete="off"
-          autoCapitalize="off"
-          autoCorrect="off"
-          wrap={p.wrap ? 'soft' : 'off'}
-          onChange={(e) => p.onText(e.target.value, e.target.selectionStart)}
-          onKeyDown={p.onKeyDown}
-          onPaste={p.onPaste}
-          onScroll={sync}
-          onSelect={(e) => p.onSelect(e.currentTarget.selectionStart)}
+          onChange={p.onText}
+          onCursor={p.onCursor}
+          onIssues={p.onIssues}
+          wrap={p.wrap}
+          lineNumbers={p.lineNumbers}
+          readOnly={p.disabled}
+          onSend={p.onSend}
+          onSendLine={p.onSendChunk}
+          autoFocus
+          height="100%"
+          ariaLabel="Command editor"
         />
       </div>
     </>

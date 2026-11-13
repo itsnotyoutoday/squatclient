@@ -8,6 +8,8 @@ import { clearHistories } from '../src/state/history';
 import { clearDrafts } from '../src/lib/drafts';
 import { heightBounds } from '../src/lib/inputsize';
 import { stubLayout } from './helpers';
+import { pressKey as pressKeyOn } from './codeeditor.helpers';
+import { content, doc, press, setDoc, setSel, typeText, view, waitEditor } from './input.helpers';
 
 let restore: () => void;
 let engine: MockEngine;
@@ -34,9 +36,10 @@ async function boot(): Promise<MockEngine> {
 }
 const sent = (e: MockEngine): string[] => e.sent.map((s) => s.text);
 const fg = (): string => useSessions.getState().fg ?? '';
-const enterEditor = async (): Promise<HTMLTextAreaElement> => {
+const enterEditor = async (): Promise<HTMLElement> => {
   await userEvent.click(screen.getByRole('button', { name: 'Editor mode' }));
-  return (await screen.findByLabelText('Command editor')) as HTMLTextAreaElement;
+  await waitEditor();
+  return content();
 };
 
 describe('resizable command window', () => {
@@ -88,28 +91,43 @@ describe('resizable command window', () => {
   });
 });
 
-describe('editor mode', () => {
+describe('editor mode (CodeMirror)', () => {
   it('toggles with the button, Cmd/Ctrl+Shift+E; Escape returns to one line and keeps the text', async () => {
     await boot();
-    const ed = await enterEditor();
-    await userEvent.type(ed, 'abc');
-    await userEvent.keyboard('{Escape}');
+    await enterEditor();
+    typeText('abc');
+    press('Escape');
     expect(await screen.findByLabelText('Command input')).toHaveValue('abc');
     fireEvent.keyDown(window, { key: 'E', ctrlKey: true, shiftKey: true });
-    expect(await screen.findByLabelText('Command editor')).toHaveValue('abc');
+    await waitEditor();
+    expect(doc()).toBe('abc');
     fireEvent.keyDown(window, { key: 'E', metaKey: true, shiftKey: true });
     expect(await screen.findByLabelText('Command input')).toBeInTheDocument();
   });
 
+  it('is a real CodeMirror editor: accessible name, MUSH highlighting, line numbers, bracket matching', async () => {
+    await boot();
+    await enterEditor();
+    expect(content()).toHaveAttribute('aria-label', 'Command editor');
+    expect(content()).toHaveAttribute('role', 'textbox');
+    typeText('&A me=$go *:@pemit %#=[add(1,#12)]');
+    expect(content().querySelector('.mc-attrdef')).not.toBeNull();
+    expect(content().querySelector('.mc-function')?.textContent).toBe('add');
+    expect(content().querySelector('.mc-substitution')).not.toBeNull();
+    expect(document.querySelector('.cm-lineNumbers')).not.toBeNull();
+  });
+
   it('Enter inserts a newline; Ctrl+Enter sends the buffer as joined lines and records ONE history entry', async () => {
     const e = await boot();
-    const ed = await enterEditor();
-    await userEvent.type(ed, '&F o=a{Enter}  b{Enter}@@ c{Enter}{Enter}say hi');
-    expect(ed.value).toBe('&F o=a\n  b\n@@ c\n\nsay hi');
+    await enterEditor();
+    typeText('&F o=a\n  b\n@@ c\n\nsay hi');
+    press('Enter'); // a plain Enter is a newline, never a send
+    expect(doc().startsWith('&F o=a\n  b\n@@ c\n\nsay hi\n')).toBe(true);
+    setDoc('&F o=a\n  b\n@@ c\n\nsay hi');
     expect(sent(e)).toEqual([]);
-    await userEvent.keyboard('{Control>}{Enter}{/Control}');
+    press('Enter', { ctrl: true });
     expect(sent(e)).toEqual(['&F o=ab', 'say hi']);
-    expect(ed.value).toBe('');
+    expect(doc()).toBe('');
     const page = await e.history(fg(), '', {});
     expect(page.entries.map((x) => x.text)).toEqual(['&F o=a\n  b\n@@ c\n\nsay hi']);
   });
@@ -119,56 +137,121 @@ describe('editor mode', () => {
     useSettings.setState({
       settings: { ...useSettings.getState().settings, softcodeJoin: false, stripBlankLines: false },
     });
-    const ed = await enterEditor();
-    await userEvent.type(ed, 'a{Enter}  b{Enter}{Enter}c');
-    await userEvent.keyboard('{Meta>}{Enter}{/Meta}');
+    await enterEditor();
+    typeText('a\n  b\n\nc');
+    press('Enter', { ctrl: true });
     expect(sent(e)).toEqual(['a', '  b', '', 'c']);
   });
 
   it('Send line / selection sends the logical line under the cursor and keeps the buffer', async () => {
     const e = await boot();
-    const ed = await enterEditor();
-    await userEvent.type(ed, 'one{Enter}two{Enter}  more{Enter}three');
-    ed.setSelectionRange(ed.value.indexOf('two') + 1, ed.value.indexOf('two') + 1);
-    await userEvent.keyboard('{Control>}{Shift>}{Enter}{/Shift}{/Control}');
+    await enterEditor();
+    typeText('one\ntwo\n  more\nthree');
+    setSel(doc().indexOf('two') + 1);
+    press('Enter', { ctrl: true, shift: true });
     expect(sent(e)).toEqual(['twomore']);
-    expect(ed.value).toContain('three');
-    ed.setSelectionRange(0, 3);
+    expect(doc()).toContain('three');
+    setSel(0, 3);
     await userEvent.click(screen.getByRole('button', { name: 'Send line / selection' }));
     expect(sent(e).at(-1)).toBe('one');
+    expect(doc()).toContain('three');
   });
 
   it('Tab inserts two spaces, Shift+Tab outdents; Clear empties', async () => {
     await boot();
-    const ed = await enterEditor();
-    await userEvent.type(ed, 'x');
-    ed.setSelectionRange(0, 0);
-    await userEvent.keyboard('{Tab}');
-    expect(ed.value).toBe('  x');
-    await userEvent.keyboard('{Shift>}{Tab}{/Shift}');
-    expect(ed.value).toBe('x');
+    await enterEditor();
+    typeText('x');
+    setSel(0);
+    press('Tab');
+    expect(doc()).toBe('  x');
+    press('Tab', { shift: true });
+    expect(doc()).toBe('x');
     await userEvent.click(screen.getByRole('button', { name: 'Clear' }));
-    expect(ed.value).toBe('');
+    expect(doc()).toBe('');
   });
 
-  it('shows line numbers and the line/column indicator; wrap hides the gutter', async () => {
+  it('undo / redo work inside the editor', async () => {
     await boot();
-    const ed = await enterEditor();
-    await userEvent.type(ed, 'ab{Enter}cd');
-    expect(document.querySelector('.gutter')?.textContent).toBe('1\n2');
-    expect(screen.getByLabelText('Cursor position')).toHaveTextContent('Ln 2, Col 3');
-    await userEvent.click(screen.getByRole('checkbox', { name: 'Wrap' }));
-    expect(document.querySelector('.gutter')).toBeNull();
-    expect(JSON.parse(window.localStorage.getItem('squat.editor.prefs') ?? '{}').wrap).toBe(true);
+    await enterEditor();
+    typeText('one');
+    typeText(' two');
+    press('z', { ctrl: true });
+    expect(doc()).not.toBe('one two');
+    press('y', { ctrl: true });
+    expect(doc()).toBe('one two');
   });
 
-  it('multi-line paste goes into the editor instead of being sent', async () => {
+  it('Expand / Collapse toolbar buttons are reversible and honour the selection', async () => {
+    await boot();
+    await enterEditor();
+    const code = '&F o=[switch(%0,1,[add(1,2)],2,[mul(3,4)],3,[sub(5,6)],4,[div(7,8)],default)] tail';
+    typeText(code);
+    await userEvent.click(screen.getByRole('button', { name: 'Expand' }));
+    expect(doc()).toContain('\n');
+    expect(
+      doc()
+        .split('\n')
+        .slice(1)
+        .every((l) => /^\s/.test(l)),
+    ).toBe(true); // continuation lines are indented
+    await userEvent.click(screen.getByRole('button', { name: 'Collapse' }));
+    expect(doc()).toBe(code);
+    // selection only: the rest of the buffer is untouched
+    setDoc('keep me\n' + code);
+    setSel(8, 8 + code.length);
+    await userEvent.click(screen.getByRole('button', { name: 'Expand' }));
+    expect(doc().startsWith('keep me\n&F o=')).toBe(true);
+    expect(doc().split('\n').length).toBeGreaterThan(2);
+  });
+
+  it('line numbers and wrap are toggles and are remembered', async () => {
+    await boot();
+    await enterEditor();
+    typeText('ab\ncd');
+    expect(screen.getByLabelText('Cursor position')).toHaveTextContent('Ln 2, Col 3');
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Line numbers' }));
+    expect(document.querySelector('.cm-lineNumbers')).toBeNull();
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Wrap' }));
+    expect(content().classList.contains('cm-lineWrapping')).toBe(true);
+    const prefs = JSON.parse(window.localStorage.getItem('squat.editor.prefs') ?? '{}');
+    expect(prefs).toMatchObject({ wrap: true, lineNumbers: false });
+  });
+
+  it('shows the bracket problem count from the balance linter', async () => {
+    await boot();
+    await enterEditor();
+    expect(screen.queryByLabelText('Bracket problems')).toBeNull();
+    typeText('[add(1,2');
+    await waitFor(() =>
+      expect(screen.getByLabelText('Bracket problems')).toHaveTextContent('2 bracket problems'),
+    );
+    setDoc('[add(1,2)]');
+    await waitFor(() => expect(screen.queryByLabelText('Bracket problems')).toBeNull());
+  });
+
+  it('Cmd/Ctrl+F opens the editor search and is NOT stolen by the global output search', async () => {
+    await boot();
+    await enterEditor();
+    typeText('find me');
+    press('f', { ctrl: true });
+    await waitFor(() => expect(document.querySelector('.cm-search')).not.toBeNull());
+    expect(useUi.getState().searchOpen).toBe(false);
+    // Escape closes the search panel first and stays in editor mode
+    const input = document.querySelector<HTMLElement>('.cm-search input') as HTMLElement;
+    act(() => pressKeyOn(input, 'Escape'));
+    await waitFor(() => expect(document.querySelector('.cm-search')).toBeNull());
+    expect(content()).toBeInTheDocument();
+    // outside the editor the global shortcut still works
+    fireEvent.keyDown(window, { key: 'f', metaKey: true });
+    expect(useUi.getState().searchOpen).toBe(true);
+  });
+
+  it("multi-line paste in single-line mode still sends line by line (editor paste is CodeMirror's)", async () => {
     const e = await boot();
-    const ed = await enterEditor();
-    ed.focus();
+    const box = screen.getByLabelText('Command input');
+    box.focus();
     await userEvent.paste('a\nb');
-    expect(ed.value).toBe('a\nb');
-    expect(sent(e)).toEqual([]);
+    expect(sent(e)).toEqual(['a', 'b']);
   });
 
   it('single-line mode is unchanged: Enter sends, multi-line paste sends line by line, history is recorded', async () => {
@@ -184,22 +267,24 @@ describe('editor mode', () => {
 
   it('keeps the draft per world across tab switches and a remount (restart)', async () => {
     await boot();
-    const ed = await enterEditor();
-    await userEvent.type(ed, 'big{Enter}code');
+    await enterEditor();
+    typeText('big\ncode');
     const first = fg();
     const other = useSessions
       .getState()
       .order.find((id) => id !== first && useSessions.getState().sessions[id].state === 'connected');
     act(() => useSessions.getState().setFg(other ?? null));
-    await waitFor(() => expect(screen.queryByLabelText('Command editor')).toBeNull()); // other world: its own (empty) input
+    await waitFor(() => expect(document.querySelector('.cm-content')).toBeNull()); // other world: its own (empty) input
     act(() => useSessions.getState().setFg(first));
-    expect(await screen.findByLabelText('Command editor')).toHaveValue('big\ncode');
+    await waitEditor();
+    expect(doc()).toBe('big\ncode');
     // a restart: new component tree reads localStorage
     cleanup();
     clearDrafts();
     resetStores();
     render(<App engine={engine} />);
-    expect(await screen.findByLabelText('Command editor')).toHaveValue('big\ncode');
+    await waitEditor();
+    expect(doc()).toBe('big\ncode');
     expect(screen.getByText('Draft')).toBeInTheDocument();
   });
 
@@ -214,12 +299,21 @@ describe('editor mode', () => {
     expect((await e.history(pw?.id ?? '', '', {})).total).toBe(0);
   });
 
+  it('secrets in an editor draft are not what is recorded: a block holding a connect line is dropped from history', async () => {
+    const e = await boot();
+    await enterEditor();
+    typeText('connect me hunter2');
+    press('Enter', { ctrl: true });
+    expect(sent(e)).toEqual(['connect me hunter2']);
+    expect((await e.history(fg(), '', {})).entries.map((x) => x.text)).not.toContain('connect me hunter2');
+  });
+
   it('sends a block paced by sendLineDelayMs with progress and Cancel', async () => {
     const e = await boot();
     useSettings.setState({ settings: { ...useSettings.getState().settings, sendLineDelayMs: 60 } });
-    const ed = await enterEditor();
-    await userEvent.type(ed, 'l1{Enter}l2{Enter}l3{Enter}l4');
-    await userEvent.keyboard('{Control>}{Enter}{/Control}');
+    await enterEditor();
+    typeText('l1\nl2\nl3\nl4');
+    press('Enter', { ctrl: true });
     expect(sent(e)).toEqual(['l1']);
     const status = await screen.findByRole('status', { name: 'Sending block' });
     expect(status).toHaveTextContent('Sending 1/4');
@@ -230,6 +324,75 @@ describe('editor mode', () => {
     expect(sent(e).length).toBe(n);
     expect(n).toBeLessThan(4);
     await waitFor(() => expect(useUi.getState().toasts.some((t) => /cancelled/i.test(t.text))).toBe(true));
+  });
+
+  it('the editor view is lazily loaded: CodeMirror is absent until editor mode opens', async () => {
+    await boot();
+    expect(document.querySelector('.cm-editor')).toBeNull();
+    await enterEditor();
+    expect(view()).toBeTruthy();
+  });
+});
+
+describe('unbalanced bracket check before sending', () => {
+  it('asks first: Send anyway sends the block, the dialog names the lines', async () => {
+    const e = await boot();
+    await enterEditor();
+    typeText('say fine\n&F o=[add(1,2\nsay also fine');
+    press('Enter', { ctrl: true });
+    const dlg = await screen.findByRole('dialog', { name: 'Unbalanced brackets' });
+    expect(dlg).toHaveTextContent(/2 bracket problems on line 2/);
+    expect(sent(e)).toEqual([]);
+    expect(doc()).toContain('say fine'); // nothing was cleared
+    await userEvent.click(within(dlg).getByRole('button', { name: 'Send anyway' }));
+    expect(sent(e)).toEqual(['say fine', '&F o=[add(1,2', 'say also fine']);
+    expect(doc()).toBe('');
+  });
+
+  it('Fix first sends nothing, keeps the text and puts the cursor on the first problem', async () => {
+    const e = await boot();
+    await enterEditor();
+    typeText('say fine\n&F o=[add(1,2');
+    press('Enter', { ctrl: true });
+    const dlg = await screen.findByRole('dialog', { name: 'Unbalanced brackets' });
+    await userEvent.click(within(dlg).getByRole('button', { name: 'Fix first' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(sent(e)).toEqual([]);
+    expect(doc()).toBe('say fine\n&F o=[add(1,2');
+    await waitFor(() => expect(view().state.selection.main.head).toBe(doc().indexOf('[')));
+  });
+
+  it('also guards Send line / selection, numbering lines by the editor', async () => {
+    const e = await boot();
+    await enterEditor();
+    typeText('ok\nbad(1,2\nok');
+    setSel(doc().indexOf('bad') + 1);
+    await userEvent.click(screen.getByRole('button', { name: 'Send line / selection' }));
+    expect(await screen.findByRole('dialog', { name: 'Unbalanced brackets' })).toHaveTextContent(/on line 2/);
+    expect(sent(e)).toEqual([]);
+  });
+
+  it('can be turned off with the warnUnbalanced setting', async () => {
+    const e = await boot();
+    useSettings.setState({ settings: { ...useSettings.getState().settings, warnUnbalanced: false } });
+    await enterEditor();
+    typeText('say [add(1,2');
+    press('Enter', { ctrl: true });
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(sent(e)).toEqual(['say [add(1,2']);
+  });
+
+  it('balanced code and single-line sending are unaffected', async () => {
+    const e = await boot();
+    await enterEditor();
+    typeText('say [add(1,2)]');
+    press('Enter', { ctrl: true });
+    expect(sent(e)).toEqual(['say [add(1,2)]']);
+    press('Escape');
+    const box = await screen.findByLabelText('Command input');
+    await userEvent.type(box, 'say :) [[add(1{Enter}');
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(sent(e).at(-1)).toBe('say :) [add(1');
   });
 });
 
@@ -298,7 +461,8 @@ describe('history browser', () => {
     fireEvent.keyDown(window, { key: 'r', ctrlKey: true });
     await screen.findAllByRole('option');
     await userEvent.keyboard('{Enter}');
-    expect(await screen.findByLabelText('Command editor')).toHaveValue('a\nb\nc');
+    await waitEditor();
+    expect(doc()).toBe('a\nb\nc');
   });
 
   it('Shift+Enter sends immediately (a block through the block rules) and double-click loads', async () => {
