@@ -9,27 +9,29 @@ export const dark: Theme = {
   cursor: '#f0c674',
   selection: '#2f4a6d',
   link: '#6cb6ff',
-  // Matches a classic macOS terminal palette so game colours look the same as in tinyfugue:
-  // slots 1,2,3,6,8,10,12,13,14,15 were measured from a real terminal screenshot; 0,4,5,7,9,11
-  // are estimated to fit the same family (tune them via Settings > theme import if needed).
+  // Matches a classic macOS terminal palette so game colours look the same as in tinyfugue.
+  // Slots 1,2,3,6,8,10,12,13,14,15 were measured from a real terminal screenshot and converted from
+  // its Display P3 profile to sRGB (CSS colours are sRGB); slots 0,4,5,7,9,11 are estimated to fit
+  // the same family (tune them via Settings > theme import if needed).
   ansi: [
     '#000000', // 0 black (estimated)
-    '#d6492e', // 1 red
-    '#41c731', // 2 green
-    '#b8b72f', // 3 yellow
-    '#5f38cc', // 4 blue (estimated)
-    '#cc3dcc', // 5 magenta (estimated)
-    '#40c5d1', // 6 cyan
-    '#cbcccd', // 7 white (estimated)
+    '#e8391c', // 1 red
+    '#00ca00', // 2 green
+    '#b8b700', // 3 yellow
+    '#3a21d6', // 4 blue (estimated)
+    '#cc33cc', // 5 magenta (estimated)
+    '#00c8d4', // 6 cyan
+    '#cccccc', // 7 white (estimated)
     '#909090', // 8 bright black
-    '#ff5a37', // 9 bright red (estimated)
-    '#39ed29', // 10 bright green
-    '#ecec2d', // 11 bright yellow (estimated)
-    '#7646ff', // 12 bright blue
-    '#ff4cff', // 13 bright magenta
-    '#32f4f4', // 14 bright cyan
+    '#ff5638', // 9 bright red (estimated)
+    '#00f100', // 10 bright green
+    '#f2f200', // 11 bright yellow (estimated)
+    '#7e43ff', // 12 bright blue
+    '#ff33ff', // 13 bright magenta
+    '#00f8f6', // 14 bright cyan
     '#ededed', // 15 bright white
   ],
+
   chrome: {
     panel: '#1b1e23',
     panelAlt: '#22262c',
