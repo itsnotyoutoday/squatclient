@@ -1,4 +1,5 @@
-import { SEARCH_ENTRIES } from './data';
+import { ALIASES, SEARCH_ENTRIES } from './data';
+import { normalizeKey } from './lookup';
 import type { SearchEntry } from './types';
 
 export interface SearchResult {
@@ -82,6 +83,13 @@ export function search(
       else if (lower.startsWith(joined)) a.bonus = Math.max(a.bonus, 12);
     }
     if (!a.best || entryScore > a.best.score) a.best = { entry, score: entryScore };
+  }
+
+  // A query that is exactly a command/function name puts its home topic first.
+  const aliasTopic = entries === SEARCH_ENTRIES ? ALIASES[normalizeKey(query)] : undefined;
+  if (aliasTopic) {
+    const a = acc.get(aliasTopic);
+    if (a) a.bonus += 25;
   }
 
   const out: SearchResult[] = [];

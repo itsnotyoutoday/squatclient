@@ -2,3 +2,5 @@ dist
 wailsjs
 node_modules
 package-lock.json
+src/help/generated
+src/help/imported

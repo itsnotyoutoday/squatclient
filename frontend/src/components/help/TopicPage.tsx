@@ -29,6 +29,9 @@ export function TopicPage({ id, anchor, term, onNavigate }: TopicPageProps) {
     const marks = term ? highlightTerms(el, tokenize(term)) : [];
     const target = anchor ? el.querySelector<HTMLElement>(`[id="${anchorDomId(anchor)}"]`) : null;
     const scroller = pageRef.current;
+    // The clicked link was just replaced; keep keyboard focus inside the dialog so Escape and Alt-Left still work.
+    const active = document.activeElement;
+    if (!active || active === document.body || !active.isConnected) scroller?.focus({ preventScroll: true });
     if (target) target.scrollIntoView?.({ block: 'start' });
     else if (marks[0]) marks[0].scrollIntoView?.({ block: 'center' });
     else if (scroller) scroller.scrollTop = 0;
@@ -73,7 +76,7 @@ export function TopicPage({ id, anchor, term, onNavigate }: TopicPageProps) {
   };
 
   return (
-    <article className="helppage" ref={pageRef} aria-labelledby="help-title">
+    <article className="helppage" ref={pageRef} aria-labelledby="help-title" tabIndex={-1}>
       <nav aria-label="Breadcrumb" className="crumbs">
         <ol>
           {[
