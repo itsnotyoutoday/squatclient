@@ -197,7 +197,7 @@ The game serves its own React stations/viewer; the client opens a URL + token wh
 
 ## 11. Resolved decisions (added in v0.3.1)
 
-10. **Licence: MIT** for both repos. `pkg/tf` is original, clean-room work inspired by TF; no TF code or bundled TF files; compatibility is "as close as is useful", not a hard requirement, and we are free to diverge and improve.
+10. **Licence: GPL-3.0-or-later** for both repos (ADR 0001), so anyone who works on this contributes back. `pkg/tf` is original, clean-room work inspired by TF; no TF code or bundled TF files; compatibility is "as close as is useful", not a hard requirement, and we are free to diverge and improve.
 11. **Engine location:** `pkg/*` lives in `squatClientDaemon` (module `github.com/itsnotyoutoday/squatClientDaemon`); the Wails app in `squatclient` imports it. Local dev uses `~/mush/squat/go.work`.
 12. **Directory structure is frozen** in `docs/STRUCTURE.md` (identical in both repos; changes need an ADR).
 13. **Automation** runs at the client site in v1; daemon-site execution is a designed future step (`docs/AUTOMATION.md`).
