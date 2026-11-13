@@ -1,186 +1,193 @@
-# pkg/tf compatibility matrix
+# TinyFugue Script Compatibility: reference
 
-Status legend: **Done** (works as described in `TF-LANGUAGE.md`), **Partial**
-(works with the stated difference), **Planned (P2)**, **GUI** (replaced by a GUI
-feature, the host decides), **N/A** (not applicable to this client).
+SquatClient's scripting language is modelled on TinyFugue ("tf") and designed
+so that most existing TinyFugue scripts run as written. It is a new,
+independent implementation: it contains no TinyFugue code or help text, and it
+follows TinyFugue's documented behaviour. This reference lists, command by
+command, function by function, hook by hook and variable by variable, how each
+one compares. For a short overview read
+[TinyFugue Script Compatibility](help:compat) first.
 
-`pkg/tf` is a clean-room implementation inspired by TinyFugue's documented
-behaviour; it contains no TinyFugue code or help text. The checklist is the
-list in `squatClient/docs/DESIGN.md` section 3.2. Those lists were written from
-TinyFugue's `cmdlist.h`, `funclist.h`, `hooklist.h`, `varlist.h`; the semantics
-below were implemented from knowledge of the public manual, **not verified
-against a reference binary yet** (the oracle differential tests of DESIGN 3.5
-are not set up), so treat every "Done" as "implemented to the documented
-intent". Where TF's exact behaviour was uncertain the most sensible semantics
-were chosen and are noted here.
+The behaviour was also checked side by side against a real TinyFugue 5.2: about
+460 test lines in 39 groups. In 29 groups the results are identical; the other
+10 differ only in the deliberate ways listed under
+[Differences from TinyFugue](help:compat/differences-from-tinyfugue).
 
-## 1. Deliberate differences (read these first)
+Every entry in the tables below has one of these labels:
 
-| Area                      | TinyFugue-style                                  | Here                                                                                                                                                                                                                                                                                             |
-| ------------------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Expression substitution   | `%` text substitution happens inside expressions | Inside `$[..]`, `/if (..)` etc. `%x`, `%1`, `%*`, `%{x}` are **variable references** (never re-parsed as expression text); `%` is not interpolated in string literals. Removes a code-injection hazard from MUD text.                                                                            |
-| `=~` `!~` `=/` `!/`       | as defined by TF                                 | `=~`/`!~`: exact string equal / not equal. `=/`/`!/`: **glob** match (pattern on the right). Regexps via `regmatch()` or `-mregexp`.                                                                                                                                                             |
-| No modulo operator        | n/a                                              | use `mod()`.                                                                                                                                                                                                                                                                                     |
-| Trigger firing            | one random macro among equal priorities          | deterministic: priority desc, then definition order; the first fires, `-F` continues. Only one macro per priority level fires unless `-F`.                                                                                                                                                       |
-| Glob captures             | none                                             | every wildcard of a glob trigger is `%P1..` (`%P0` the whole line).                                                                                                                                                                                                                              |
-| Statement splitting       |                                                  | text lines (not starting `/`) are never split at `;`; `/def`, `/repeat`, `/eval` keep `%;` for later.                                                                                                                                                                                            |
-| Script files              | non-command lines are sent as text               | non-command lines in a loaded file are an **error** (no accidental sends). Unclosed blocks in a file are an error.                                                                                                                                                                               |
-| Error handling            |                                                  | errors are reported as `% msg` and execution continues, but an error inside a loop body ends the loop; max 20 errors shown per run.                                                                                                                                                              |
-| `/def` of a built-in name |                                                  | the macro shadows the built-in; `/builtin cmd` reaches the built-in.                                                                                                                                                                                                                             |
-| `%{N}` / `%{-N}` ranges   |                                                  | `%{-N}` and `%{N-}` style ranges are **not** implemented. `%0` is the macro name.                                                                                                                                                                                                                |
-| `$(command)`              | command substitution                             | returns the echoed lines joined by spaces, else the `/return` value. Backquote `` `cmd` `` substitution is **not** implemented (it implied a shell).                                                                                                                                             |
-| Time zones                | system TZ                                        | `TZ` supports `UTC` and fixed offsets only (the package does no I/O, so no zoneinfo).                                                                                                                                                                                                            |
-| `pad()`                   |                                                  | positive width right-justifies, negative left-justifies, no truncation.                                                                                                                                                                                                                          |
-| `regmatch()`              | POSIX-ish regexps                                | Go RE2 syntax; returns 1/0 (not an offset).                                                                                                                                                                                                                                                      |
-| `eval()` function         |                                                  | runs the string as commands and returns the echoed text.                                                                                                                                                                                                                                         |
-| Integer overflow          |                                                  | int64 arithmetic wraps.                                                                                                                                                                                                                                                                          |
-| `/hook`                   | enables/disables hooks                           | lists hook names, or fires a hook by hand.                                                                                                                                                                                                                                                       |
-| Budgets                   | none                                             | every run has a step budget, wall deadline, nesting and string-size limits (section 11 of TF-LANGUAGE).                                                                                                                                                                                          |
-| Colours                   | 16/8 colours                                     | attribute strings also accept xterm-256 indices (`C196`), the `rgbRGB` cube, `gray0..23` and truecolour `#rrggbb`. Attribute letters `i` (italic) and `s` (strike) are additions. `B` is bold and `BC<colour>` is a background (a bare `B` immediately followed by `C` always means background). |
-| Extensions                |                                                  | `/notify`, `/enable`, `/disable`, `/builtin`, `/return`, calling macros as functions, `-E`/`-c` on hooks.                                                                                                                                                                                        |
+| Label | Meaning |
+|---|---|
+| **Matches** | tried against a real TinyFugue and gives the same result (apart from the listed differences) |
+| **Works** | implemented from the TinyFugue manual; not compared with a real TinyFugue |
+| **Partly** | works, with the limit stated |
+| **Not available yet** | not there yet: the command is accepted and ignored, or gives an error, as stated |
+| **Handled by the app** | SquatClient decides what it means (the window, the input line and so on) |
+| **Not applicable** | makes no sense in a graphical client |
 
-## 1a. Policy: terminal-only TinyFugue features are out of scope
+The rule behind all of this: match TinyFugue, unless TinyFugue's behaviour is a
+clear trap (for example, text from a game reaching expression source), and
+document every deliberate difference.
 
-SquatClient is a GUI client. Anything TinyFugue has _only because it ran in a text terminal_ is **not implemented and not planned**.
-Scripts that use them still load: the commands/variables are **accepted and ignored** (no error), so a `.tf` file written for the
-terminal does not break here. Where a GUI equivalent exists, it is a UI setting, not a TF command.
+## 1. Differences from TinyFugue
 
-| TF feature                                                                                                                                      | Why it is out                                  | Here                                                                                       |
-| ----------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| `wrap`, `wraplog`, `wrapspace`, `wrapsize`                                                                                                      | Line wrapping is done by the window            | UI soft-wrap setting (settings.wrap); `wraplog` only affects `/log` text files             |
-| `more`, `/more`-style paging, `morepaused`/`morescroll`/`moresize`                                                                              | Terminal paging prompt                         | UI "pause when scrolled up" (settings.pauseOnScroll); functions return 0/neutral values    |
-| `/visual`, `visual`                                                                                                                             | Screen mode toggle; the GUI is always "visual" | no-op                                                                                      |
-| `/redraw`, `/refresh`-style screen repaint, `/suspend`, `/core`, terminal signals (`SIGHUP`, `SIGTERM`, `SIGUSR*` hooks)                        | Terminal/process control                       | no-op / N/A                                                                                |
-| Terminal geometry: status line rows, `status_width` layout details, `isatty`, `termcap`/`TERM` handling, `/lcd`-style cursor handling           | Terminal-specific                              | status _fields_ are kept (they drive the GUI status bar); geometry is the window's concern |
-| Keyboard-buffer functions (`kbhead kbtail kbpoint kbgoto kbdel kblen kbmatch kbwordleft kbwordright kb_visual_move`) and `kb*.tf`-style keymaps | Input line is a GUI widget                     | low priority: may be exposed later over the input widget; not required                     |
-| `/sh`, `/quote !`, `/ps`/`/kill` process commands                                                                                               | Shell access                                   | kept only behind `/restrict` (default: denied), not terminal-dependent                     |
+| Area | Real TinyFugue | SquatClient |
+|---|---|---|
+| Expression substitution | `%x` text substitution happens inside expressions | Inside `$[..]`, `/if (..)` etc. `%x`, `%1`, `%*`, `%{x}` are **variable references** (never re-parsed as expression text); `%` is not interpolated in string literals. Removes a code-injection hazard from MUD text. `$[..]` nested inside an expression is supported (as TF). |
+| Top-level lines | a typed line or a script-file line is **not** substituted (only macro bodies and `/eval` are): `/echo %x` prints `%x` | lines are substituted like a macro body, so `/echo $[1+2]` typed or in a file prints 3. Scripts that work in TF (they put logic in macros) behave the same. |
+| `==` `!=` `<` `>` .. on words | numeric only, so any two non-numeric strings are "equal" (`"abc" == "abd"` is 1) | numeric when either side starts with a number (identical to TF, including `"12abc" == 12`); plain text compared with plain text is compared as **text**. `=~ !~` are the exact string forms in both. |
+| Operators `&&` `\|\|` `x++` `x--` `0x1f` | rejected (error) | accepted extensions |
+| Integers | 32-bit-ish: results beyond that become reals (`9999999999*3` prints `29999999997.`) | int64 arithmetic, wraps on overflow |
+| Float text | `0.1+0.2` prints `0.3`; `1.0*3` is `3.`; a literal keeps its text (`1.0`) | same 15-digit format and trailing dot, except literals print normalised (`$[1.0]` is `1.`) |
+| Equal-priority triggers | one chosen at random | deterministic: priority desc, then definition order; the first fires (`-F` continues) |
+| Glob captures | `%1..` are the words of the line | `%1..` are the words (as TF) and in addition `%P1..` are the glob wildcards (`%P0` the line) |
+| Script files | a non-command line is sent as text | a non-command line in a loaded file is an **error** (no accidental sends); an unclosed block is an error |
+| Error handling | an error ends the macro | errors are shown as `% msg` and the macro continues, except that an error inside a loop body ends the loop; at most 20 errors per run |
+| `/def` of a built-in name | `CONFLICT` hook message | the macro shadows the built-in; `/builtin cmd` reaches the built-in |
+| `/set name = value` | stores `= value` (and warns) | spaces around `=` are accepted |
+| `$(command)` | command substitution | returns the echoed lines joined by spaces, else the `/return` value; backquote `` `cmd` `` is **not available** (it implied a shell) |
+| After a failed substitution (`${nosuchmacro}`) | the command still runs with an empty result | the command is abandoned |
+| `/return` with no value in a function call | the call yields 0 | yields the empty string |
+| Strings | byte strings (`strlen("é")` is 2) | UTF-8 characters (`strlen("é")` is 1; `substr`, `tolower` etc. count characters) |
+| `strcmp strncmp` | difference of the first differing bytes (platform dependent) | `-1`, `0` or `1` |
+| Regexps | PCRE2 | Go RE2: no look-around or back-references. `regmatch()` counts groups like TF and the caseless-if-no-capital rule is implemented. |
+| `whatis(x)` | looks at the unevaluated operand (`decimal` for a literal real, `id:string` for a variable) | `int`, `float`, `string` of the value |
+| `winlines()`, `fg_world()` | `lines()-1` (status line); empty with no socket | the output pane height; the foreground world name |
+| `/list` attribute letters | lists a hilite as `-aB` | lists it as written (`-ah`) |
+| `/trigger -h` | also displays the hook's default message | runs the hook macros only |
+| `SEND` hook | not invoked by `/send` or `send()` unless enabled | fired just before text is sent (does not recurse) |
+| `/repeat -P` | repeat on prompt | not supported |
+| `TZ` | system zones | `UTC` and fixed offsets only |
+| `/do .. /while (e)` | not a TF construct | accepted extension; TF's `/while list /do list /done` and `/if list /then` forms (a command list as condition) are not available |
+| Budgets | none | every run has a step budget, wall deadline, nesting and string-size limits (see [Limits and safety](help:scripting/limits-and-safety)) |
+| Colours | 16/8 colours | attribute strings also accept xterm-256 indices (`C196`), `rgbRGB`, `gray0..23`, truecolour `#rrggbb`; letters `i` (italic), `s` (strike) are additions; `-g` alone is a gag shorthand |
+| Extensions | | `/notify`, `/enable`, `/disable`, `/builtin`, `/return` as a command, `%{?name}`, `-E`/`-c` on hooks |
 
-`columns()` and `lines()` are kept and return the output pane's size in characters (useful to scripts); NAWS uses the same numbers.
+Where an early version disagreed with a real TinyFugue it was fixed, so these
+now behave as in TinyFugue: `;` is plain text (only
+`%;` separates), `=` is equality (assignment is `:=`), `&`/`|` return the last
+operand, float formatting, leading-number coercion, text truthiness, `replace()`
+argument order `(old, new, str)`, negative `substr`/`strstr`/`strchr` indexes,
+`%L`/`%PL`/`%PR`/`%-N`/`%{sel-default}`, backslash escapes, `${macro}`,
+case-insensitive globs and whole-word `{a|b}`, `[^..]` only, regexps caseless
+without capitals, `-msubstr`, default priority 1, `/for var a b command`,
+dynamic scope of `/let` and global-only `/set`, `/purge` skipping invisible
+macros, `/hook` defining hooks, `/trigpc` defining a trigger, `/ps` format and
+`/repeat` semantics, `regmatch()` count, `ascii("")` is 0, `mktime` arguments.
+
+## 1a. What is not part of a graphical client
+
+Only two families of TinyFugue features are left out on purpose: line
+**wrapping** (`wrap wraplog wrapspace wrapsize`) and **paging** (`more morepaused
+morescroll moresize`). Their variables exist (with TinyFugue's defaults) and are
+accepted and ignored, and the functions return neutral values (`morepaused()` is
+0). SquatClient does its own wrapping and has a "pause when scrolled up"
+setting instead.
+
+Everything else is supported, with a graphical meaning where needed:
+
+| Feature | In SquatClient |
+|---|---|
+| Process commands `/ps /kill /repeat` (and `/quote` processes) | **Matches**. `/sh` and `/quote !` do not exist because there is no shell access; `/restrict` can also switch off file and world commands |
+| Input-line functions and `/input /dokey /bind` | **Matches**; they work on the app's input line |
+| `visual` (split input/status layout), `/dokey redraw`, `/suspend` | handled by the app (`/suspend` detaches squatter sessions; the others do nothing). `/visual` is not a command in TinyFugue either; `visual` is a variable |
+| Terminal size: `columns() lines() winlines()`, `isatty()` (always 1), status fields | **Works**: the size is that of the output pane; `status_*` variables are stored; `status_fields()` is **not available yet** |
+| `/core` and the terminal signal hooks `SIGHUP SIGTERM SIGUSR1 SIGUSR2` | **Not applicable** (you can define them; they never fire) |
+| `/lcd`, `/sh` | **Not applicable** |
 
 ## 2. Commands
 
-| Command                                      | Status       | Note                                                                                                                |
-| -------------------------------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------- |
-| addworld                                     | Done         | `-T<type>`, `-x` (TLS); `-p -e -s` accepted and ignored; host stores the world                                      |
-| connect                                      | Done         | delegates to Host                                                                                                   |
-| dc                                           | Done         |                                                                                                                     |
-| fg                                           | Done         |                                                                                                                     |
-| listsockets                                  | Partial      | lists connected worlds                                                                                              |
-| listworlds                                   | Partial      | prints `/addworld name host port` lines                                                                             |
-| saveworld                                    | Done         | Host.SaveWorlds                                                                                                     |
-| unworld                                      | Done         |                                                                                                                     |
-| world                                        | Done         | connect if needed, then foreground                                                                                  |
-| localecho                                    | Done         | Host.LocalEcho                                                                                                      |
-| def                                          | Done         | all options in TF-LANGUAGE section 5; `-s`, `-T` accepted and ignored                                               |
-| undef                                        | Done         | exact names                                                                                                         |
-| undefn                                       | Done         | removes by macro number (extension semantics)                                                                       |
-| list                                         | Partial      | `-s` and a name glob; no `-t/-h/-m/-b` filters                                                                      |
-| purge                                        | Done         |                                                                                                                     |
-| save                                         | Partial      | writes macros only (not variables, worlds or hooks of other kinds)                                                  |
-| load                                         | Done         | `-q` accepted; no search path (host resolves); fires LOAD/LOADFAIL                                                  |
-| require                                      | Done         | once per path string                                                                                                |
-| trigger                                      | Partial      | runs triggers on text; gag/hilite effects discarded                                                                 |
-| trigpc                                       | Partial      | chance + minimum priority semantics (TF's exact meaning not verified)                                               |
-| hook                                         | Partial      | see differences                                                                                                     |
-| edit                                         | Planned (P2) |                                                                                                                     |
-| set                                          | Done         |                                                                                                                     |
-| setenv                                       | Partial      | marks exported; the package never touches the process environment (engine may read the exported set via ExportVars) |
-| export                                       | Done         |                                                                                                                     |
-| unset                                        | Done         |                                                                                                                     |
-| let                                          | Done         |                                                                                                                     |
-| listvar                                      | Done         | glob filter only                                                                                                    |
-| shift                                        | Done         |                                                                                                                     |
-| eval                                         | Done         |                                                                                                                     |
-| test                                         | Done         |                                                                                                                     |
-| features                                     | Partial      | fixed feature string                                                                                                |
-| version                                      | Done         |                                                                                                                     |
-| echo                                         | Done         | `-w -a -p`; `-e` accepted                                                                                           |
-| gag                                          | Done         |                                                                                                                     |
-| hilite                                       | Done         | uses `$hiliteattr`                                                                                                  |
-| beep                                         | Done         | Host.Bell                                                                                                           |
-| recall                                       | GUI          | forwarded to Host.Recall (scrollback search)                                                                        |
-| recordline                                   | Planned (P2) |                                                                                                                     |
-| limit / unlimit / relimit                    | GUI          | forwarded to Host.Limit                                                                                             |
-| histsize                                     | Partial      | sets the variable only                                                                                              |
-| log                                          | GUI          | Host.Log (gated by /restrict file)                                                                                  |
-| bind / unbind                                | Done         | key names are defined by the engine                                                                                 |
-| dokey                                        | GUI          | Host.DoKey                                                                                                          |
-| input                                        | GUI          | Host.Input                                                                                                          |
-| status_add / status_edit / status_rm         | GUI          | Host.Status (P2 in design)                                                                                          |
-| repeat                                       | Done         | `-<seconds                                                                                                          | m:s | h:m:s> count cmd`via Host.Schedule; no`-S`; no per-process `-w` display |
-| quote                                        | Partial      | `'file` and `#cmd` forms; `-dsend/-decho/-dexec`; delay option accepted and ignored; shell forms unavailable        |
-| ps                                           | Done         | lists /repeat timers                                                                                                |
-| kill                                         | Done         |                                                                                                                     |
-| watchdog / watchname                         | Planned (P2) | stub reports "not implemented"                                                                                      |
-| liststreams                                  | Planned (P2) |                                                                                                                     |
-| help                                         | Partial      | usage line per command only (TF help text is not bundled)                                                           |
-| exit / quit                                  | Done         | Host.Quit                                                                                                           |
-| restrict                                     | Done         | shell / file / world                                                                                                |
-| lcd                                          | N/A          | no working directory in a pure package                                                                              |
-| sh / suspend / core                          | N/A          | shell/process; gated off                                                                                            |
-| if elseif else endif while do done for break | Done         | `/for var a b ... /done`                                                                                            |
-| return                                       | Done         | extension                                                                                                           |
+| Command | Status | Note |
+|---|---|---|
+| addworld connect dc fg world unworld saveworld listworlds listsockets | Works | `-p -e -s` are accepted and ignored; SquatClient stores the worlds |
+| localecho | Works | switches echo of what you type |
+| def | **Matches** | options `-t -m -h -p -n -1 -F -a -E -c -w -b -i -P -q` |
+| undef undefn | **Matches** (undef) / Works (undefn) | `/undef` of an unknown name is an error, as in TinyFugue |
+| list | **Partly** | the output format is identical (`/list name`); there are no `-t/-h/-m/-b/-s` filters yet |
+| purge | **Partly** | name glob and `-i`; TinyFugue's other `/list`-style options are not available |
+| trigger | **Matches** | `-g -n -l -w -h`; `-n` output layout as TinyFugue |
+| trig trigp trigc trigpc | **Matches** | define unnamed triggers |
+| gag hilite partial nogag nohilite | **Matches** (gag, hilite listing) / Works | `/gag pat = body`; the no-argument forms switch the variables |
+| hook unhook untrig undeft | **Matches** (hook, untrig) / Works | `/hook EVENT pat = body` defines; `/trigger -h` fires. Unknown hook names are errors |
+| save | Partly | writes macros only (not variables or worlds) |
+| load require | Works | `-q` is accepted; there is no search path; fires LOAD and LOADFAIL |
+| set let setenv export unset listvar shift | **Matches** | `/set` global, `/let` dynamic locals, on/off variables normalise to on/off |
+| eval test return break | **Matches** | |
+| if elseif else endif while done | **Matches** | the command-list forms (`/if cmd %; /then`) are not available |
+| for | **Matches** | TinyFugue form `/for v a b cmd` and the `/done` block form |
+| echo | **Matches** | `-a -p -w -e`; inline `@{attr}` markup; a leading `-N` argument is an option, as in TinyFugue |
+| beep | Works | rings the bell |
+| recall limit unlimit relimit log bind unbind dokey input status_add status_edit status_rm histsize | Handled by the app / **Matches** (input, dokey editing) | where TinyFugue talks to the terminal, the app takes over; `/log` is switched off by `/restrict file` |
+| repeat ps kill | **Matches** | `-S -n -time i`, `$ptime`, TinyFugue's table format |
+| quote | Partly | the `'file` and `#cmd` forms; `-dsend/-decho/-dexec`; the shell forms are not available |
+| help | Partly | prints a usage line per command; use the help browser for details (`/help`) |
+| exit quit | Works | closes the app |
+| restrict | Works | shell / file / world |
+| version features | Partly | fixed text |
+| edit recordline watchdog watchname liststreams | Not available yet | print an error saying the command is not available |
+| suspend | Handled by the app | detaches squatter sessions |
+| core lcd sh | Not applicable | |
+| python lua calllua loadlua purgelua reboot | Not applicable | use `/lua` for Lua; see [Lua scripting](help:lua) |
 
 ## 3. Functions
 
-| Function                                                                                                           | Status                                                                   |
-| ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------ |
-| strlen strcat strcmp strncmp strchr strrchr strstr strrep substr pad tolower toupper replace substitute ascii char | Done                                                                     |
-| grapheme_count grapheme_offset grapheme_substr                                                                     | Planned (P2)                                                             |
-| regmatch                                                                                                           | Done (Go RE2)                                                            |
-| abs sin cos tan asin acos atan exp ln log10 pow sqrt rand trunc mod                                                | Done                                                                     |
-| time mktime ftime idle                                                                                             | Done (`TZ` limited)                                                      |
-| sidle                                                                                                              | Done                                                                     |
-| cputime                                                                                                            | Planned (P2)                                                             |
-| world_info is_connected is_open fg_world nactive columns lines winlines isatty                                     | Done / isatty returns 0                                                  |
-| nlog nmail nread status_fields status_width morepaused morescroll moresize                                         | Planned (P2) (GUI replaces more/status)                                  |
-| tfopen tfread tfreadable tfwrite tfclose tfflush fwrite read filename                                              | Planned (P2) (stream I/O through Host)                                   |
-| prompt echo send                                                                                                   | Done                                                                     |
-| encode_attr decode_attr strip_attr                                                                                 | Done (inline `@{attr}` markup; decode_attr yields ANSI incl. 256/24-bit) |
-| encode_ansi decode_ansi strcmpattr                                                                                 | Planned (P2)                                                             |
-| kbhead kbtail kbpoint kbgoto kbdel kblen kbmatch kbwordleft kbwordright keycode kb_visual_move                     | GUI (input widget) / Planned                                             |
-| getopts eval test whatis                                                                                           | Done                                                                     |
-| option102 gmcp atcp fake_recv                                                                                      | Planned (P2)                                                             |
-| addworld (function) gethostname getpid                                                                             | Planned (P2) / N/A                                                       |
-| systype                                                                                                            | Done (returns `unix`)                                                    |
+| Function | Status |
+|---|---|
+| strlen strcat strcmp strncmp strchr strrchr strstr strrep substr pad tolower toupper replace ascii char | **Matches** (UTF-8 differences in [Differences from TinyFugue](help:compat/differences-from-tinyfugue)) |
+| regmatch | **Matches** (Go RE2 syntax) |
+| abs sin cos tan asin acos atan exp ln log10 pow sqrt trunc mod | **Matches** (`rand` Works) |
+| substitute | Works |
+| getopts whatis eval test echo send prompt | **Matches** (getopts, whatis, test, echo) / Works |
+| fake_recv | **Matches**: runs triggers and shows the line unless it is gagged (TinyFugue strips the gag flag in `fake_recv`) |
+| time mktime ftime idle sidle | **Matches** (mktime) / Works (`TZ` is limited) |
+| kbhead kbtail kbpoint kbgoto kbdel kblen kbmatch kbwordleft kbwordright kbcharback kbcharfwd | **Matches** (they work on the app's input line) |
+| columns lines winlines isatty systype nactive world_info is_connected is_open fg_world | **Matches** (systype, isatty, columns, lines) / Works |
+| nlog nmail nread morepaused moresize morescroll getpid gethostname cputime filename | **Matches** (they return neutral values) |
+| strcmpattr textencode textdecode encode_attr strip_attr decode_attr | **Matches** (plain text) / Partly (attributes use `@{..}` markup and ANSI codes) |
+| status_fields keycode encode_ansi decode_ansi tfopen tfread tfreadable tfwrite tfclose tfflush fwrite read | Not available yet |
+| grapheme_count grapheme_offset grapheme_substr | Not available yet |
+| option102 gmcp atcp addworld() | Not available yet |
 
 ## 4. Hooks
 
-All 35 names are accepted by `/def -h`, `/hook` and `FireHook`. "Engine" means
-the engine is expected to call `FireHook`; "Interp" means the interpreter fires
-it itself.
+Hook names are fixed: defining a hook with an unknown name is an error.
 
-| Hook                                                                                    | Status                                                       |
-| --------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
-| CONNECT DISCONNECT CONFAIL LOGIN WORLD PROMPT ACTIVITY BGTEXT BGTRIG RESIZE GMCP        | Done (engine fires; P1 set)                                  |
-| SEND                                                                                    | Done (Interp fires before sending; does not recurse)         |
-| LOAD LOADFAIL REDEF                                                                     | Done (Interp fires)                                          |
-| ATCP ICONFAIL CONFLICT LOG MORE NOMACRO PENDING PREACTIVITY PROXY SHADOW OPTION102 BAMF | Planned (P2): definable, fire only if the engine raises them |
-| KILL PROCESS                                                                            | Planned (P2)                                                 |
-| MAIL                                                                                    | N/A                                                          |
-| SHELL SIGHUP SIGTERM SIGUSR1 SIGUSR2                                                    | N/A (mapped by the engine if ever needed)                    |
+| Hook | Status |
+|---|---|
+| CONNECT DISCONNECT CONFAIL LOGIN WORLD PROMPT ACTIVITY BGTEXT BGTRIG RESIZE GMCP | Works: SquatClient raises them. CONNECT **Matches** with a live connection: the macro runs after connecting and `%1` is the world |
+| SEND | Works: raised just before text is sent; it does not trigger itself. See [Differences from TinyFugue](help:compat/differences-from-tinyfugue) |
+| LOAD LOADFAIL | Works |
+| REDEF | **Matches** (arguments `macro NAME`; silent when the redefinition is identical) |
+| ATCP ICONFAIL CONFLICT LOG MORE NOMACRO PENDING PREACTIVITY PROXY SHADOW OPTION102 BAMF KILL PROCESS | Not available yet: you can define them, but nothing raises them |
+| MAIL | Not applicable |
+| SHELL SIGHUP SIGTERM SIGUSR1 SIGUSR2 | Not applicable |
 
 ## 5. Variables
 
-Reconstructed from memory of TinyFugue's variable list (not verified against
-`varlist.h`). "Read" means the interpreter acts on it; "Stored" means it is an
-ordinary variable with a default that scripts may read and set, with no effect
-on this client unless the host chooses to honour it.
+The defaults of the on/off and numeric variables were read from a real
+TinyFugue and copied. "Stored" means an ordinary variable with TinyFugue's
+default that scripts may read and set, with no effect on SquatClient. On/off
+variables normalise to `on`/`off` and read as 1/0 in expressions.
 
-| Variable(s)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | Status                                                                                           |
-| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| gag, hilite, matching, hiliteattr, sub, quiet, TZ                                                                                                                                                                                                                                                                                                                                                                                                                                                  | Done (Read)                                                                                      |
-| histsize                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | Partial (stored; host may honour)                                                                |
-| login, lpflag, lpquote, mecho, more, wrap, wraplog, wrapspace, wrapsize, scroll, sockmload, background, bg_output, bamf, borg, cleardone, clock, emulation, insert, isize, kecho, kprefix, kbnum, meta_esc, ansi_log, auto_fg, redef, refreshtime, proxy_host, shpause, visual, time_format, LANG, prompt_sec, prompt_usec, textdiv, textencode, version, max_iter, max_recur, tabsize, quitdone, snarf, qecho, expand_tabs, ptime, telopt, backslash, interactive, wordpunct, gethostbyname, TERM | Partial (Stored, defaults set; engine/GUI may map them, e.g. `wrap`, `login`, `more`, `auto_fg`) |
-| quote_* (quote_dsend etc.), async_name, atcp, gmcp, sockmload, kbnum                                                                                                                                                                                                                                                                                                                                                                                                                               | Planned (P2)                                                                                     |
-| maildelay, mailpath/MAIL, TFLIBDIR, TFPATH, TFHELP, SHELL, HOME, COLUMNS, LINES, histfile-style terminal/process variables                                                                                                                                                                                                                                                                                                                                                                         | N/A (no mail, no tf-lib, no terminal; use `columns()` / `lines()`)                               |
-| User variables                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | Done (any valid name; globals via `/set`, locals via `/let`, JSON export/import)                 |
+| Variable(s) | Status |
+|---|---|
+| gag hilite matching hiliteattr sub quiet TZ ptime wordpunct hook visual | **Matches** (defaults); SquatClient reads and obeys them (`visual` is passed to the app) |
+| histsize login lpflag lpquote mecho more wrap wraplog wrapspace wrapsize scroll sockmload background bg_output bamf borg cleardone clock emulation insert isize kecho kprefix kbnum meta_esc ansi_log auto_fg redef refreshtime proxy_host shpause time_format LANG prompt_sec prompt_usec textdiv textencode version max_iter max_recur max_trig max_hook gpri hpri maildelay tabsize quitdone snarf qecho expand_tabs telopt backslash interactive gethostbyname atcp gmcp warn_curly_re oldslash defcompile status_pad status_height TERM | **Matches** (defaults); Stored (`wrap` and `more` belong to the two families that are left out; they are accepted and ignored) |
+| quote_* async_name status_int_* report_color | Not available yet |
+| mailpath MAIL TFLIBDIR TFPATH TFHELP SHELL HOME COLUMNS LINES | Not applicable (no mail, no TinyFugue library; use `columns()` and `lines()`) |
+| User variables | **Matches** (globals with `/set`, locals with `/let` and dynamic scope) |
 
-## 6. Not done (summary)
+`gpri` and `hpri` (gag and hilite priorities) are stored but not yet used by
+`/gag` and `/hilite`.
 
-- No differential/oracle testing against a real `tf` binary yet.
-- `%{-N}` argument ranges, backquote command substitution, `/edit`, `/recordline`,
-  streams (`tfopen` family), `/watchdog`, `/watchname`, grapheme functions,
-  `encode_ansi/decode_ansi`, keyboard-buffer functions, most P2 hooks.
-- `/list` filters, `/save` of variables.
-- IANA time zones.
+## 6. What is not available yet
+
+* Command-list conditions (`/if cmd %; /then`, `/while cmd %; /do`), backquote
+  substitution, `/edit`, `/recordline`, file streams (the `tfopen` family),
+  `/watchdog`, `/watchname`, the grapheme functions, `encode_ansi` and
+  `decode_ansi`, `status_fields`, most of the rarely used hooks, `/repeat -P`.
+* `/list` and `/purge` filters other than the name glob and `-i`; saving
+  variables with `/save`; IANA time zone names.
+* A real TinyFugue logs plain text only, so colour and highlight behaviour
+  (`-a`, `-P`) was implemented from the manual and is marked **Works**, not
+  **Matches**. Anything interactive (the real keyboard, `/more`) and timing
+  could not be compared either.

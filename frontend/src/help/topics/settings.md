@@ -28,8 +28,12 @@ Open settings with Ctrl-, (Cmd-, on macOS), the menu (Session, Settings) or the 
 | Editor: join indented lines             | a line starting with whitespace continues the previous line (leading whitespace removed, nothing inserted)                                                                                                                                 | on                                                  |
 | Editor: drop blank and @@ comment lines | blank lines and lines holding only an `@@` comment are not sent                                                                                                                                                                            | on                                                  |
 
-The heights of the command window and the editor are set by dragging (see [Using SquatClient](help:using)); they are saved as settings too.
+The heights of the command window and the editor are set by dragging (see [Using the client](help:using#resizing-the-command-window)); they are saved as settings too.
 
 The scrollback size is applied when the app starts. Truecolour is always on.
 
 Other places that hold settings: worlds ([Connecting and worlds](help:connecting)), squatters ([Squatter](help:squatter)) and scripts ([the scripting language](help:scripting)).
+
+## What next
+
+See [Keyboard shortcuts](help:keys) or [Using the client](help:using). If a setting does not seem to work, see [Troubleshooting](help:troubleshooting).

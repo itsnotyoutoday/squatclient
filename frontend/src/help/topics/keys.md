@@ -77,14 +77,16 @@ Focus the bar above the input (Tab to it), then:
 
 ## Windows and sessions
 
-| Key                      | Action                                        |
-| ------------------------ | --------------------------------------------- |
-| Alt-1 to Alt-9           | switch to session 1 to 9                      |
-| Ctrl-Tab, Ctrl-Shift-Tab | next and previous session                     |
-| Cmd-N, Ctrl-N            | quick connect (menu: Session, New Connection) |
-| Ctrl-O, Cmd-O            | world manager                                 |
-| Ctrl-, and Cmd-,         | settings                                      |
-| Cmd-W                    | close the session                             |
+| Key                       | Action                                                    |
+| ------------------------- | --------------------------------------------------------- |
+| Alt-1 to Alt-9            | switch to session 1 to 9                                  |
+| Ctrl-Tab, Ctrl-Shift-Tab  | next and previous session                                 |
+| Cmd-N, Ctrl-N             | quick connect (menu: Session, New Connection)             |
+| Ctrl-O, Cmd-O             | world manager                                             |
+| Ctrl-, and Cmd-,          | settings                                                  |
+| Cmd-W                     | close the session                                         |
+| Cmd-Shift-D, Ctrl-Shift-D | suspend: detach from squatters (menu: Session, Suspend)   |
+| Cmd-Shift-R, Ctrl-Shift-R | resume: attach to squatters again (menu: Session, Resume) |
 
 ## Output and search
 
@@ -106,4 +108,8 @@ Focus the bar above the input (Tab to it), then:
 | Alt-Left, Alt-Right | back, forward in help history         |
 | Escape              | clear the search box, then close help |
 
-You can change bindings from scripts with `/bind`; see [Macros: /def](help:scripting/macros-def).
+You can bind keys from scripts with `/bind`; see [Macros: /def](help:scripting/macros-def).
+
+## What next
+
+If a key does not do what you expect, see [Troubleshooting](help:troubleshooting#ctrl-b-and-ctrl-f-do-not-scroll). To learn what the input line can do, read [Using the client](help:using).

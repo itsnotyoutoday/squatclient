@@ -5,63 +5,72 @@ keywords: squatterd, daemon, persistent, session, relay, pair, pairing, fingerpr
 aliases: squatterd, daemon, persistent, pairing, suspend, detach, relay
 ---
 
-## What is squatterd?
+A **squatter** keeps your game connections running while SquatClient is closed. It is a small separate program, `squatterd`, that you run on a computer that stays on, such as a home server or a cheap virtual server. Think of `screen` or TinyFugue on a shell account.
 
-**squatterd** is a small optional program that holds your game connections for you, in the spirit of `screen` or TinyFugue on a shell account. You run it on a machine that stays on. When you close SquatClient the game connection stays up, squatterd keeps recording what the game says, and the next time you attach it replays everything you missed and carries on live.
+## Why use one
+
+- You close the app, and the game never notices: you stay logged in.
+- The squatter keeps recording what the game says. When you open SquatClient again it replays everything you missed and carries on live.
+- You can attach from different computers.
 
 You do not need a squatter to use SquatClient. Without one, connections are **direct** and end when you quit the app.
 
-What squatterd does **not** do:
+What a squatter does **not** do:
 
-- It **never logs in for you** and **stores no game passwords**. Your client sends the login lines.
-- It **never reconnects automatically**. If the game connection ends, the session is shown as ended with the reason, and it stays ended until you dismiss it.
+- It **never logs in for you** and **stores no game passwords**. SquatClient sends the login lines each time.
+- It **never reconnects by itself**. If the game closes the connection, the session is shown as ended, with the reason, until you dismiss it.
 
-## Running it
+## Setting it up
 
-On the machine that will hold your sessions (the engine repository builds the binary with `make build`):
+You need two things: `squatterd` running on the server, and SquatClient paired with it. Pairing happens once per computer.
 
-```
-./squatterd --port 10327
-```
+1. Get `squatterd` for the server from <https://github.com/itsnotyoutoday/squatClientDaemon> and start it there:
 
-The default port is 10327, the connection is TLS, and data lives in `~/.squatterd`. To see the other options use `./squatterd --help`; for example `--bind` limits the address it listens on and `--data-dir` moves its files.
+   ```
+   ./squatterd --port 10327
+   ```
 
-## Pairing
+   The default port is 10327, connections to it are encrypted, and its files live in `~/.squatterd`. Run `./squatterd --help` for the other options, for example `--bind` to limit the address it listens on and `--data-dir` to move its files.
 
-Pairing lets this copy of SquatClient talk to your squatter. It happens once per device.
-
-1. On the squatter machine run:
+2. On the server, in a second terminal, run:
 
    ```
    ./squatterd pair
    ```
 
-   It prints a one-time **pairing code** such as `ABCD-EFGH` (valid for ten minutes), the TLS **fingerprint**, and a host and port hint.
+   It prints a one-time **pairing code** such as `ABCD-EFGH` (valid for ten minutes), the server's **fingerprint**, and a host and port hint.
 
-2. In SquatClient open the squatters dialog (the tab-bar button), choose **Add a squatter**, and enter a name, the host, the port (10327 unless you changed it) and the pairing code. Press **Pair**.
-3. Compare the fingerprint SquatClient shows with the one `squatterd pair` printed. If they match, press **Trust and pair**. If they differ, press **Reject**: something is between you and your server.
+3. In SquatClient open the squatters dialog (the tab-bar button), choose **Add a squatter**, and enter a name, the host, the port (10327 unless you changed it) and the pairing code. Press **Pair**.
 
-## Trusting the fingerprint
+4. Compare the fingerprint SquatClient shows with the one `squatterd pair` printed. If they are the same, press **Trust and pair**. If they differ, press **Reject**: something is between you and your server.
 
-The squatter makes its own TLS certificate, so there is no certificate authority to vouch for it. SquatClient therefore uses _trust on first use_: you confirm the fingerprint once, and from then on that exact fingerprint is pinned. If it ever changes, the connection is refused. Only pair devices you trust: anyone who can pair can open connections to any host from the squatter machine, and `./squatterd revoke <deviceId>` removes a device.
+5. In the world manager set a world's **Connect via** to your squatter. See [Squatters and routing](help:squatter/routing).
 
-## Using a squatter
+## The fingerprint check
 
-In the world manager set **Connect via** to your squatter. Sessions you open that way live on the squatter. You can save several squatters and route different worlds through different ones; see [Squatters and routing](help:squatter/routing).
+The squatter makes its own encryption certificate, so no outside authority vouches for it. SquatClient therefore asks you to confirm the fingerprint once, and from then on it only talks to a server with exactly that fingerprint. If the fingerprint ever changes, the connection is refused.
+
+Only pair computers you trust: anyone who can pair can open connections to any game from the server. `./squatterd revoke <deviceId>` removes a paired computer.
+
+## Leaving and coming back
 
 ### /suspend and /detach
 
-Type `/suspend` (or `/detach`) to let go of squatter-held sessions while leaving them running: the client goes idle, the sessions keep recording, and you resume later by attaching again, when everything you missed is replayed. Direct sessions cannot outlive the app, so for them `/suspend` can only hide the window and the connections stay live. If both kinds are open only the squatter-held sessions are detached.
+Type `/suspend` (or `/detach`) to let go of your squatter sessions while leaving them running. SquatClient lets go of them, the window is minimised, and the sessions keep recording. To come back choose **Resume** in the Session menu (Cmd/Ctrl-Shift-R); everything you missed is replayed. Closing the app has the same effect for squatter sessions.
 
-Note: this behaviour is specified in the project design; if your build prints `/suspend (not available)`, simply close the app, and the squatter-held sessions carry on regardless.
+Direct connections cannot outlive the app, so `/suspend` leaves them connected and just minimises the window. If you have both kinds open, only the squatter sessions are detached.
 
 ### Ended sessions
 
-When a game closes the connection, resets it or cannot be reached, the session becomes **ended**. The tab shows the reason, the time and the last text received, and the full history is kept. Choose **Connect again** to open a fresh connection or **Dismiss** to remove it. Nothing reconnects by itself.
+When a game closes the connection, resets it or cannot be reached, the session is **ended**. The tab shows the reason, the time and the last text received, and the history is kept. Choose **Connect again** to open a fresh connection, or **Dismiss** to remove the tab. Nothing reconnects by itself.
 
 ## Security summary
 
-- Transport: TLS with a pinned self-signed certificate.
-- Authentication: your client holds an ed25519 key; the squatter remembers its public key.
-- Pairing codes are single use and expire; repeated wrong codes lock out the sender for five minutes.
-- If you reach the squatter through an ssh tunnel, point the client at the loopback address as described in the squatterd README.
+- Connections to the squatter are encrypted, and the certificate is pinned when you pair.
+- Your computer proves who it is with a key; the squatter remembers only the public half.
+- Pairing codes work once and expire. Repeated wrong codes lock the sender out for five minutes.
+- If the squatter's port is not reachable, see [Squatters and routing](help:squatter/routing#when-the-port-is-firewalled).
+
+## What next
+
+Read [Squatters and routing](help:squatter/routing) to use several squatters, or [Troubleshooting](help:troubleshooting#lost-squatter-connection) if a squatter does not respond.

@@ -13,6 +13,7 @@
 import { readFileSync, writeFileSync, readdirSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { checkTopics } from './guards.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
@@ -177,8 +178,25 @@ function analyse(topic) {
 
 // ---------------------------------------------------------------- imported docs
 
+/**
+ * The imported documents refer to each other by file name so that they read well on GitHub. In the help those
+ * names become links to the matching help topic.
+ */
+const DOC_LINKS = {
+  'TF-COMPAT': ['compat', 'TinyFugue Script Compatibility'],
+  'TF-LANGUAGE': ['scripting', 'The scripting language'],
+  'LUA-API': ['lua', 'Lua scripting'],
+};
+
+export function rewriteDocLinks(text) {
+  return text.replace(/(?<![[(\w/-])`?(TF-COMPAT|TF-LANGUAGE|LUA-API)\.md`?(?![\w)\]])/g, (_m, name) => {
+    const [id, title] = DOC_LINKS[name];
+    return `[${title}](help:${id})`;
+  });
+}
+
 function splitImported(spec) {
-  const text = readFileSync(join(importedDir, spec.file), 'utf8').replace(/\r\n/g, '\n');
+  const text = rewriteDocLinks(readFileSync(join(importedDir, spec.file), 'utf8')).replace(/\r\n/g, '\n');
   const lines = text.split('\n');
   const heads = scanHeadings(lines).filter((h) => h.level <= 2);
   const sections = [];
@@ -388,6 +406,9 @@ const sorted = [...authored, ...imported];
 
 const entries = [];
 for (const t of sorted) entries.push(...analyse(t));
+
+const problems = checkTopics(sorted);
+if (problems.length) fail(`help content guards failed:\n  ${problems.join('\n  ')}`);
 
 // alias map: explicit front matter > extra-aliases.json > id/title are resolved at runtime > auto (rank, then order)
 const aliases = {};

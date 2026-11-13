@@ -22,7 +22,7 @@ Select text with the mouse and copy it as usual.
 
 Recent output is kept in memory, up to the **scrollback lines** setting; older history is fetched on demand when you scroll up. Use PageUp and PageDown to scroll, or the mouse wheel.
 
-When you scroll up, live output **pauses** so the text you are reading does not move (if _Pause output when scrolled up_ is on). The status bar shows **--More--** with a count of lines that arrived meanwhile. Press End (when the output has focus) or the jump button to return to live output. This replaces TinyFugue's `--More--` prompt.
+When you scroll up, live output **pauses** so the text you are reading does not move (if _Pause output when scrolled up_ is on). The status bar shows **--More--** with a count of lines that arrived meanwhile. Press End (when the output has focus) or the jump button to return to live output. This takes the place of TinyFugue's `--More--` prompt.
 
 ## Searching
 
@@ -97,3 +97,7 @@ By default SquatClient shows UTF-8 text with xterm-256 and 24-bit truecolour. Ty
 ## Accessibility
 
 Dialogs trap keyboard focus and close with Escape, controls have labels, and _Screen-reader mode_ announces new lines to assistive technology. A "Skip to input" link is the first thing a keyboard user reaches.
+
+## What next
+
+Learn the keys in [Keyboard shortcuts](help:keys), tune the client in [Settings](help:settings), or automate it with [the scripting language](help:scripting). If something looks wrong, see [Troubleshooting](help:troubleshooting).

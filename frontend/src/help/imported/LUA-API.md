@@ -1,7 +1,7 @@
 # Lua scripting reference (`squat.*`)
 
-SquatClient embeds Lua 5.1 (gopher-lua, pure Go) as a sandboxed scripting language alongside the TF engine.
-Scripts are plain `.lua` files so they can later be synced to a daemon (see `AUTOMATION.md`).
+SquatClient embeds Lua 5.1 as a sandboxed scripting language alongside the
+[TinyFugue-style scripting language](help:scripting). Scripts are plain `.lua` files.
 
 ## 1. Basics
 
@@ -16,11 +16,11 @@ Scripts are plain `.lua` files so they can later be synced to a daemon (see `AUT
 ### The `live` rule (important)
 
 A line can be **live** (just arrived) or **replayed** (scrollback/backlog re-processed after reattaching).
-Replayed lines only get _display effects_: `gag`, highlight colours, and spans returned by `line` handlers.
+Replayed lines only get *display effects*: `gag`, highlight colours, and spans returned by `line` handlers.
 On replayed lines:
 
 - trigger `fn` callbacks are **not called**;
-- `line`/`prompt` handlers _are_ called (with `l.live == false`) so they can restyle or gag, but
+- `line`/`prompt` handlers *are* called (with `l.live == false`) so they can restyle or gag, but
   `squat.send`, `echo`, `notify`, `tf`, `var.set`, `var.del`, `after`, `timer`, `on`, `trigger`, `alias` and
   `remove` do nothing and return `false`.
 
@@ -30,7 +30,7 @@ Write line handlers so they compute the display result from the text, and put si
 
 Available: base functions (`pairs`, `pcall`, `error`, `setmetatable`, `tostring`, `unpack` ...), `string`,
 `table`, `math`, `coroutine`, and a restricted `os` with only `time`, `date`, `clock`, `difftime`
-(driven by the client clock). `print(...)` goes to the log.
+(using the client's clock). `print(...)` goes to the log.
 
 Not available: `io`, `debug`, `package`, `os.execute/remove/rename/getenv/exit`, `dofile`, `loadfile`,
 `string.dump`, `getfenv/setfenv`, `module`, `newproxy`, native modules. `loadstring`/`load` work but compile into your
@@ -40,14 +40,14 @@ own environment and refuse binary chunks. `string.rep` results are capped (4 MiB
 
 ## 3. Output and sending
 
-| Call                           | Meaning                                                                                 |
-| ------------------------------ | --------------------------------------------------------------------------------------- |
-| `squat.send(text [, world])`   | Send a line to the game. Returns `true`, or `nil, err`.                                 |
-| `squat.echo(x [, world])`      | Show text locally. `x` is a string, one span `{s="..."}`, or an array of spans/strings. |
-| `squat.notify(title [, body])` | Desktop notification.                                                                   |
-| `squat.log(text [, level])`    | Write to the client log; level is `"info"`, `"warn"` or `"error"`.                      |
-| `squat.world()`                | Display name of the world the current line/event belongs to.                            |
-| `squat.now()`                  | Seconds since the Unix epoch (float) from the client clock.                             |
+| Call | Meaning |
+|---|---|
+| `squat.send(text [, world])` | Send a line to the game. Returns `true`, or `nil, err`. |
+| `squat.echo(x [, world])` | Show text locally. `x` is a string, one span `{s="..."}`, or an array of spans/strings. |
+| `squat.notify(title [, body])` | Desktop notification. |
+| `squat.log(text [, level])` | Write to the client log; level is `"info"`, `"warn"` or `"error"`. |
+| `squat.world()` | Display name of the world the current line/event belongs to. |
+| `squat.now()` | Seconds since the Unix epoch (float) from the client clock. |
 
 `world` defaults to the world of the line/event being handled (timers remember the world they were created in).
 Calling `send`/`echo`/`tf` with no current world and no `world` argument is an error.
@@ -62,14 +62,14 @@ A span is a table: `{s="text", fg=..., bg=..., b=true, dim=, i=, u=, st=, blink=
 
 ## 4. Events: `squat.on(event, fn [, priority])`
 
-| Event                   | `fn` receives                                              |
-| ----------------------- | ---------------------------------------------------------- |
-| `line`                  | `{text, spans, world, prompt, live}`                       |
-| `prompt`                | the same, only for flushed prompts                         |
-| `connect`, `disconnect` | `{world, ...}` (fields chosen by the engine)               |
-| `gmcp`                  | `{package, data, raw, world}` (`data` is the decoded JSON) |
-| `input`                 | `{text, world}`; return `true` to swallow the input        |
-| `timer`                 | engine tick payload                                        |
+| Event | `fn` receives |
+|---|---|
+| `line` | `{text, spans, world, prompt, live}` |
+| `prompt` | the same, only for flushed prompts |
+| `connect`, `disconnect` | `{world, ...}` (more fields depending on the event) |
+| `gmcp` | `{package, data, raw, world}` (`data` is the decoded JSON) |
+| `input` | `{text, world}`; return `true` to swallow the input |
+| `timer` | a table describing the tick |
 
 Line handlers may modify the line:
 
@@ -105,7 +105,7 @@ squat.trigger{
 ```
 
 **Glob:** matches the whole line; `*` matches any run (captured), `?` one character, `\*` and `\?` are literal.
-**Regex:** Go RE2 syntax (<https://github.com/google/re2/wiki/Syntax>): linear-time, no backreferences or
+**Regex:** RE2 syntax (<https://github.com/google/re2/wiki/Syntax>): linear-time, no backreferences or
 lookaround; named groups `(?P<name>...)`.
 
 `fn(m)` gets `m.text`, `m[0]` (whole match), `m[1..n]` (captures; `""` if a group did not take part),
@@ -128,26 +128,25 @@ squat.after(2.5, function() ... end)                          -- once
 local id = squat.timer{...};  squat.cancel(id)
 ```
 
-Intervals are seconds (minimum 0.05 by default, at most 512 live timers). Timers are scheduled through the
-client host and use its clock; they are removed on plugin reload. A tick that errors is logged and the timer keeps going.
+Intervals are seconds (minimum 0.05 by default, at most 512 live timers). Timers are removed on plugin reload. A tick that errors is logged and the timer keeps going.
 
 ## 7. Variables
 
 `squat.var.get(name [, default])`, `squat.var.set(name, value)`, `squat.var.del(name)`, `squat.var.keys()`.
 Values are strings, numbers, booleans, or tables of those (JSON-compatible; functions and cycles are rejected).
-`set(name, nil)` deletes. The store belongs to the engine, is shared by all plugins (prefix your names), survives
-`/reload`, and is exported/imported as JSON (`Runtime.ExportVars/ImportVars`).
+`set(name, nil)` deletes. The store is shared by all plugins (prefix your names) and survives
+`/reload`.
 
 ## 8. Regular expressions
 
 `squat.regex.match(pattern, text)` returns `nil` or a table `m[0]`, `m[1..n]`, `m.named`;
 `squat.regex.test(pattern, text)` returns a boolean; `squat.regex.replace(pattern, text, repl)` uses `$1`/`${name}`.
 
-## 9. Talking to TF
+## 9. Talking to the TinyFugue-style language
 
-`squat.tf(code [, world])` runs one line of TinyFugue input in the TF engine (`true` or `nil, err`).
-TF's `/lua <code>` runs Lua in a persistent console environment (engine wiring: `Runtime.Exec`, or
-`Runtime.ExecInCallback` when TF was itself called from Lua).
+`squat.tf(code [, world])` runs one line of TinyFugue-style input (`true` or `nil, err`).
+Going the other way, the `/lua <code>` command runs Lua in a persistent console environment that keeps its
+globals between commands.
 
 ## 10. Plugins
 
@@ -165,7 +164,6 @@ plugins/
 
 ## 11. Examples
 
-The scripts below are in `testdata/lua/` and are exercised by the test suite.
 
 Auto-heal:
 
@@ -208,7 +206,7 @@ Alias:
 squat.alias{match = "k *", fn = function(m) squat.send("kill " .. m[1]) end}
 ```
 
-Call TF:
+Call the TinyFugue-style language:
 
 ```lua
 squat.trigger{match = "* arrives.", fn = function(m) squat.tf("/echo -aB Welcome, " .. m[1] .. "!") end}

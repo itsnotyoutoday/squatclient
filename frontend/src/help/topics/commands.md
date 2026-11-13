@@ -13,16 +13,16 @@ Anything you type that starts with `/` is a command. Everything else is sent to 
 | ------- | ---------------------------------------------------------------------- |
 | `/help` | open this help; `/help topic` opens a topic and `/help words` searches |
 
-`/help` is handled by the window itself, before anything is sent to the engine, so it works even when no world is connected. The browser accepts TinyFugue-style names: `/help def`, `/help /def`, `/help expressions`, `/help triggers`.
+`/help` is handled by the window itself, so it works even when no world is connected. The browser accepts TinyFugue-style names: `/help def`, `/help /def`, `/help expressions`, `/help triggers`.
 
-## Handled by the engine
+## Handled by SquatClient
 
 | Command               | Meaning                                                                                                                                                              |
 | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `/lua code`           | run a line of Lua; see [Lua scripting](help:lua)                                                                                                                     |
 | `/load file`          | load a `.tf` script, or a `.lua` plugin when the name ends in `.lua`                                                                                                 |
 | `/reload`             | reload Lua plugins and the startup file                                                                                                                              |
-| `/suspend`, `/detach` | detach squatter-held sessions; see [Squatter](help:squatter)                                                                                                         |
+| `/suspend`, `/detach` | let go of squatter sessions and minimise the window; see [Squatter](help:squatter)                                                                                   |
 | `/secret text`        | send text without recording it anywhere (never echoed, stored or logged by a squatter); see [Passwords](help:using#passwords)                                        |
 | `/colortest`          | print every colour mode (16 colours, the full xterm-256 grid, truecolor gradients, text styles, UTF-8) to compare with a terminal; see [Colours](help:using#colours) |
 
@@ -44,4 +44,10 @@ The scripting language provides the rest. Open any of them with `/help name`.
 | View                | `/limit` `/unlimit` `/relimit` `/recall` `/log` `/input` `/localecho` `/status_add` `/status_edit` `/status_rm` `/histsize` |
 | Information         | `/version` `/features` `/restrict` `/exit` `/quit`                                                                          |
 
-Start at [the scripting language](help:scripting), especially [Commands](help:scripting/commands), and see [Compatibility notes](help:compat) for which commands behave differently from TinyFugue.
+Start at [the scripting language](help:scripting), especially [Commands](help:scripting/commands), and see [TinyFugue Script Compatibility](help:compat) for which commands behave differently from TinyFugue.
+
+Typing a command that does not exist prints `no such command. Type /help for help.`
+
+## What next
+
+Read [the scripting language](help:scripting) to define your own commands with `/def`.
