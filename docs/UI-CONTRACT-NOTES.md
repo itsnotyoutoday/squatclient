@@ -1,0 +1,12 @@
+# UI-CONTRACT notes (ambiguities hit by the front end)
+
+1. **Session removal event.** The contract has no event for a dismissed session. The UI removes a session locally after `dismiss()` resolves; other attached clients would not learn of it. Suggest a `session` event with a `removed` marker or a `session.removed` event.
+2. **`endReason` type.** UI-CONTRACT says `string`, PROTOCOL.md lists an enum. The UI types it as `string` and humanises known values (`remote_closed`, `reset`, `timeout`, `tls_error`, `connect_failed`, `client_quit`, `squatter_stopped`), falling back to prettified text.
+3. **"Connect again" needs a world.** `SessionInfo` has no `worldId`. The UI matches by `host`+`port` against `listWorlds()`; if none matches it connects with `{host, port, tls}`. Suggest adding `worldId?` to `SessionInfo`.
+4. **Wails method names.** The WailsEngine calls `window.go.main.App.<Name>` with capitalised EngineAPI names: ListWorlds, SaveWorld, DeleteWorld, SetWorldPassword, GetSettings, SaveSettings, ListSquatters, PairSquatter, ConfirmSquatter, RemoveSquatter, Connect, Disconnect, Dismiss, ListSessions, Foreground, Input, Resize, Scrollback, Search, Ack. Arguments are passed positionally; `Connect` gets the target object, `Scrollback`/`Search` get the opts object. Events via `runtime.EventsOn(name)` with names `line session status notice bell gmcp quit`; payload is the first callback argument.
+5. **Notices.** `notice` events are rendered as local system lines with a fractional `seq` (lastSeq + 0.001n) so they sort in place and never collide with engine seqs. If the engine also emits a `system` line for the same notice it would appear twice; decide which side owns it.
+6. **Unread/ack.** The UI acks the highest integer seq of the foreground session (debounced 250 ms) only while not paused-scrolled-up, and relies on a `session` event for the new `unread`.
+7. **Ctrl-F.** Emacs Ctrl-F (forward char) wins inside the input line. Search opens with Cmd-F / Ctrl-Shift-F anywhere, and Ctrl-F when focus is outside the input.
+8. **Password input.** When `remoteEcho` is true the UI uses a masked `<input type=password>`, skips history and still sends via `input()`.
+9. **`SearchHit`** has only `seq` and `preview`; the UI highlights matches itself in loaded lines and uses engine hits only for history older than the loaded buffer.
+10. **`resize`** is sent (debounced) with measured cols/rows of the output pane using canvas text metrics.

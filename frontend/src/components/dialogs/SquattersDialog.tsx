@@ -1,0 +1,129 @@
+import { useState } from 'react';
+import type { FormEvent } from 'react';
+import { useUi } from '../../state/stores';
+import { Dialog, Field } from './Dialog';
+
+export function SquattersDialog() {
+  const engine = useUi((s) => s.engine);
+  const squatters = useUi((s) => s.squatters);
+  const [host, setHost] = useState('');
+  const [port, setPort] = useState('7443');
+  const [name, setName] = useState('');
+  const [code, setCode] = useState('');
+  const [pending, setPending] = useState<{ id: string; fingerprint: string } | null>(null);
+  const [err, setErr] = useState('');
+  const close = (): void => useUi.getState().openDialog(null);
+  const refresh = async (): Promise<void> => {
+    if (engine) useUi.getState().setSquatters(await engine.listSquatters());
+  };
+
+  const pair = async (e: FormEvent): Promise<void> => {
+    e.preventDefault();
+    if (!engine) return;
+    try {
+      setPending(
+        await engine.pairSquatter(host.trim(), Number(port), name.trim() || host.trim(), code.trim()),
+      );
+      setErr('');
+    } catch (x) {
+      setErr(x instanceof Error ? x.message : String(x));
+    }
+  };
+
+  const confirm = async (accept: boolean): Promise<void> => {
+    if (!engine || !pending) return;
+    try {
+      await engine.confirmSquatter(pending.id, accept);
+      setPending(null);
+      if (accept) {
+        setHost('');
+        setName('');
+        setCode('');
+      }
+      await refresh();
+    } catch (x) {
+      setErr(x instanceof Error ? x.message : String(x));
+    }
+  };
+
+  return (
+    <Dialog title="Squatters" onClose={close} wide>
+      <h3>Paired squatters</h3>
+      {squatters.length === 0 ? (
+        <p className="hint">None yet. A squatter keeps your sessions alive while the client is closed.</p>
+      ) : (
+        <ul className="plain">
+          {squatters.map((s) => (
+            <li key={s.id} className="rowline">
+              <span>
+                <strong>{s.name}</strong>{' '}
+                <span className="dim">
+                  {s.host}:{s.port}
+                </span>
+                {!s.paired && <em> (not paired)</em>}
+                {s.fingerprint && <code className="fp">{s.fingerprint}</code>}
+              </span>
+              <button
+                type="button"
+                className="danger"
+                aria-label={`Remove ${s.name}`}
+                onClick={() => void engine?.removeSquatter(s.id).then(refresh)}
+              >
+                Remove
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <h3>Add a squatter</h3>
+      {pending ? (
+        <div role="group" aria-label="Confirm fingerprint" className="form">
+          <p>Confirm this is the fingerprint shown by your squatter (trust on first use):</p>
+          <code className="fp big" data-testid="fingerprint">
+            {pending.fingerprint}
+          </code>
+          <div className="actions">
+            <button type="button" onClick={() => void confirm(false)}>
+              Reject
+            </button>
+            <button type="button" className="primary" data-autofocus onClick={() => void confirm(true)}>
+              Trust and pair
+            </button>
+          </div>
+        </div>
+      ) : (
+        <form className="form grid" onSubmit={(e) => void pair(e)}>
+          <Field label="Name">
+            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Home server" />
+          </Field>
+          <Field label="Host">
+            <input required value={host} onChange={(e) => setHost(e.target.value)} />
+          </Field>
+          <Field label="Port">
+            <input
+              required
+              type="number"
+              min={1}
+              max={65535}
+              value={port}
+              onChange={(e) => setPort(e.target.value)}
+            />
+          </Field>
+          <Field label="Pair code">
+            <input required value={code} onChange={(e) => setCode(e.target.value)} autoComplete="off" />
+          </Field>
+          <div className="actions wide">
+            <button type="submit" className="primary">
+              Pair
+            </button>
+          </div>
+        </form>
+      )}
+      {err && (
+        <p role="alert" className="err">
+          {err}
+        </p>
+      )}
+    </Dialog>
+  );
+}
