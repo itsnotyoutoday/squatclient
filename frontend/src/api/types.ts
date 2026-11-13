@@ -331,6 +331,14 @@ export interface EngineAPI {
   pickFile(title: string): Promise<string>;
   /** Read a text file the user chose or typed (regular file, <= 5 MiB, no binary). */
   readTextFile(path: string): Promise<FileResult>;
+  // ---- in-game object/attribute editor (docs/EDIT.md). These never reject: check `ok`.
+  editFetchObject(sessionId: string, dbref: string): Promise<EditObjectResult>;
+  editFetchAttr(sessionId: string, dbref: string, attr: string): Promise<EditAttrResult>;
+  /** `value` is the editor text (real newlines); the engine stores %r and verifies by reading back. */
+  editSaveAttr(sessionId: string, dbref: string, attr: string, value: string): Promise<EditResult>;
+  editResolve(sessionId: string, target: string): Promise<EditResolveResult>;
+  editControls(sessionId: string, dbref: string): Promise<EditControlsResult>;
+  editAttrInfo(sessionId: string, dbref: string, attr: string): Promise<EditAttrInfoResult>;
   on<E extends EngineEventName>(event: E, cb: (payload: EngineEvents[E]) => void): () => void;
 }
 
