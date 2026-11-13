@@ -15,9 +15,17 @@
     "format": "prettier --write .",
     "test": "vitest run",
     "pretest": "npm run help:build",
-    "smoke": "vitest run tests/smoke.test.tsx"
+    "smoke": "vitest run tests/smoke.test.tsx",
+    "gen:functions": "node scripts/gen-mush-functions.mjs"
   },
   "dependencies": {
+    "@codemirror/autocomplete": "6.20.4",
+    "@codemirror/commands": "6.11.1",
+    "@codemirror/language": "6.13.1",
+    "@codemirror/lint": "6.9.7",
+    "@codemirror/search": "6.7.2",
+    "@codemirror/state": "6.7.6",
+    "@codemirror/view": "6.43.15",
     "@tanstack/react-virtual": "^3.10.8",
     "dompurify": "^3.4.17",
     "marked": "^14.1.4",

@@ -1,0 +1,220 @@
+/*
+ * Softcode editor (CodeMirror 6) styling. Everything is driven by the app's theme variables
+ * (--bg, --fg, --font, --ui-*, --ansi-N) so it follows dark / light / high-contrast and custom themes.
+ *
+ * Token colours: dark themes use the bright half of the ANSI palette, light themes the normal half
+ * (the app sets `color-scheme` on <html> from the theme kind). tests/codeeditor.theme.test.ts checks
+ * the contrast of every pairing against the built-in themes.
+ */
+:root {
+  --mc-function: var(--ansi-6, #00c8d4);
+  --mc-function-unknown: var(--ansi-6, #00c8d4);
+  --mc-bracket: var(--ansi-11, #f2f200);
+  --mc-brace: var(--ansi-13, #ff33ff);
+  --mc-paren: var(--ui-text-dim, #8a919c);
+  --mc-comma: var(--ui-text-dim, #8a919c);
+  --mc-semicolon: var(--ansi-9, #ff5638);
+  --mc-substitution: var(--ansi-10, #00f100);
+  --mc-escape: var(--ansi-9, #ff5638);
+  --mc-number: var(--ansi-3, #b8b700);
+  --mc-dbref: var(--link, #6cb6ff);
+  --mc-attrdef: var(--ui-accent, #4c8dff);
+  --mc-command: var(--cursor, #f0c674);
+  --mc-pattern: var(--ansi-10, #00f100);
+  --mc-comment: var(--ui-text-dim, #8a919c);
+  --mc-match-bg: color-mix(in srgb, var(--ui-accent, #4c8dff) 35%, transparent);
+  --mc-error: var(--ui-danger, #e5484d);
+  --mc-warn: var(--ui-warn, #e5a13b);
+}
+:root[style*='color-scheme: light'] {
+  --mc-function: var(--ansi-4, #0550ae);
+  --mc-function-unknown: var(--ansi-4, #0550ae);
+  --mc-bracket: var(--ansi-3, #8a5a00);
+  --mc-brace: var(--ansi-5, #8250df);
+  --mc-semicolon: var(--ansi-1, #c4262e);
+  --mc-substitution: var(--ansi-2, #1a7f37);
+  --mc-escape: var(--ansi-1, #c4262e);
+  --mc-number: var(--ansi-3, #8a5a00);
+  --mc-pattern: var(--ansi-2, #1a7f37);
+  --mc-command: var(--ansi-4, #0550ae);
+}
+
+.codeeditor {
+  position: relative;
+  min-height: 0;
+  border: 1px solid var(--ui-border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--fg);
+  overflow: hidden;
+}
+.codeeditor:focus-within {
+  border-color: var(--ui-accent);
+}
+.codeeditor-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 6em;
+  color: var(--ui-text-dim);
+  font: 13px var(--ui-font);
+}
+.codeeditor .cm-editor {
+  height: 100%;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font);
+  font-size: var(--font-size, 14px);
+}
+.codeeditor-auto .cm-editor {
+  max-height: 60vh;
+}
+.codeeditor-auto .cm-content,
+.codeeditor-auto .cm-gutter {
+  min-height: 6em;
+}
+.codeeditor .cm-editor.cm-focused {
+  outline: none;
+}
+.codeeditor .cm-scroller {
+  font-family: inherit;
+  line-height: 1.45;
+}
+.codeeditor .cm-content {
+  caret-color: var(--cursor);
+  padding: 4px 0;
+}
+.codeeditor .cm-cursor,
+.codeeditor .cm-dropCursor {
+  border-left-color: var(--cursor);
+}
+.codeeditor .cm-selectionBackground,
+.codeeditor .cm-editor.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground {
+  background: var(--selection);
+}
+.codeeditor .cm-activeLine {
+  background: color-mix(in srgb, var(--fg) 6%, transparent);
+}
+.codeeditor .cm-gutters {
+  background: var(--ui-panel);
+  color: var(--ui-text-dim);
+  border-right: 1px solid var(--ui-border);
+}
+.codeeditor .cm-activeLineGutter {
+  background: var(--ui-panel-alt);
+  color: var(--ui-text);
+}
+.codeeditor .cm-selectionMatch {
+  background: color-mix(in srgb, var(--ui-accent) 25%, transparent);
+}
+
+/* syntax */
+.codeeditor .mc-function {
+  color: var(--mc-function);
+}
+.codeeditor .mc-function-unknown {
+  color: var(--mc-function-unknown);
+  text-decoration: underline dotted var(--mc-warn);
+  text-underline-offset: 3px;
+}
+.codeeditor .mc-bracket {
+  color: var(--mc-bracket);
+  font-weight: 600;
+}
+.codeeditor .mc-brace {
+  color: var(--mc-brace);
+  font-weight: 600;
+}
+.codeeditor .mc-paren {
+  color: var(--mc-paren);
+}
+.codeeditor .mc-comma {
+  color: var(--mc-comma);
+}
+.codeeditor .mc-semicolon {
+  color: var(--mc-semicolon);
+  font-weight: 600;
+}
+.codeeditor .mc-substitution {
+  color: var(--mc-substitution);
+}
+.codeeditor .mc-escape {
+  color: var(--mc-escape);
+}
+.codeeditor .mc-number {
+  color: var(--mc-number);
+}
+.codeeditor .mc-dbref {
+  color: var(--mc-dbref);
+}
+.codeeditor .mc-attrdef {
+  color: var(--mc-attrdef);
+  font-weight: 600;
+}
+.codeeditor .mc-command {
+  color: var(--mc-command);
+  font-weight: 600;
+}
+.codeeditor .mc-pattern {
+  color: var(--mc-pattern);
+  font-style: italic;
+}
+.codeeditor .mc-comment {
+  color: var(--mc-comment);
+  font-style: italic;
+}
+.codeeditor .mc-bracket-match {
+  background: var(--mc-match-bg);
+  outline: 1px solid var(--ui-accent);
+  border-radius: 2px;
+}
+
+/* lint */
+.codeeditor .cm-lintRange-error {
+  background-image: none;
+  text-decoration: underline wavy var(--mc-error);
+  text-underline-offset: 3px;
+}
+.cm-tooltip.cm-tooltip-lint {
+  background: var(--ui-panel-alt);
+  color: var(--ui-text);
+  border: 1px solid var(--ui-border);
+  font: 12px var(--ui-font);
+}
+.cm-tooltip-lint .cm-diagnostic-error {
+  border-left-color: var(--ui-danger);
+}
+
+/* search panel */
+.codeeditor .cm-panels {
+  background: var(--ui-panel);
+  color: var(--ui-text);
+  border-color: var(--ui-border);
+  font: 12px var(--ui-font);
+}
+.codeeditor .cm-panels input,
+.codeeditor .cm-panels button {
+  font: inherit;
+  color: var(--ui-text);
+  background: var(--ui-panel-alt);
+  border: 1px solid var(--ui-border);
+  border-radius: 3px;
+}
+.codeeditor .cm-panels input:focus-visible,
+.codeeditor .cm-panels button:focus-visible {
+  outline: 2px solid var(--ui-accent);
+}
+.codeeditor .cm-searchMatch {
+  background: color-mix(in srgb, var(--ui-warn) 35%, transparent);
+}
+.codeeditor .cm-searchMatch-selected {
+  background: color-mix(in srgb, var(--ui-accent) 50%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .codeeditor *,
+  .cm-tooltip {
+    animation: none !important;
+    transition: none !important;
+  }
+}
