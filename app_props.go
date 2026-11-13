@@ -149,3 +149,84 @@ func (a *App) EditNearby(sessionID, dbref string) app.EditNearbyResult {
 	}
 	return svc.EditNearby(sessionID, dbref)
 }
+
+// EditSetLockFlag turns a lock flag on or off.
+func (a *App) EditSetLockFlag(sessionID, dbref, lockType, flag string, on bool) app.EditDetailsResult {
+	svc, err := a.service()
+	if err != nil {
+		return app.EditDetailsResult{EditResult: app.EditResult{Error: err.Error(), Code: "error"}}
+	}
+	return svc.EditSetLockFlag(sessionID, dbref, lockType, flag, on)
+}
+
+// EditTestLock evaluates a lock for a target.
+func (a *App) EditTestLock(sessionID, dbref, lockType, target string) app.EditTestLockResult {
+	svc, err := a.service()
+	if err != nil {
+		return app.EditTestLockResult{EditResult: app.EditResult{Error: err.Error(), Code: "error"}, Result: "unknown"}
+	}
+	return svc.EditTestLock(sessionID, dbref, lockType, target)
+}
+
+// EditSetAttrLock locks or unlocks an attribute.
+func (a *App) EditSetAttrLock(sessionID, dbref, attr string, on bool) app.EditAttrLockResult {
+	svc, err := a.service()
+	if err != nil {
+		return app.EditAttrLockResult{EditResult: app.EditResult{Error: err.Error(), Code: "error"}, Locked: "unknown"}
+	}
+	return svc.EditSetAttrLock(sessionID, dbref, attr, on)
+}
+
+// EditAttrChown changes an attribute's owner.
+func (a *App) EditAttrChown(sessionID, dbref, attr, player string) app.EditAttrOwnerResult {
+	svc, err := a.service()
+	if err != nil {
+		return app.EditAttrOwnerResult{EditResult: app.EditResult{Error: err.Error(), Code: "error"}}
+	}
+	return svc.EditAttrChown(sessionID, dbref, attr, player)
+}
+
+// EditRenameAttr renames an attribute.
+func (a *App) EditRenameAttr(sessionID, dbref, from, to string) app.EditReplyResult {
+	svc, err := a.service()
+	if err != nil {
+		return app.EditReplyResult{EditResult: app.EditResult{Error: err.Error(), Code: "error"}}
+	}
+	return svc.EditRenameAttr(sessionID, dbref, from, to)
+}
+
+// EditDeleteAttr clears an attribute.
+func (a *App) EditDeleteAttr(sessionID, dbref, attr string) app.EditReplyResult {
+	svc, err := a.service()
+	if err != nil {
+		return app.EditReplyResult{EditResult: app.EditResult{Error: err.Error(), Code: "error"}}
+	}
+	return svc.EditDeleteAttr(sessionID, dbref, attr)
+}
+
+// EditSetWarnings sets the object's warnings.
+func (a *App) EditSetWarnings(sessionID, dbref, list string) app.EditDetailsResult {
+	svc, err := a.service()
+	if err != nil {
+		return app.EditDetailsResult{EditResult: app.EditResult{Error: err.Error(), Code: "error"}}
+	}
+	return svc.EditSetWarnings(sessionID, dbref, list)
+}
+
+// EditWCheck runs @wcheck.
+func (a *App) EditWCheck(sessionID, dbref string) app.EditLinesResult {
+	svc, err := a.service()
+	if err != nil {
+		return app.EditLinesResult{EditResult: app.EditResult{Error: err.Error(), Code: "error"}, Lines: []string{}}
+	}
+	return svc.EditWCheck(sessionID, dbref)
+}
+
+// EditExamine runs examine silently ("", "all" or "brief") and returns the coloured text.
+func (a *App) EditExamine(sessionID, dbref, mode string) app.EditExamineResult {
+	svc, err := a.service()
+	if err != nil {
+		return app.EditExamineResult{EditResult: app.EditResult{Error: err.Error(), Code: "error"}}
+	}
+	return svc.EditExamine(sessionID, dbref, mode)
+}

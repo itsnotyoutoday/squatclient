@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/itsnotyoutoday/squatClientDaemon/pkg/engine"
+	"github.com/itsnotyoutoday/squatClientDaemon/pkg/proto"
 )
 
 // Object details bindings for the Object Editor (docs/EDIT.md section 11):
@@ -24,8 +25,9 @@ func (s *Service) propsCtx() (context.Context, context.CancelFunc) {
 
 // EditLock is one lock of an object.
 type EditLock struct {
-	Type string `json:"type"`
-	Expr string `json:"expr"`
+	Type  string   `json:"type"`
+	Expr  string   `json:"expr"`
+	Flags []string `json:"flags"`
 }
 
 // EditObjRef names an object.
@@ -56,6 +58,12 @@ type EditDetails struct {
 	Contents    []EditObjRef `json:"contents"`
 	Exits       []EditObjRef `json:"exits"`
 	AttrCount   int          `json:"attrCount"`
+	// Names maps the dbrefs above (owner, parent, zone, location, home, destination) to names.
+	Names map[string]string `json:"names"`
+	// Warnings is the warning list ("" unknown); ParentChain the parent, grandparent...; Extra player facts (alias, channels, quota).
+	Warnings    string            `json:"warnings"`
+	ParentChain []EditObjRef      `json:"parentChain"`
+	Extra       map[string]string `json:"extra"`
 }
 
 // EditDetailsResult is the result of EditDetails and of every mutation. For a
@@ -128,12 +136,25 @@ func toDetails(d engine.Details) EditDetails {
 	out := EditDetails{Dbref: d.Dbref, Name: d.Name, Type: d.Type, Owner: d.Owner, Parent: d.Parent, Zone: d.Zone,
 		Location: d.Location, Home: d.Home, Destination: d.Destination, Pennies: d.Pennies, Created: d.Created,
 		Modified: d.Modified, Flags: nonNil(d.Flags), FlagLetters: d.FlagLetters, Powers: nonNil(d.Powers),
-		Locks: []EditLock{}, Contents: []EditObjRef{}, Exits: []EditObjRef{}, AttrCount: d.AttrCount}
+		Locks: []EditLock{}, Contents: []EditObjRef{}, Exits: []EditObjRef{}, AttrCount: d.AttrCount,
+		Names: map[string]string{}}
+	for k, v := range d.Names {
+		out.Names[k] = v
+	}
 	for _, l := range d.Locks {
-		out.Locks = append(out.Locks, EditLock{Type: l.Type, Expr: l.Expr})
+		out.Locks = append(out.Locks, EditLock{Type: l.Type, Expr: l.Expr, Flags: nonNil(l.Flags)})
 	}
 	for _, c := range d.Contents {
 		out.Contents = append(out.Contents, EditObjRef{Dbref: c.Dbref, Name: c.Name})
+	}
+	out.Warnings = d.Warnings
+	out.ParentChain = []EditObjRef{}
+	for _, c := range d.ParentChain {
+		out.ParentChain = append(out.ParentChain, EditObjRef{Dbref: c.Dbref, Name: c.Name})
+	}
+	out.Extra = map[string]string{}
+	for k, v := range d.Extra {
+		out.Extra[k] = v
 	}
 	for _, c := range d.Exits {
 		out.Exits = append(out.Exits, EditObjRef{Dbref: c.Dbref, Name: c.Name})
@@ -331,4 +352,155 @@ func (s *Service) EditNearby(sessionID, dbref string) EditNearbyResult {
 		out.Contents = append(out.Contents, toPlace(p))
 	}
 	return out
+}
+
+// EditTestLockResult is the result of EditTestLock: result is "true", "false" or "unknown"; raw is the game's text.
+type EditTestLockResult struct {
+	EditResult
+	Result string `json:"result"`
+	Raw    string `json:"raw"`
+}
+
+// EditAttrLockResult is the result of EditSetAttrLock (locked: "true"/"false"/"unknown").
+type EditAttrLockResult struct {
+	EditResult
+	Locked string `json:"locked"`
+	Reply  string `json:"reply"`
+}
+
+// EditAttrOwnerResult is the result of EditAttrChown.
+type EditAttrOwnerResult struct {
+	EditResult
+	Owner string `json:"owner"`
+	Reply string `json:"reply"`
+}
+
+// EditReplyResult is a plain ok/error with the game's reply (rename, delete).
+type EditReplyResult struct {
+	EditResult
+	Reply string `json:"reply"`
+}
+
+// EditLinesResult is a list of reply lines (@wcheck).
+type EditLinesResult struct {
+	EditResult
+	Lines []string `json:"lines"`
+}
+
+// EditExamineResult is the game's examine text with colour: one span list per line.
+type EditExamineResult struct {
+	EditResult
+	Lines [][]proto.Span `json:"lines"`
+}
+
+// EditSetLockFlag turns a lock flag (visual, no_inherit, ...) on or off.
+func (s *Service) EditSetLockFlag(sessionID, dbref, lockType, flag string, on bool) EditDetailsResult {
+	ctx, cancel := s.propsCtx()
+	defer cancel()
+	return s.mutation(s.eng.SetLockFlag(ctx, sessionID, dbref, lockType, flag, on))
+}
+
+// EditTestLock evaluates a lock for a target.
+func (s *Service) EditTestLock(sessionID, dbref, lockType, target string) EditTestLockResult {
+	ctx, cancel := s.propsCtx()
+	defer cancel()
+	t, raw, err := s.eng.TestLock(ctx, sessionID, dbref, lockType, target)
+	if err != nil {
+		return EditTestLockResult{EditResult: fail(err), Result: "unknown"}
+	}
+	return EditTestLockResult{EditResult: EditResult{Ok: true}, Result: string(t), Raw: raw}
+}
+
+// EditSetAttrLock locks or unlocks an attribute (@atrlock).
+func (s *Service) EditSetAttrLock(sessionID, dbref, attr string, on bool) EditAttrLockResult {
+	ctx, cancel := s.propsCtx()
+	defer cancel()
+	r, err := s.eng.SetAttrLock(ctx, sessionID, dbref, attr, on)
+	out := EditAttrLockResult{Locked: string(r.Locked), Reply: r.Reply}
+	if out.Locked == "" {
+		out.Locked = "unknown"
+	}
+	if err != nil {
+		out.EditResult = fail(err)
+		if out.Reply == "" {
+			out.Reply = replyOf(err)
+		}
+		return out
+	}
+	out.Ok = true
+	return out
+}
+
+// EditAttrChown changes an attribute's owner (@atrchown).
+func (s *Service) EditAttrChown(sessionID, dbref, attr, player string) EditAttrOwnerResult {
+	ctx, cancel := s.propsCtx()
+	defer cancel()
+	o, reply, err := s.eng.AttrChown(ctx, sessionID, dbref, attr, player)
+	out := EditAttrOwnerResult{Owner: o, Reply: reply}
+	if err != nil {
+		out.EditResult = fail(err)
+		if out.Reply == "" {
+			out.Reply = replyOf(err)
+		}
+		return out
+	}
+	out.Ok = true
+	return out
+}
+
+func replyResult(err error) EditReplyResult {
+	if err != nil {
+		return EditReplyResult{EditResult: fail(err), Reply: replyOf(err)}
+	}
+	return EditReplyResult{EditResult: EditResult{Ok: true}}
+}
+
+// EditRenameAttr renames an attribute (copy, verify, clear the old one).
+func (s *Service) EditRenameAttr(sessionID, dbref, from, to string) EditReplyResult {
+	ctx, cancel := s.propsCtx()
+	defer cancel()
+	return replyResult(s.eng.RenameAttr(ctx, sessionID, dbref, from, to))
+}
+
+// EditDeleteAttr clears an attribute and verifies it is gone.
+func (s *Service) EditDeleteAttr(sessionID, dbref, attr string) EditReplyResult {
+	ctx, cancel := s.propsCtx()
+	defer cancel()
+	return replyResult(s.eng.DeleteAttr(ctx, sessionID, dbref, attr))
+}
+
+// EditSetWarnings sets the object's @warnings list.
+func (s *Service) EditSetWarnings(sessionID, dbref, list string) EditDetailsResult {
+	ctx, cancel := s.propsCtx()
+	defer cancel()
+	return s.mutation(s.eng.SetWarnings(ctx, sessionID, dbref, list))
+}
+
+// EditWCheck runs @wcheck and returns the game's report lines.
+func (s *Service) EditWCheck(sessionID, dbref string) EditLinesResult {
+	ctx, cancel := s.propsCtx()
+	defer cancel()
+	l, err := s.eng.WCheck(ctx, sessionID, dbref)
+	if err != nil {
+		return EditLinesResult{EditResult: fail(err), Lines: []string{}}
+	}
+	if l == nil {
+		l = []string{}
+	}
+	return EditLinesResult{EditResult: EditResult{Ok: true}, Lines: l}
+}
+
+// EditExamine runs examine (mode "", "all" or "brief") silently and returns the coloured lines.
+func (s *Service) EditExamine(sessionID, dbref, mode string) EditExamineResult {
+	ctx, cancel := s.propsCtx()
+	defer cancel()
+	ls, err := s.eng.Examine(ctx, sessionID, dbref, engine.ExamineMode(mode))
+	if err != nil {
+		return EditExamineResult{EditResult: fail(err), Lines: [][]proto.Span{}}
+	}
+	out := make([][]proto.Span, 0, len(ls))
+	for _, l := range ls {
+		out = append(out, l.Spans)
+	}
+	return EditExamineResult{EditResult: EditResult{Ok: true}, Lines: out}
 }

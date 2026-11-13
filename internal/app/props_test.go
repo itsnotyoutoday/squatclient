@@ -74,6 +74,8 @@ func (g *propsGame) answer(cmd string) []string {
 			return []string{tag + ":#-1 NO MATCH" + strings.Repeat("^|^#-1 NO MATCH", 9)}
 		case strings.Contains(arg, "-H:"):
 			return []string{tag + ":#123^|^Widget^|^THING^|^#45^|^#-1^|^#-1^|^" + g.loc + "^|^#10^|^7^|^1"}
+		case strings.Contains(arg, "-N:"):
+			return []string{tag + ":Nveid^|^#-1 NO MATCH^|^#-1 NO MATCH^|^Lobby^|^Lobby"}
 		case strings.Contains(arg, "-T:"):
 			return []string{tag + ":#-1 FUNCTION (CTIME) NOT FOUND^|^#-1 FUNCTION (CREATED) NOT FOUND^|^#-1 FUNCTION (MTIME) NOT FOUND"}
 		case strings.Contains(arg, "-F:"):
@@ -103,6 +105,8 @@ func (g *propsGame) answer(cmd string) []string {
 		}
 		g.flags = append(g.flags, f)
 		return []string{"Flag set."}
+	case strings.HasPrefix(cmd, "examine"):
+		return []string{"\x1b[1mWidget\x1b[0m", "Owner: Nveid"}
 	case strings.HasPrefix(cmd, "@tel #123="):
 		g.loc = cmd[len("@tel #123="):]
 		return []string{"Teleported."}
@@ -123,7 +127,7 @@ func TestEditPropsBindings(t *testing.T) {
 	d := f.svc.EditDetails(si.ID, "#123")
 	if !d.Ok || d.Details.Name != "Widget" || d.Details.Type != "thing" || d.Details.Location != "#10" ||
 		d.Details.Pennies == nil || *d.Details.Pennies != 7 || len(d.Details.Flags) != 1 || len(d.Details.Locks) != 1 ||
-		d.Details.Locks[0].Expr != "#45" || d.Details.Created != "" || d.Details.Contents == nil || d.Details.Powers == nil {
+		d.Details.Locks[0].Expr != "#45" || d.Details.Names["#45"] != "Nveid" || d.Details.Names["#10"] != "Lobby" || d.Details.Created != "" || d.Details.Contents == nil || d.Details.Powers == nil {
 		t.Fatalf("details: %+v", d)
 	}
 	if d = f.svc.EditDetails(si.ID, "#999"); d.Ok || d.Code != "no_such_object" || d.Details.Flags == nil {
@@ -156,6 +160,19 @@ func TestEditPropsBindings(t *testing.T) {
 	}
 	if s := f.svc.EditSearchRooms(si.ID, "a;b"); s.Ok || s.Code != "invalid" || s.Items == nil {
 		t.Fatalf("search invalid: %+v", s)
+	}
+	ex := f.svc.EditExamine(si.ID, "#123", "all")
+	if !ex.Ok || len(ex.Lines) != 2 || ex.Lines[0][0].S != "Widget" || !ex.Lines[0][0].B {
+		t.Fatalf("examine: %+v", ex)
+	}
+	if ex = f.svc.EditExamine(si.ID, "#123", "x;y"); ex.Ok || ex.Code != "invalid" {
+		t.Fatalf("examine invalid: %+v", ex)
+	}
+	if r := f.svc.EditDeleteAttr(si.ID, "#123", "A/B"); r.Ok || r.Code != "invalid" {
+		t.Fatalf("delete invalid: %+v", r)
+	}
+	if r := f.svc.EditTestLock(si.ID, "#123", "Basic", "a;b"); r.Ok || r.Code != "invalid" || r.Result != "unknown" {
+		t.Fatalf("testlock invalid: %+v", r)
 	}
 	for _, c := range g.commands() {
 		if strings.Contains(c, ";y") || strings.Contains(c, "A B") {
