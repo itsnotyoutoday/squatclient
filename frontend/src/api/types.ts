@@ -104,6 +104,8 @@ export interface WorldConfig {
   login?: WorldLogin;
   autoConnect?: boolean;
   macrosFile?: string;
+  /** The layout this world uses (id of a built-in or user layout; empty = the default). */
+  layout?: string;
   /** Overrides game-type detection ("" = detect). */
   gameType?: string;
 }
@@ -149,6 +151,8 @@ export interface AwayItem {
 
 export interface Settings {
   theme: string;
+  /** The default layout (id); a world may choose its own. Empty = classic. */
+  layout?: string;
   fontFamily: string;
   fontSize: number;
   scrollbackLines: number;

@@ -1,0 +1,68 @@
+{"data":{"ENCODING":"utf-8","INPUTDEBUG":false,"LOCALECHO":false,"NOCOLOR":false,"RAW":false,"SCREENREADER":false},"kind":"gmcp","package":"Core.Supports.Get","t":3}
+{"kind":"line","t":305,"text":""}
+{"kind":"line","t":305,"text":"=============================================================="}
+{"kind":"line","t":305,"text":" Welcome to layoutgame, version 6.1.0!"}
+{"kind":"line","t":306,"text":""}
+{"kind":"line","t":306,"text":" If you have an existing account, connect to it by typing:"}
+{"kind":"line","t":306,"text":"      connect \u003cusername\u003e \u003cpassword\u003e"}
+{"kind":"line","t":306,"text":" If you need to create an account, type (without the \u003c\u003e's):"}
+{"kind":"line","t":306,"text":"      create \u003cusername\u003e \u003cpassword\u003e"}
+{"kind":"line","t":306,"text":""}
+{"kind":"line","t":306,"text":" If you have spaces in your username, enclose it in quotes."}
+{"kind":"line","t":306,"text":" Enter help for more info. look will re-show this screen."}
+{"kind":"line","t":306,"text":"=============================================================="}
+{"data":null,"kind":"gmcp","package":"Logged.In","t":1697}
+{"kind":"line","t":1698,"text":"[MudInfo] [2026-11-14(02:02)]: god connected"}
+{"kind":"line","t":1698,"text":""}
+{"kind":"line","t":1698,"text":"You become god."}
+{"kind":"line","t":1698,"text":""}
+{"kind":"line","t":1698,"text":"Limbo(#2)"}
+{"kind":"line","t":1698,"text":"Welcome to your new Evennia-based game! Visit https://www.evennia.com if you need"}
+{"kind":"line","t":1698,"text":"help, want to contribute, report issues or just join the community."}
+{"kind":"line","t":1698,"text":"As a privileged user, write batchcommand tutorial_world.build to build"}
+{"kind":"line","t":1698,"text":"tutorial content. Once built, try intro for starting help and tutorial to"}
+{"kind":"line","t":1698,"text":"play the demo game."}
+{"kind":"line","t":1698,"text":"Exits: north and north"}
+{"data":{"class":"Wanderer","gold":25,"level":1,"name":"god","nextxp":100,"state":"standing","xp":68},"kind":"gmcp","package":"Char.Status","t":1698}
+{"data":{"hp":92,"maxhp":100,"maxmp":50,"maxmv":80,"mp":50,"mv":80},"kind":"gmcp","package":"Char.Vitals","t":1698}
+{"data":{"area":"testgame","desc":"Welcome to your new Evennia-based game! Visit https://www.evennia.com if you need\nhelp, want to contribute, report issues or just join the community.\n\nAs a privileged user, write batchcommand tutorial_world.build to build\ntutorial content. Once built, try intro for starting help and tutorial to\nplay the demo game.","environment":"indoors","exits":{"north":6},"name":"Limbo","num":2,"players":[]},"kind":"gmcp","package":"Room.Info","t":1698}
+{"data":{"items":[{"id":"5","name":"wooden box"}],"location":"inv"},"kind":"gmcp","package":"Char.Items.List","t":1698}
+{"kind":"line","t":3509,"text":"Plaza(#6)"}
+{"kind":"line","t":3509,"text":"This is a room."}
+{"kind":"line","t":3509,"text":"Exits: south"}
+{"data":{"area":"testgame","desc":"","environment":"indoors","exits":{"south":2},"name":"Plaza","num":6,"players":[]},"kind":"gmcp","package":"Room.Info","t":3509}
+{"data":{"hp":94,"maxhp":100,"maxmp":50,"maxmv":80,"mp":50,"mv":80},"kind":"gmcp","package":"Char.Vitals","t":4027}
+{"kind":"line","t":4704,"text":"You say, \"anyone here?\""}
+{"data":{"channel":"say","talker":"god","text":"anyone here?"},"kind":"gmcp","package":"Comm.Channel.Text","t":4704}
+{"kind":"line","t":5909,"text":"Limbo(#2)"}
+{"kind":"line","t":5909,"text":"Welcome to your new Evennia-based game! Visit https://www.evennia.com if you need"}
+{"kind":"line","t":5909,"text":"help, want to contribute, report issues or just join the community."}
+{"kind":"line","t":5909,"text":"As a privileged user, write batchcommand tutorial_world.build to build"}
+{"kind":"line","t":5909,"text":"tutorial content. Once built, try intro for starting help and tutorial to"}
+{"kind":"line","t":5909,"text":"play the demo game."}
+{"kind":"line","t":5909,"text":"Exits: north and north"}
+{"data":{"area":"testgame","desc":"Welcome to your new Evennia-based game! Visit https://www.evennia.com if you need\nhelp, want to contribute, report issues or just join the community.\n\nAs a privileged user, write batchcommand tutorial_world.build to build\ntutorial content. Once built, try intro for starting help and tutorial to\nplay the demo game.","environment":"indoors","exits":{"north":6},"name":"Limbo","num":2,"players":[]},"kind":"gmcp","package":"Room.Info","t":5909}
+{"data":{"hp":96,"maxhp":100,"maxmp":50,"maxmv":80,"mp":50,"mv":80},"kind":"gmcp","package":"Char.Vitals","t":7026}
+{"kind":"line","t":7109,"text":"Could not find 'wooden box'."}
+{"kind":"line","t":8310,"text":"You take 35 damage."}
+{"data":{"class":"Wanderer","gold":25,"level":1,"name":"god","nextxp":100,"state":"standing","xp":85},"kind":"gmcp","package":"Char.Status","t":8310}
+{"data":{"hp":61,"maxhp":100,"maxmp":50,"maxmv":80,"mp":50,"mv":80},"kind":"gmcp","package":"Char.Vitals","t":8310}
+{"kind":"line","t":9551,"text":"A warm light mends your wounds."}
+{"data":{"hp":91,"maxhp":100,"maxmp":50,"maxmv":80,"mp":40,"mv":80},"kind":"gmcp","package":"Char.Vitals","t":9551}
+{"data":{"hp":93,"maxhp":100,"maxmp":50,"maxmv":80,"mp":43,"mv":80},"kind":"gmcp","package":"Char.Vitals","t":10226}
+{"kind":"line","t":10814,"text":"You sprint on the spot."}
+{"data":{"hp":93,"maxhp":100,"maxmp":50,"maxmv":80,"mp":43,"mv":60},"kind":"gmcp","package":"Char.Vitals","t":10818}
+{"kind":"line","t":11961,"text":"You sprint on the spot."}
+{"data":{"hp":93,"maxhp":100,"maxmp":50,"maxmv":80,"mp":43,"mv":40},"kind":"gmcp","package":"Char.Vitals","t":11961}
+{"data":{"hp":95,"maxhp":100,"maxmp":50,"maxmv":80,"mp":46,"mv":44},"kind":"gmcp","package":"Char.Vitals","t":13027}
+{"kind":"line","t":13116,"text":"You take 25 damage."}
+{"data":{"class":"Wanderer","gold":25,"level":1,"name":"god","nextxp":100,"state":"standing","xp":97},"kind":"gmcp","package":"Char.Status","t":13116}
+{"data":{"hp":70,"maxhp":100,"maxmp":50,"maxmv":80,"mp":46,"mv":44},"kind":"gmcp","package":"Char.Vitals","t":13116}
+{"data":{"items":[{"id":"5","name":"wooden box"}],"location":"inv"},"kind":"gmcp","package":"Char.Items.List","t":14331}
+{"kind":"line","t":14331,"text":"You drop a wooden box."}
+{"data":{"hp":72,"maxhp":100,"maxmp":50,"maxmv":80,"mp":49,"mv":48},"kind":"gmcp","package":"Char.Vitals","t":16026}
+{"data":{"hp":74,"maxhp":100,"maxmp":50,"maxmv":80,"mp":50,"mv":52},"kind":"gmcp","package":"Char.Vitals","t":19028}
+{"data":{"hp":76,"maxhp":100,"maxmp":50,"maxmv":80,"mp":50,"mv":56},"kind":"gmcp","package":"Char.Vitals","t":22026}
+{"data":{"hp":78,"maxhp":100,"maxmp":50,"maxmv":80,"mp":50,"mv":60},"kind":"gmcp","package":"Char.Vitals","t":25026}
+{"data":{"hp":80,"maxhp":100,"maxmp":50,"maxmv":80,"mp":50,"mv":64},"kind":"gmcp","package":"Char.Vitals","t":28029}
+{"data":{"hp":82,"maxhp":100,"maxmp":50,"maxmv":80,"mp":50,"mv":68},"kind":"gmcp","package":"Char.Vitals","t":31027}

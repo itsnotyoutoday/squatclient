@@ -2,6 +2,7 @@ import type { EngineAPI, Line, SessionInfo } from '../api/types';
 import { getBuffer, dropBuffer, setBufferCap, useSessions, useSettings, useUi } from './stores';
 import { closeActiveEditorTab, toggleEditorView } from '../lib/editor/view';
 import { runUndoRedo } from '../lib/editcommands';
+import { useLayoutData } from '../layout/store';
 
 /** Sessions that need attention when the UI attaches: unread output or ended. */
 export function awaySessions(list: readonly SessionInfo[]): SessionInfo[] {
@@ -102,7 +103,12 @@ export async function startController(
       }
       if (n.level !== 'info' || !target) useUi.getState().toast(n.level, n.text);
     }),
+    // out-of-band data for the layouts (src/layout): GMCP as it arrives, MSDP changes, and snapshots
+    engine.on('gmcp', (g) => useLayoutData.getState().ingestGmcp(g.session, g.package, g.data)),
+    engine.on('msdp', (m) => useLayoutData.getState().ingestMsdp(m.session, m.vars)),
+    engine.on('data', (d) => useLayoutData.getState().ingestSnapshot(d.session, d.gmcp, d.msdp, d.asOf)),
     engine.on('session-removed', ({ id }) => {
+      useLayoutData.getState().drop(id);
       dropBuffer(id);
       useSessions.getState().remove(id);
     }),
@@ -118,7 +124,9 @@ export async function startController(
     }),
     engine.on('control-pending', (p) => {
       const name = useSessions.getState().sessions[p.session]?.name ?? 'TinyFugue';
-      useUi.getState().toast('info', `Waiting for TinyFugue's user to allow ${p.axis} = ${p.mode} on ${name}…`);
+      useUi
+        .getState()
+        .toast('info', `Waiting for TinyFugue's user to allow ${p.axis} = ${p.mode} on ${name}…`);
     }),
     engine.on('suspend', ({ suspended }) => useUi.getState().setSuspended(suspended)),
     engine.on('away', ({ sessions }) => {

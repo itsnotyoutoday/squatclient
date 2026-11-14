@@ -6,16 +6,13 @@ import { ControllerContext } from './state/controller-context';
 import { useSessions, useSettings, useUi } from './state/stores';
 import { useTheme } from './state/hooks';
 import { applyTheme } from './themes';
-import { OutputPane } from './components/output/OutputPane';
 import { LiveRegion } from './components/output/LiveRegion';
 import { getOutput } from './components/output/handle';
-import { InputLine } from './components/input/InputLine';
+import { LayoutHost } from './layout/host';
 import { StatusBar } from './components/statusbar/StatusBar';
 import { TabBar } from './components/tabs/TabBar';
 import { MenuBar } from './components/menu/MenuBar';
 import { detectPlatform } from './lib/platform';
-import { EndedBanner } from './components/tabs/EndedBanner';
-import { SearchBar } from './components/search/SearchBar';
 import { QuickConnect } from './components/dialogs/QuickConnect';
 import { SettingsDialog } from './components/dialogs/SettingsDialog';
 import { WorldManager } from './components/dialogs/WorldManager';
@@ -24,7 +21,6 @@ import { AboutDialog } from './components/dialogs/AboutDialog';
 import { SquattersDialog } from './components/dialogs/SquattersDialog';
 import { TFWorldsDialog } from './components/dialogs/TFWorldsDialog';
 import { TFScriptsDialog } from './components/dialogs/TFScriptsDialog';
-import { canType } from './lib/tfcontrol';
 import { AwayDialog } from './components/dialogs/AwayDialog';
 import HistoryBrowser from './components/history/HistoryBrowser';
 import { UploadHost } from './components/upload/UploadDialog';
@@ -98,7 +94,6 @@ function Toasts() {
 function Workspace() {
   const fg = useSessions((s) => s.fg);
   const session = useSessions((s) => (s.fg ? s.sessions[s.fg] : undefined));
-  const searchOpen = useUi((s) => s.searchOpen);
 
   if (!fg || !session) {
     return (
@@ -116,19 +111,7 @@ function Workspace() {
       </main>
     );
   }
-  return (
-    <main className="workspace" aria-label={`Session ${session.name}`}>
-      {searchOpen && <SearchBar sessionId={fg} />}
-      <OutputPane key={fg} sessionId={fg} />
-      {session.state === 'ended' ? (
-        <EndedBanner session={session} />
-      ) : (
-        <InputLine sessionId={fg} remoteEcho={session.remoteEcho} disabled={session.state === 'connecting' || !canType(session)}
-          disabledReason={canType(session) ? undefined : 'TinyFugue has the keyboard. Use the control in the status bar to type from here.'}
-        />
-      )}
-    </main>
-  );
+  return <LayoutHost session={session} />;
 }
 
 export function App({ engine }: { engine: EngineAPI }) {
