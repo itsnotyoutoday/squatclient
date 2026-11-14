@@ -1601,3 +1601,22 @@ h3.lay-panel-title {
   font-weight: 600;
   margin-left: 0.25em;
 }
+
+.seg.tsbtn {
+  background: none;
+  border: none;
+  border-right: 1px solid var(--ui-border);
+  color: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  align-self: stretch;
+  opacity: 0.6;
+}
+.seg.tsbtn:hover,
+.seg.tsbtn.on {
+  opacity: 1;
+}
+.seg.tsbtn.on {
+  color: var(--ui-accent, currentColor);
+}

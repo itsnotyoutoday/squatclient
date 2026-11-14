@@ -1,4 +1,4 @@
-import { useSessions, useUi } from '../../state/stores';
+import { useSessions, useSettings, useUi } from '../../state/stores';
 import { formatClock } from '../../lib/humanize';
 import { PRESETS, automationLabel, clientActive, currentPreset, describeControl, inputLabel } from '../../lib/tfcontrol';
 import type { TFPreset } from '../../api/types';
@@ -19,6 +19,12 @@ export function StatusBar() {
   const suspended = useUi((s) => s.suspended);
   const engine = useUi((s) => s.engine);
   const cur = fg ? sessions[fg] : undefined;
+  const timestamps = useSettings((s) => s.settings.timestamps);
+  const toggleTimestamps = (): void => {
+    const next = { ...useSettings.getState().settings, timestamps: !timestamps };
+    useSettings.getState().set(next);
+    void engine?.saveSettings(next).catch((e: unknown) => useUi.getState().toast('error', String(e instanceof Error ? e.message : e)));
+  };
   const preset = (p: TFPreset): void => {
     if (!cur || !engine) return;
     void engine.controlPreset(cur.id, p).catch((e: unknown) => useUi.getState().toast('error', String(e instanceof Error ? e.message : e)));
@@ -77,6 +83,19 @@ export function StatusBar() {
         </span>
       ))}
       <span className="grow" />
+      <button
+        type="button"
+        className={`seg tsbtn${timestamps ? ' on' : ''}`}
+        onClick={toggleTimestamps}
+        aria-pressed={timestamps}
+        title={timestamps ? 'Timestamps on: click to hide the time each line arrived' : 'Show the time each line arrived'}
+        aria-label="Show line timestamps"
+      >
+        <svg width="12" height="12" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+          <circle cx="8" cy="8" r="6.2" />
+          <path d="M8 4.5V8l2.5 1.5" />
+        </svg>
+      </button>
       <span className="seg clock">{formatClock(now)}</span>
     </footer>
   );
