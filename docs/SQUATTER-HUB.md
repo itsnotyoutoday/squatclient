@@ -2,30 +2,41 @@
 
 Status: design only, nothing is built. Not an open service: a hub for a small trusted group.
 
-## Decision: operating-system accounts, not a user system inside squatterd
+## Logging in with SSH keys
 
-Each person has their own account on the hub machine and runs their own `squatterd` under it (own
-data directory, own port or unix socket). The squatterd stays single-owner. The operating system gives
-the multi-user part: file isolation, per-user process and resource limits, and logins.
+Not an SSH connection: the transport stays TLS + WebSocket (it works for browsers and phones, and the
+fingerprint pinning is already there). What is reused is the user's **SSH key pair** as the credential.
 
-Not chosen: a user database, quotas and per-user script runtimes inside one squatterd. That only makes
-sense later if people without accounts, or sessions shared between users, are needed.
+- The client says who it is, e.g. `nereus`, and offers a public key from the user's ssh-agent
+  (`SSH_AUTH_SOCK`, or the Windows OpenSSH agent / Pageant) or from `~/.ssh` (ed25519, ECDSA, RSA; keys
+  held in hardware work through the agent). The user can also pick a key file in the app.
+- The squatterd sends a random challenge; the client signs it with the private key and sends back the
+  signature. **The private key never leaves the client.** The signed data includes the server's TLS
+  fingerprint, so a signature cannot be replayed against another server.
+- The squatterd keeps an `authorized_keys`-style file: for each user name, the public keys allowed, with
+  an optional role (`viewer`, `operator`, `admin`). `squatterd authorize nereus < id_ed25519.pub` adds
+  one, the same habit as `ssh-copy-id`. No pairing code is needed; pairing codes remain as a way for a
+  user to enrol a key without shell access to the host.
+- The Go library is `golang.org/x/crypto/ssh` (BSD licence, GPL-compatible; already in the client's
+  dependency tree): key parsing, signatures and the agent client. The existing challenge/response
+  (`pkg/auth`) signs the nonce with a per-device ed25519 key today; this swaps the key source and the
+  key format, not the protocol.
+- If a user name is given, the name selects which keys are acceptable; with the hub, the name is the
+  user.
 
-## How a client reaches it: SSH
+## One squatterd per person, or one hub with named users
 
-```
-ssh alice@hub.example.com squatterd stdio
-```
+Open decision. Key login works with either.
 
-- sshd has already authenticated the account (keys, agent, whatever 2FA the host enforces); no new
-  password, pairing code or open port. The server is verified through the user's `known_hosts`.
-- `squatterd stdio` is a thin forwarder to that user's already-running squatterd (its unix socket). It
-  must not host sessions itself, or they would die when the SSH link drops.
-- Framing is NDJSON over stdin/stdout, as in the tf-squatter spec (`TF-SQUATTER.md`, SSH stdio
-  transport); the device role is `admin` (the ssh user owns the account).
-- In SquatClient this is a third route next to Direct and Squatter: "via SSH: user@host".
-- `user@hub.example.com`: the hub's DNS name is simply where the SSH goes; a name per person or purpose
-  is a CNAME.
+- **One squatterd per operating-system account.** Isolation (files, processes, resource limits) comes
+  from the OS, and a system identd then reports the right account to games with no code from us.
+  Simplest and safest for a small group; every person needs an account on the host.
+- **One squatterd with named users** (`nereus`, ...). No accounts needed, but the squatterd must itself
+  isolate users: per-user data directories, session lists filtered by user, quotas, and per-user script
+  runtimes (see SQUATTER-AUTOMATION.md). A bigger project.
+
+SSH as a transport (`ssh user@host squatterd stdio`, as in the tf-squatter spec) remains an option for
+people who prefer it, but it is not part of this design.
 
 ## Identity as the game sees it
 
@@ -64,7 +75,7 @@ If a game does no ident and shows only the host, nothing here changes what it sh
 
 ## Phases
 
-1. `squatterd stdio` (forwarder to the unix socket) and the "via SSH" route in the client.
+1. SSH-key login: key sources in the client, the `authorized_keys` file and `squatterd authorize`.
 2. Per-user ident setting; documentation for running one squatterd per account behind a system identd.
 3. Per-user source address binding (`bind`) and the PTR documentation.
 4. Connection limits and the destination policy.
@@ -73,4 +84,5 @@ If a game does no ident and shows only the host, nothing here changes what it sh
 ## Open questions
 
 - Default ident: account name, alias, or off.
-- Whether the SSH route should also support a plain TCP+TLS fallback for people without accounts.
+- One squatterd per account, or one hub with named users (above).
+- Which key types to accept at first (ed25519 only, or also ECDSA and RSA).

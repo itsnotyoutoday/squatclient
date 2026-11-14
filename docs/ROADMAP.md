@@ -58,5 +58,5 @@ scripts, then the client UI.
 
 ## Squatter hub
 
-A hub for a select set of users using OS accounts and SSH, with per-user ident, source address and an
+A hub for a select set of users, with SSH-key login, per-user ident, source address and an
 optional origin header: [SQUATTER-HUB.md](SQUATTER-HUB.md).
