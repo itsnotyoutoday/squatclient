@@ -165,6 +165,20 @@ Rule: anything that must keep working with the window closed (and later on the s
 layout only draws and offers controls. Optional later, for people used to Mudlet: `squat.gauge.create{...}`
 declares a gauge from a script, drawn by the built-in widgets. TF variables can feed `useVar` the same way.
 
+### Variables work both ways
+
+- Lua to JavaScript: `squat.var.set("hp", 50)` in Lua; `const hp = useVar('hp')` in the layout. `useVar` is a
+  reactive value, not a plain global: the engine sends the window a change event and only the parts of the
+  layout that use the variable redraw.
+- JavaScript to Lua: `setVar('panelOpen', true)` in the layout; `squat.var.get("panelOpen")` in Lua.
+- The store lives in the Go engine (the single source of truth); the window keeps a mirrored copy. A change
+  crosses the bridge in a few milliseconds, batched to one update per frame: quick, but not shared memory.
+- Only plain data crosses: numbers, strings, booleans and JSON-style tables (arrays and objects). Functions
+  cannot, and an object has no identity on the other side. A Lua table mixing number keys and names is
+  ambiguous (array or object): use one or the other.
+- Variables are per world, so two games' `hp` do not collide. Only values set through `squat.var` are
+  shared; a plain Lua local stays inside Lua.
+
 ## Themes stay data
 
 A theme is JSON (colours, fonts) validated at load and applied as CSS variables, as today (`src/themes`).
