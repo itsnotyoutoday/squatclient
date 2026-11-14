@@ -65,3 +65,7 @@ You scrolled up, so SquatClient paused the output to let you read. The status ba
 ## Still stuck
 
 Search this help (press `/` inside it), or report the problem in the repository linked in [About and credits](help:about#source-code).
+
+## Sending a report
+
+If a problem will not go away and you are asking someone for help, open **Help > Diagnostics**, choose **Copy** or **Save as file...** and send them the report. See [Diagnostics](help:diagnostics).

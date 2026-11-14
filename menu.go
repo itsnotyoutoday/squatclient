@@ -47,6 +47,7 @@ func buildMenu(a *App) *menu.Menu {
 		m.Append(menu.WindowMenu()) // Minimize, Zoom, Full Screen, ...
 		help := m.AddSubmenu("Help")
 		help.AddText("SquatClient Help", nil, act("help"))
+		help.AddText("Diagnostics...", nil, act("diagnostics"))
 		return m
 	}
 

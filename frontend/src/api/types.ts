@@ -664,6 +664,12 @@ export interface EngineAPI {
   quit(): Promise<void>;
   /** The application version (About dialog). */
   appVersion(): Promise<string>;
+  /** Platform facts for Help > Diagnostics (OS, build, paths). */
+  diagnostics(): Promise<DiagReport>;
+  /** Ask where to save a text file and write it; resolves to the path, or "" when cancelled. */
+  saveTextFile(defaultName: string, text: string): Promise<string>;
+  /** Put text on the system clipboard (the web view may refuse its own clipboard). */
+  copyText(text: string): Promise<void>;
   connect(target: ConnectTarget): Promise<SessionInfo>;
   disconnect(sessionId: string): Promise<void>;
   dismiss(sessionId: string): Promise<void>;
@@ -745,6 +751,24 @@ export interface EngineAPI {
   editSearchRooms(sessionId: string, query: string): Promise<EditSearchResult>;
   editNearby(sessionId: string, dbref: string): Promise<EditNearbyResult>;
   on<E extends EngineEventName>(event: E, cb: (payload: EngineEvents[E]) => void): () => void;
+}
+
+/** internal/diag.Report (Go). */
+export interface DiagReport {
+  app: { version: string; commit: string; buildDate: string; buildType: string; engineVersion: string; swpVersion: number };
+  platform: {
+    os: string;
+    osName: string;
+    osVersion: string;
+    arch: string;
+    goVersion: string;
+    locale: string;
+    timezone: string;
+    numCPU: number;
+    notes: string[] | null;
+  };
+  webview: { engine: string; version: string; note: string };
+  paths: { config: string; data: string; logs: string };
 }
 
 export const DEFAULT_FONT = 'JetBrains Mono, SF Mono, Menlo, Consolas, monospace';

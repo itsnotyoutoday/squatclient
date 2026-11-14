@@ -9,6 +9,7 @@ import type {
   SquatterConfig,
 } from '../api/types';
 import { LineBuffer } from './buffer';
+import { recordProblem } from '../lib/problems';
 
 // ---------------------------------------------------------------- line buffers (outside React state)
 
@@ -111,6 +112,7 @@ export type DialogId =
   | 'history'
   | 'session'
   | 'about'
+  | 'diagnostics'
   | 'layouts'
   | 'tfworlds'
   | 'tfscripts'
@@ -204,7 +206,10 @@ export const useUi = create<UiState>((set) => ({
   openTFWorlds: (id) => set({ tfWorldsFor: id, dialog: 'tfworlds' }),
   openTFScripts: (id) => set({ tfWorldsFor: id, dialog: 'tfscripts' }),
   openRename: (id) => set({ renameSession: id, dialog: 'rename' }),
-  toast: (level, text) => set((s) => ({ toasts: [...s.toasts.slice(-3), { id: ++toastId, level, text }] })),
+  toast: (level, text) => {
+    if (level !== 'info') recordProblem('toast', text);
+    set((s) => ({ toasts: [...s.toasts.slice(-3), { id: ++toastId, level, text }] }));
+  },
   dismissToast: (id) => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
   tick: () => set({ now: Date.now() }),
 }));

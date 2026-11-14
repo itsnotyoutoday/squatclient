@@ -6,6 +6,7 @@ import type {
   LayoutInfo,
   LayoutStarter,
   ThemeFile,
+  DiagReport,
   EditAttrFlagResult,
   EditAttrLockResult,
   EditAttrOwnerResult,
@@ -747,6 +748,28 @@ export class MockEngine implements EngineAPI {
   }
   async appVersion(): Promise<string> {
     return '0.0.0-mock';
+  }
+  async diagnostics(): Promise<DiagReport> {
+    return {
+      app: { version: '0.0.0-mock', commit: 'mock', buildDate: '', buildType: 'mock', engineVersion: 'mock', swpVersion: 1 },
+      platform: {
+        os: 'mock', osName: 'Mock OS (browser preview)', osVersion: '0', arch: 'none', goVersion: 'none',
+        locale: navigator.language, timezone: 'browser', numCPU: navigator.hardwareConcurrency || 1, notes: ['mock engine, not a real build'],
+      },
+      webview: { engine: 'browser (mock)', version: '', note: 'no native shell' },
+      paths: { config: '~/.config/SquatClient', data: '~/.config/SquatClient', logs: '~/.config/SquatClient/logs' },
+    };
+  }
+  async saveTextFile(defaultName: string, text: string): Promise<string> {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
+    a.download = defaultName;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    return defaultName;
+  }
+  async copyText(text: string): Promise<void> {
+    await navigator.clipboard.writeText(text);
   }
   async quit(): Promise<void> {
     /* nothing to quit in the mock */

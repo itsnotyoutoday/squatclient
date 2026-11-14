@@ -31,7 +31,7 @@ This help is built into the app. It works offline and everything in it is search
 - [The scripting language](help:scripting): macros, triggers, expressions, hooks.
 - [Lua scripting](help:lua): the `squat` functions for larger plugins.
 - [TinyFugue Script Compatibility](help:compat): how the scripting language compares with TinyFugue.
-- [What's new](help:whats-new), [Troubleshooting](help:troubleshooting), [Glossary](help:glossary)
+- [What's new](help:whats-new), [Troubleshooting](help:troubleshooting), [Diagnostics](help:diagnostics), [Glossary](help:glossary)
 - [About and credits](help:about)
 
 ## Using this help

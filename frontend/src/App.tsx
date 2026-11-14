@@ -18,6 +18,7 @@ import { SettingsDialog } from './components/dialogs/SettingsDialog';
 import { WorldManager } from './components/dialogs/WorldManager';
 import { SessionSettings } from './components/dialogs/SessionSettings';
 import { AboutDialog } from './components/dialogs/AboutDialog';
+import { DiagnosticsDialog } from './components/dialogs/DiagnosticsDialog';
 import { LayoutsDialog } from './components/dialogs/LayoutsDialog';
 import { SquattersDialog } from './components/dialogs/SquattersDialog';
 import { TFWorldsDialog } from './components/dialogs/TFWorldsDialog';
@@ -65,6 +66,8 @@ function Dialogs() {
       return <SessionSettings />;
     case 'about':
       return <AboutDialog />;
+    case 'diagnostics':
+      return <DiagnosticsDialog />;
     case 'layouts':
       return <LayoutsDialog />;
     default:

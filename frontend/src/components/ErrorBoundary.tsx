@@ -1,5 +1,7 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 
+import { recordProblem } from '../lib/problems';
+
 interface State {
   error: Error | null;
   info: string;
@@ -18,6 +20,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
 
   componentDidCatch(error: Error, info: ErrorInfo): void {
     this.setState({ info: info.componentStack ?? '' });
+    recordProblem('render', `${error.message} ${info.componentStack ?? ''}`);
     console.error('UI crashed:', error, info.componentStack);
   }
 

@@ -1,5 +1,6 @@
 import type { EngineAPI, Line, SessionInfo } from '../api/types';
 import { getBuffer, dropBuffer, setBufferCap, useSessions, useSettings, useUi } from './stores';
+import { recordProblem } from '../lib/problems';
 import { closeActiveEditorTab, toggleEditorView } from '../lib/editor/view';
 import { runUndoRedo } from '../lib/editcommands';
 import { useLayoutData } from '../layout/store';
@@ -105,6 +106,7 @@ export async function startController(
         b.addLocal(target, n.text);
         useSessions.getState().bump([target]);
       }
+      if (n.level !== 'info') recordProblem('engine', n.text);
       if (n.level !== 'info' || !target) useUi.getState().toast(n.level, n.text);
     }),
     // out-of-band data for the layouts (src/layout): GMCP as it arrives, MSDP changes, and snapshots
@@ -303,6 +305,9 @@ export function handleMenuAction(action: string, controller: Controller): void {
       break;
     case 'about':
       u.openDialog('about');
+      break;
+    case 'diagnostics':
+      u.openDialog('diagnostics');
       break;
     case 'layouts':
       u.openDialog('layouts');

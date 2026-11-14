@@ -89,6 +89,7 @@ export const MENUS: readonly Menu[] = [
     items: [
       { label: 'SquatClient Help', key: 'H', shortcut: 'F1', action: 'help' },
       'sep',
+      { label: 'Diagnostics...', key: 'D', action: 'diagnostics' },
       { label: 'About SquatClient', key: 'A', action: 'about' },
     ],
   },

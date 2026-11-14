@@ -4,6 +4,7 @@ import type {
   LayoutInfo,
   LayoutStarter,
   ThemeFile,
+  DiagReport,
   EditAttrFlagResult,
   EditAttrLockResult,
   EditAttrOwnerResult,
@@ -198,6 +199,9 @@ export class WailsEngine implements EngineAPI {
   resume = () => call<void>('Resume');
   quit = () => call<void>('Quit');
   appVersion = () => call<string>('AppVersion');
+  diagnostics = () => call<DiagReport>('Diagnostics');
+  saveTextFile = (name: string, text: string) => call<string>('SaveTextFile', name, text);
+  copyText = (text: string) => call<void>('CopyText', text);
   connect = (t: ConnectTarget) => call<Awaited<ReturnType<EngineAPI['connect']>>>('Connect', t);
   disconnect = (id: string) => call<void>('Disconnect', id);
   dismiss = (id: string) => call<void>('Dismiss', id);

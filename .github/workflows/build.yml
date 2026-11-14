@@ -1,7 +1,9 @@
 # Tests the client and builds installable apps for Linux, Windows and macOS.
 #
-#   push / pull request   run the tests and build all three (apps are kept as run artifacts)
-#   tag v*                the same, then publish the files as a GitHub Release
+#   push                  run the tests only
+#   pull request          run the tests and build all three (apps are kept as run artifacts)
+#   tag v1.2.3-rel        the same, then publish a GitHub Release (version 1.2.3)
+#   tag v1.2.3-alphaN / -betaN   the same, published as a pre-release; no other tag name builds anything
 #   manual run            "Run workflow" in the Actions tab; the daemon branch can be chosen
 #
 # squatClient imports the engine from the squatClientDaemon repository (go.mod "replace ../squatClientDaemon"),
@@ -10,19 +12,23 @@ name: build
 
 on:
   push:
-    branches: [main, squatterbridge]
-    tags: ['v*']
+    branches: [main]
+    tags: ['v[0-9]+.[0-9]+.[0-9]+-rel', 'v[0-9]+.[0-9]+.[0-9]+-alpha*', 'v[0-9]+.[0-9]+.[0-9]+-beta*']
   pull_request:
   workflow_dispatch:
     inputs:
       daemon_ref:
         description: Branch or tag of squatClientDaemon to build against
-        default: squatterbridge
+        default: main
+
+# A new push cancels the older run of the same branch (tag builds are never cancelled).
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/v') }}
 
 env:
   DAEMON_REPO: itsnotyoutoday/squatClientDaemon
-  # Until the engine changes are on the daemon's main branch, build against squatterbridge.
-  DAEMON_REF: ${{ inputs.daemon_ref || 'squatterbridge' }}
+    DAEMON_REF: ${{ inputs.daemon_ref || 'main' }}
   WAILS_VERSION: v2.10.2
 
 permissions:
@@ -66,6 +72,9 @@ jobs:
           npm test -- --retry=2
 
   build:
+    # The three-platform app build is the slow, costly part: only for pull requests, tags and manual runs,
+    # not for every push (a push still runs the tests above).
+    if: github.event_name != 'push' || startsWith(github.ref, 'refs/tags/v')
     needs: test
     strategy:
       fail-fast: false
@@ -117,7 +126,7 @@ jobs:
       - name: Version
         id: v
         run: |
-          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then v="${GITHUB_REF_NAME#v}"; else v="0.0.0-${GITHUB_SHA::7}"; fi
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then v="${GITHUB_REF_NAME#v}"; v="${v%-rel}"; else v="0.0.0-${GITHUB_SHA::7}"; fi
           echo "version=$v" >> "$GITHUB_OUTPUT"
       - name: Stamp the version into wails.json (the installer and "Installed apps" show it)
         working-directory: squatClient
@@ -180,5 +189,5 @@ jobs:
         with:
           files: dist/*
           generate_release_notes: true
-          body: ${{ contains(github.ref_name, '-') && 'UNSIGNED TEST BUILD. Windows will show an "unknown publisher" (SmartScreen) warning and macOS will ask you to right-click and choose Open. Releases without a dash in the tag are the ones that will be signed. Please report problems as issues, with your OS version.' || '' }}
-          prerelease: ${{ contains(github.ref_name, '-') }}   # v0.1.0-test1 is a pre-release, v0.1.0 is not
+          body: ${{ !endsWith(github.ref_name, '-rel') && 'UNSIGNED TEST BUILD. Windows will show an "unknown publisher" (SmartScreen) warning and macOS will ask you to right-click and choose Open. Releases without a dash in the tag are the ones that will be signed. Please report problems as issues, with your OS version.' || '' }}
+          prerelease: ${{ !endsWith(github.ref_name, '-rel') }}   # -alphaN / -betaN are pre-releases, -rel is the release
