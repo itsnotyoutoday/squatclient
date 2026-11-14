@@ -3,6 +3,7 @@ module github.com/itsnotyoutoday/squatclient
 go 1.24
 
 require (
+	github.com/creack/pty v1.1.24
 	github.com/evanw/esbuild v0.25.5
 	github.com/wailsapp/wails/v2 v2.10.2
 )

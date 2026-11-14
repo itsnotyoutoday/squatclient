@@ -4,11 +4,14 @@ import { useUi } from '../../state/stores';
 import type { SquatterKind } from '../../api/types';
 import { Dialog, Field } from './Dialog';
 
+/** What the user picks in "Type": gtf is a tf-squatterd with its own wording and defaults. */
+type SquatterChoice = SquatterKind | 'gtf';
+
 export function SquattersDialog() {
   const engine = useUi((s) => s.engine);
   const squatters = useUi((s) => s.squatters);
   const [host, setHost] = useState('');
-  const [kind, setKind] = useState<SquatterKind>('squatterd');
+  const [kind, setKind] = useState<SquatterChoice>('squatterd');
   const [port, setPort] = useState('10327');
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
@@ -19,10 +22,11 @@ export function SquattersDialog() {
     if (engine) useUi.getState().setSquatters(await engine.listSquatters());
   };
 
-  const pickKind = (k: SquatterKind): void => {
+  const defaultPort = (k: SquatterChoice): string => (k === 'squatterd' ? '10327' : '10328');
+  const pickKind = (k: SquatterChoice): void => {
     // keep a port the user typed; only swap the default of the other kind
-    if (port === (kind === 'tf-squatterd' ? '10328' : '10327'))
-      setPort(k === 'tf-squatterd' ? '10328' : '10327');
+    if (port === defaultPort(kind)) setPort(defaultPort(k));
+    if (k === 'gtf' && host.trim() === '') setHost('localhost');
     setKind(k);
   };
 
@@ -71,7 +75,8 @@ export function SquattersDialog() {
                 </span>
                 {s.kind === 'tf-squatterd' && (
                   <span className="badge" data-testid={`sqkind-${s.id}`}>
-                    TinyFugue{s.role ? ` · ${s.role}` : ''}
+                    {s.flavor === 'gtf' ? 'gtf' : 'TinyFugue'}
+                    {s.role ? ` · ${s.role}` : ''}
                   </span>
                 )}
                 {!s.paired && <em> (not paired)</em>}
@@ -81,7 +86,7 @@ export function SquattersDialog() {
                   </span>
                 )}
                 {s.message && s.state !== 'connected' && <div className="err">{s.message}</div>}
-                {s.kind === 'tf-squatterd' && s.paired && (
+                {s.kind === 'tf-squatterd' && s.flavor !== 'gtf' && s.paired && (
                   <label className="dim">
                     Triggers run in{' '}
                     <select
@@ -104,21 +109,25 @@ export function SquattersDialog() {
               {s.kind === 'tf-squatterd' && s.paired && s.state === 'connected' && (
                 <button
                   type="button"
-                  aria-label={`TinyFugue worlds of ${s.name}`}
+                  aria-label={`${s.flavor === 'gtf' ? 'gtf' : 'TinyFugue'} worlds of ${s.name}`}
                   onClick={() => useUi.getState().openTFWorlds(s.id)}
                 >
                   Worlds…
                 </button>
               )}
-              {s.kind === 'tf-squatterd' && s.paired && s.state === 'connected' && s.role === 'admin' && (
-                <button
-                  type="button"
-                  aria-label={`TinyFugue scripts of ${s.name}`}
-                  onClick={() => useUi.getState().openTFScripts(s.id)}
-                >
-                  Scripts…
-                </button>
-              )}
+              {s.kind === 'tf-squatterd' &&
+                s.flavor !== 'gtf' &&
+                s.paired &&
+                s.state === 'connected' &&
+                s.role === 'admin' && (
+                  <button
+                    type="button"
+                    aria-label={`TinyFugue scripts of ${s.name}`}
+                    onClick={() => useUi.getState().openTFScripts(s.id)}
+                  >
+                    Scripts…
+                  </button>
+                )}
               {s.paired && s.state !== 'connected' && s.state !== 'connecting' && s.state !== 'refused' && (
                 <button
                   type="button"
@@ -148,7 +157,11 @@ export function SquattersDialog() {
       <h3>Add a squatter</h3>
       {pending ? (
         <div role="group" aria-label="Confirm fingerprint" className="form">
-          <p>Confirm this is the fingerprint shown by your squatter (trust on first use):</p>
+          <p>
+            {kind === 'gtf'
+              ? 'Compare this with the TLS fingerprint gtf printed with the pairing code (/pair, or /squatter fingerprint). Trust it only if they are identical:'
+              : 'Confirm this is the fingerprint shown by your squatter (trust on first use):'}
+          </p>
           <code className="fp big" data-testid="fingerprint">
             {pending.fingerprint}
           </code>
@@ -164,18 +177,29 @@ export function SquattersDialog() {
       ) : (
         <form className="form grid" onSubmit={(e) => void pair(e)}>
           <Field label="Type">
-            <select aria-label="Type" value={kind} onChange={(e) => pickKind(e.target.value as SquatterKind)}>
+            <select
+              aria-label="Type"
+              value={kind}
+              onChange={(e) => pickKind(e.target.value as SquatterChoice)}
+            >
               <option value="squatterd">squatterd (stand-alone daemon)</option>
+              <option value="gtf">gtf (GoTinyFugue)</option>
               <option value="tf-squatterd">TinyFugue (/squat pair)</option>
             </select>
           </Field>
           <p className="hint wide">
-            {kind === 'tf-squatterd'
-              ? 'In TinyFugue run /squat pair and enter the code it shows. You then see and control all of its connections.'
-              : 'On the machine running squatterd, run squatterd pair and enter the code it shows.'}
+            {kind === 'gtf'
+              ? 'In gtf put /set squatter=on in your .tfrc (or type it), then run /pair and enter the code it shows. You then see all of gtf\u2019s connections and can type and run commands in them. Port 10328 unless you changed squatter_port.'
+              : kind === 'tf-squatterd'
+                ? 'In TinyFugue run /squat pair and enter the code it shows. You then see and control all of its connections.'
+                : 'On the machine running squatterd, run squatterd pair and enter the code it shows.'}
           </p>
           <Field label="Name">
-            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Home server" />
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder={kind === 'gtf' ? 'My gtf' : 'Home server'}
+            />
           </Field>
           <Field label="Host">
             <input required value={host} onChange={(e) => setHost(e.target.value)} />

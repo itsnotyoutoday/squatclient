@@ -29,7 +29,9 @@ func (s *Service) tfSquatterID(via string) (string, bool) {
 	if via == "" || via == "direct" {
 		return "", false
 	}
-	if q, ok := s.squatterRecord(via); ok && q.IsTF() {
+	// gtf is excluded: it has no world.put/rename/delete (its worlds live in gtf), so there is
+	// nothing to mirror and a connection goes by host and port.
+	if q, ok := s.squatterRecord(via); ok && q.IsTF() && !q.IsGTF() {
 		return q.ID, true
 	}
 	return "", false
@@ -169,6 +171,9 @@ func (s *Service) RenameTFSession(sessionID, newName string) error {
 	}
 	sq, ok := s.tfSquatterID(si.Via)
 	if !ok {
+		if q, isRec := s.squatterRecord(si.Via); isRec && q.IsGTF() {
+			return errors.New("rename the world in gtf itself (/addworld NAME ... or /rename); the app cannot edit gtf's worlds")
+		}
 		return engine.ErrNotTF
 	}
 	temp := strings.HasPrefix(si.TF.World, "(") // opened by address: TinyFugue's world is "(unnamedN)"

@@ -75,9 +75,9 @@ command); the UI shows engine `notice`s in the output pane as system lines.
 
 See ADR 0003 and the daemon repo's `docs/TF-SQUATTER.md`.
 
-Methods: `pairSquatter(host, port, name, code, kind?)`, `setControl(session, axis, mode)`, `controlPreset(session, preset)`, `setSquatterAutomation(squatter, mode)`, `listTFWorlds`, `putTFWorld`, `deleteTFWorld`, `connectTFWorld`, `tfExec`, `sendGmcp`, `sendMsdp`, `getSessionData`.
+Methods: `pairSquatter(host, port, name, code, kind?)` (kind `"gtf"` = GoTinyFugue's built-in squatter, stored as `tf-squatterd` with `flavor: "gtf"`, see `GTF-INTEGRATION.md`), `setControl(session, axis, mode)`, `controlPreset(session, preset)`, `setSquatterAutomation(squatter, mode)`, `listTFWorlds`, `putTFWorld`, `deleteTFWorld`, `connectTFWorld`, `tfExec`, `sendGmcp`, `sendMsdp`, `getSessionData`.
 
-Fields: `SquatterConfig.kind/automation/role/instance/features`, `SessionInfo.tf` (`world`, `fg`, `input`, `automation`, `controllerDevice`), `Settings.showGagged`.
+Fields: `SquatterConfig.kind/flavor/automation/role/instance/features`, `SessionInfo.tf` (`world`, `fg`, `input`, `automation`, `controllerDevice`), `Settings.showGagged`.
 
 Events: `control-pending` (TinyFugue asks its user), `tf-worlds` (another device edited the world list), `msdp`, `data` (GMCP/MSDP snapshot).
 

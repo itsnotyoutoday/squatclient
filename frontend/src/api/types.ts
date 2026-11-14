@@ -119,6 +119,8 @@ export interface SquatterConfig {
   paired: boolean;
   /** "squatterd" (default, absent in old records) or "tf-squatterd" (a TinyFugue bridge). */
   kind?: SquatterKind;
+  /** "gtf": a tf-squatterd that is GoTinyFugue's built-in squatter (own worlds, own triggers, no scripts upload). */
+  flavor?: 'gtf';
   /** tf-squatterd: "tf" (TinyFugue runs the triggers) or "client" (this client does while connected). */
   automation?: TFAutomation;
   /** tf-squatterd: this device's role, TinyFugue's instance id and offered features. */
@@ -603,8 +605,8 @@ export interface EngineAPI {
     port: number,
     name: string,
     pairCode: string,
-    /** "squatterd" (default) or "tf-squatterd". */
-    kind?: SquatterKind,
+    /** "squatterd" (default), "tf-squatterd", or "gtf" (stored as a tf-squatterd with flavor "gtf"). */
+    kind?: SquatterKind | 'gtf',
   ): Promise<{ id: string; fingerprint: string }>;
   confirmSquatter(id: string, accept: boolean): Promise<void>;
   removeSquatter(id: string): Promise<void>;

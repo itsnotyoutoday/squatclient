@@ -36,8 +36,7 @@ export function describeControl(tf: TFInfo): string {
       : tf.input === 'remote'
         ? 'this client has the keyboard; TinyFugue’s own keyboard is off'
         : 'you and TinyFugue can both type';
-  const auto =
-    tf.automation === 'client' ? 'this client runs triggers' : 'TinyFugue runs triggers';
+  const auto = tf.automation === 'client' ? 'this client runs triggers' : 'TinyFugue runs triggers';
   return `${typing}; ${auto}`;
 }
 
@@ -53,11 +52,16 @@ export function currentPreset(tf: TFInfo): TFPreset | undefined {
 export const PRESETS: { id: TFPreset; label: string; hint: string }[] = [
   { id: 'viewer', label: 'Watch only', hint: 'TinyFugue keeps the keyboard and runs triggers' },
   { id: 'copilot', label: 'Type too', hint: 'Both of you can type; TinyFugue runs triggers' },
-  { id: 'takeover', label: 'Take the keyboard', hint: 'Only this client types; TinyFugue still runs triggers' },
+  {
+    id: 'takeover',
+    label: 'Take the keyboard',
+    hint: 'Only this client types; TinyFugue still runs triggers',
+  },
   { id: 'full', label: 'Take over fully', hint: 'Only this client types and runs triggers' },
 ];
 
 /** How a squatter is named in a "Connect via" list: its kind first, so the two kinds are never confused. */
-export function squatterLabel(s: { name: string; kind?: string }): string {
+export function squatterLabel(s: { name: string; kind?: string; flavor?: string }): string {
+  if (s.flavor === 'gtf') return `gtf: ${s.name}`;
   return s.kind === 'tf-squatterd' ? `TinyFugue: ${s.name}` : `Squatter: ${s.name}`;
 }

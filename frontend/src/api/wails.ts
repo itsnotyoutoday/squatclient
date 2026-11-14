@@ -145,7 +145,13 @@ export class WailsEngine implements EngineAPI {
   getSettings = () => call<Settings>('GetSettings');
   saveSettings = (s: Settings) => call<void>('SaveSettings', s);
   listSquatters = () => list(call<Awaited<ReturnType<EngineAPI['listSquatters']>> | null>('ListSquatters'));
-  pairSquatter = (host: string, port: number, name: string, code: string, kind: SquatterKind = 'squatterd') =>
+  pairSquatter = (
+    host: string,
+    port: number,
+    name: string,
+    code: string,
+    kind: SquatterKind | 'gtf' = 'squatterd',
+  ) =>
     call<{ id: string; fingerprint: string }>(
       'PairSquatter',
       host,

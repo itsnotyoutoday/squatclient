@@ -204,8 +204,8 @@ export function WorldManager() {
               </Field>
               {!squatters.some((s) => s.kind === 'tf-squatterd') && (
                 <p className="hint wide">
-                  To route through TinyFugue, pair it first: Squatters (cloud button), Add a squatter, Type:
-                  TinyFugue.
+                  To route through TinyFugue or gtf, pair it first: Squatters (cloud button), Add a squatter, Type:
+                  TinyFugue or gtf (GoTinyFugue).
                 </p>
               )}
               <Field

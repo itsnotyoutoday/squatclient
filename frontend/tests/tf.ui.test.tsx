@@ -35,7 +35,7 @@ describe('tfcontrol helpers', () => {
     expect(canType({ tf: { world: 'a', fg: true, input: 'tf', automation: 'tf' } })).toBe(false);
     expect(canType({ tf: { world: 'a', fg: true, input: 'both', automation: 'tf' } })).toBe(true);
     expect(currentPreset({ world: 'a', fg: true, input: 'remote', automation: 'client' })).toBe('full');
-    expect(currentPreset({ world: 'a', fg: true, input: 'remote', automation: 'tf' })).toBe('takeover')
+    expect(currentPreset({ world: 'a', fg: true, input: 'remote', automation: 'tf' })).toBe('takeover');
     expect(currentPreset({ world: 'a', fg: true, input: 'both', automation: 'client' })).toBeUndefined();
     expect(describeControl({ world: 'a', fg: true, input: 'tf', automation: 'tf' })).toMatch(/only watches/);
   });
@@ -51,7 +51,9 @@ describe('TinyFugue squatter UI', () => {
     expect(input).toBeDisabled();
     expect(input).toHaveAttribute('placeholder', expect.stringMatching(/TinyFugue has the keyboard/));
 
-    const sel = within(screen.getByTestId('tf-control')).getByLabelText('Control of this TinyFugue connection');
+    const sel = within(screen.getByTestId('tf-control')).getByLabelText(
+      'Control of this TinyFugue connection',
+    );
     await userEvent.selectOptions(sel, 'full');
     await waitFor(() => expect(screen.getByLabelText('Command input')).toBeEnabled());
     expect(screen.getByTestId(`tfbadge-${id}`)).toHaveTextContent('You ⚙');
@@ -74,11 +76,32 @@ describe('TinyFugue squatter UI', () => {
     await userEvent.click(within(dlg).getByRole('button', { name: 'Pair' }));
     await userEvent.click(await within(dlg).findByRole('button', { name: 'Trust and pair' }));
     await waitFor(async () =>
-      expect((await e.listSquatters()).some((s) => s.host === 'tf2.example' && s.kind === 'tf-squatterd')).toBe(true),
+      expect(
+        (await e.listSquatters()).some((s) => s.host === 'tf2.example' && s.kind === 'tf-squatterd'),
+      ).toBe(true),
     );
     // a plain squatter keeps the plain default
     await userEvent.selectOptions(within(dlg).getByLabelText('Type'), 'squatterd');
     expect(within(dlg).getByLabelText(/^Port/)).toHaveValue(10327);
+  });
+
+  it('squatters dialog: gtf (GoTinyFugue) is a first-class choice with its own defaults and wording', async () => {
+    const e = await boot();
+    act(() => useUi.getState().openDialog('squatters'));
+    const dlg = await screen.findByRole('dialog', { name: 'Squatters' });
+    await userEvent.selectOptions(within(dlg).getByLabelText('Type'), 'gtf');
+    expect(within(dlg).getByLabelText(/^Port/)).toHaveValue(10328);
+    expect(within(dlg).getByLabelText('Host')).toHaveValue('localhost');
+    expect(within(dlg).getByText(/In gtf put \/set squatter=on/)).toBeInTheDocument();
+    await userEvent.type(within(dlg).getByLabelText('Pair code'), 'AAAA-1111');
+    await userEvent.click(within(dlg).getByRole('button', { name: 'Pair' }));
+    expect(await within(dlg).findByText(/TLS fingerprint gtf printed/)).toBeInTheDocument();
+    await userEvent.click(await within(dlg).findByRole('button', { name: 'Trust and pair' }));
+    await waitFor(async () => {
+      const q = (await e.listSquatters()).find((x) => x.host === 'localhost');
+      expect(q?.kind).toBe('tf-squatterd');
+      expect(q?.flavor).toBe('gtf');
+    });
   });
 
   it('squatters dialog: stores the automation preference', async () => {
@@ -139,7 +162,9 @@ describe('Connect via lists both kinds of squatter, named by kind', () => {
     const d = await screen.findByRole('dialog', { name: 'Worlds' });
     await userEvent.click(within(d).getByText('Hogwarts MUSH'));
     const via = await within(d).findByLabelText(/Connect via/);
-    const opts = within(via).getAllByRole('option').map((o) => o.textContent);
+    const opts = within(via)
+      .getAllByRole('option')
+      .map((o) => o.textContent);
     expect(opts).toEqual(['Direct', 'Squatter: Home server', 'TinyFugue: Home TinyFugue']);
     await userEvent.selectOptions(via, 'sq-tf');
     expect((via as HTMLSelectElement).value).toBe('sq-tf');

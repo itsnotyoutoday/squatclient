@@ -59,6 +59,9 @@ func (s *Service) SetSquatterAutomation(id, mode string) error {
 	if !q.IsTF() {
 		return errors.New("automation can only be chosen for a TinyFugue squatter")
 	}
+	if q.IsGTF() {
+		return errors.New("gtf always runs its own triggers and macros; there is nothing to choose")
+	}
 	if mode != "tf" && mode != "client" {
 		return fmt.Errorf("automation must be \"tf\" or \"client\", not %q", mode)
 	}

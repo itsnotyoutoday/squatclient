@@ -423,7 +423,7 @@ export class MockEngine implements EngineAPI {
     port: number,
     name: string,
     pairCode: string,
-    kind: SquatterKind = 'squatterd',
+    kind: SquatterKind | 'gtf' = 'squatterd',
   ): Promise<{ id: string; fingerprint: string }> {
     if (!pairCode.trim()) throw new Error('pair code required');
     const id = `sq-${++this.counter}`;
@@ -435,6 +435,7 @@ export class MockEngine implements EngineAPI {
       fingerprint: MOCK_FINGERPRINT,
       paired: false,
       ...(kind === 'tf-squatterd' ? { kind } : {}),
+      ...(kind === 'gtf' ? { kind: 'tf-squatterd' as const, flavor: 'gtf' as const } : {}),
     });
     return { id, fingerprint: MOCK_FINGERPRINT };
   }
