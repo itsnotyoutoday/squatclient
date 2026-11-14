@@ -435,6 +435,7 @@ function L.show(name)
 end
 
 function L.start(console, alertState)
+  if not gfx.ensure() then return end
   if timerId then squat.cancel(timerId) end
   sim = sim or newSim()
   themed, consoles = {}, {}

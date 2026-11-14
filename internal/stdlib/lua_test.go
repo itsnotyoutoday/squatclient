@@ -30,6 +30,7 @@ type luaHost struct {
 	logs    []string
 	rt      *lua.Runtime
 	tfLines []string
+	failTF  bool
 }
 
 func (h *luaHost) Send(w, t string) error        { return nil }
@@ -66,6 +67,9 @@ func (h *luaHost) Schedule(d time.Duration, fn func()) func() {
 	return func() { t.cancel = true }
 }
 func (h *luaHost) RunTF(world, line string) error {
+	if h.failTF {
+		return fmt.Errorf("no such command: %s", line)
+	}
 	cmd, rest, _ := strings.Cut(strings.TrimPrefix(line, "/"), " ")
 	if cmd != "gfx" && cmd != "canvas" {
 		h.tfLines = append(h.tfLines, line) // /input, /echo ...: what a real client would hand to TinyFugue
@@ -280,6 +284,7 @@ func TestLcarsDemoInLua(t *testing.T) {
 	if err := f.hub.Event("lcars", "joyknob", "settle", 60, -80); err != nil {
 		t.Fatal(err)
 	}
+	f.h.tfLines = f.h.tfLines[1:] // the /require of gfx.tf from /lcars
 	if got := f.h.tfLines; len(got) != 1 || got[0] != "/input /echo JoyStick to 37 power 100" {
 		t.Fatalf("settle produced %v", got)
 	}
@@ -404,4 +409,18 @@ func TestRecordDevPageStreams(t *testing.T) {
 	write("lcars-tac.json", record("tac", false))
 	write("lcars-ship.json", record("ship", false))
 	write("lcars-red.json", record("sens", true))
+}
+
+// With the TF side missing (another standard library), /lcars must say so once and stop, not flood the window.
+func TestLcarsGivesUpQuietlyWhenGfxCommandsAreMissing(t *testing.T) {
+	f := startLua(t)
+	f.h.failTF = true
+	f.rt.OnInput("w", "/lcars")
+	f.h.advance(3 * time.Second)
+	if n := len(f.h.logs); n > 8 {
+		t.Fatalf("%d log lines: %v", n, f.h.logs)
+	}
+	if len(f.ops) != 0 {
+		t.Fatalf("ops emitted without a working /gfx: %d", len(f.ops))
+	}
 }

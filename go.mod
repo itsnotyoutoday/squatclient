@@ -5,12 +5,12 @@ go 1.24
 require (
 	github.com/creack/pty v1.1.24
 	github.com/evanw/esbuild v0.25.5
+	github.com/itsnotyoutoday/gtfparser v0.0.10
 	github.com/wailsapp/wails/v2 v2.10.2
 )
 
 require (
 	github.com/coder/websocket v1.8.15 // indirect
-	github.com/itsnotyoutoday/gtfparser v0.0.10 // indirect
 	github.com/yuin/gopher-lua v1.1.2 // indirect
 )
 

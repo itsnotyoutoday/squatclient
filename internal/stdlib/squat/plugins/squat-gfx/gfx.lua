@@ -91,10 +91,35 @@ local function props(t, skip)
   return table.concat(out, " ")
 end
 
+local failures, disabled = 0, false
+
+-- Makes sure the TF side (gfx.tf: the /gfx and /canvas wrappers) is loaded. It is part of SquatClient's standard
+-- library, but SQUATCLIENT_TFLIB (another library) or a startup file may have replaced that.
+function M.ensure()
+  if disabled then return false end
+  local ok = squat.tf("/require gfx.tf")
+  if not ok then
+    disabled = true
+    squat.echo("gfx: the graphics commands are not available (gfx.tf could not be loaded). Is SQUATCLIENT_TFLIB set to another library?")
+    return false
+  end
+  return true
+end
+
 local function run(line)
+  if disabled then return false end
   local ok, err = squat.tf(line)
-  if not ok then squat.log("gfx: " .. tostring(err) .. " (" .. line .. ")", "warn") end
-  return ok
+  if ok then
+    failures = 0
+    return true
+  end
+  failures = failures + 1
+  squat.log("gfx: " .. tostring(err) .. " (" .. line .. ")", "warn")
+  if failures >= 5 then -- a broken setup must not flood the log and the window with hundreds of errors
+    disabled = true
+    squat.echo("gfx: too many failed graphics commands, giving up (see the log). /reload re-enables.")
+  end
+  return false
 end
 
 -- ------------------------------------------------------------------ objects
@@ -279,6 +304,7 @@ function M.font(name, file) run("/gfx font " .. name .. " " .. file) end
 
 -- Pointer events arrive as the TF command /_gfxev scene id event x y (what /gfx on runs); this alias dispatches them.
 function M.install()
+  M.ensure_on_use = true
   squat.alias{match = "^/_gfxev (\\S+) (\\S+) (\\S+) (-?\\d+) (-?\\d+)$", regex = true, priority = 1000, fn = function(m)
     local h = handlers[m[1] .. "\0" .. m[2] .. "\0" .. m[3]]
     if not h then return false end   -- not ours: another plugin's copy of this module may own the object
