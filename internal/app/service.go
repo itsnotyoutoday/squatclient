@@ -347,6 +347,12 @@ func (s *Service) deliver(batch []engine.Event) {
 			if ev.Data != nil {
 				s.emit("data", ev.Data)
 			}
+		case engine.EvTFKeys:
+			var seqs []string
+			if ev.Text != "" {
+				seqs = strings.Split(ev.Text, "\n")
+			}
+			s.emit("tfkeys", map[string][]string{"seqs": seqs}) // the keys scripts have bound
 		case engine.EvWindow:
 			if name, ok := strings.CutPrefix(ev.Text, "dialog:"); ok {
 				s.emit("dialog", map[string]string{"name": name}) // a world command typed alone opens its window
@@ -356,14 +362,6 @@ func (s *Service) deliver(batch []engine.Event) {
 				if name, val, ok := strings.Cut(kv, "="); ok {
 					s.emit("tfvar", map[string]string{"name": name, "value": val}) // wrap, wrapsize, ... drive the output window
 				}
-				break
-			}
-			if keys, ok := strings.CutPrefix(ev.Text, "keys:"); ok {
-				var seqs []string
-				if keys != "" {
-					seqs = strings.Split(keys, "\n")
-				}
-				s.emit("tfkeys", map[string][]string{"seqs": seqs}) // the keys scripts have bound
 				break
 			}
 			if text, ok := strings.CutPrefix(ev.Text, "input:"); ok {
