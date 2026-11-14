@@ -48,6 +48,7 @@ import type {
   TFWorldPut,
   Span,
   WorldConfig,
+  GfxOp,
 } from './types';
 import { chatterLine, roomLines, sampleGroup } from './mock-samples';
 import { MockGame } from './mock-game';
@@ -575,6 +576,12 @@ export class MockEngine implements EngineAPI {
   }
   async deleteTFScript(squatterId: string, name: string): Promise<void> {
     if (!this.tfScripts.get(squatterId)?.delete(name)) throw new Error('no such script');
+  }
+  async gfxSnapshot(): Promise<GfxOp[]> {
+    return [];
+  }
+  async gfxEvent(): Promise<void> {
+    // the mock has no scripts: nothing to run
   }
   async tfKeyBindings(): Promise<string[]> {
     return [];

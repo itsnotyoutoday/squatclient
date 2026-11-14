@@ -29,6 +29,7 @@ import { UploadHost } from './components/upload/UploadDialog';
 import { useGlobalKeys } from './global-keys';
 import { insertIntoInput, openHelp } from './help/command';
 import { applyTfVar } from './lib/tfvars';
+import { GfxHost } from './gfx/GfxHost';
 import { setTfBindings } from './lib/tfkeys';
 import './styles/app.css';
 
@@ -150,7 +151,9 @@ export function App({ engine }: { engine: EngineAPI }) {
     const offHelp = engine.on('help', (p) => openHelp(p.topic));
     const offInput = engine.on('input', (p) => insertIntoInput(p.text));
     const offDialog = engine.on('dialog', (p) => {
-      if (p.name === 'worlds') useUi.getState().openDialog('worlds');
+      const ids = ['worlds', 'quick', 'settings', 'squatters', 'help', 'history', 'about', 'layouts'] as const;
+      const id = ids.find((x) => x === p.name);
+      if (id) useUi.getState().openDialog(id);
     });
     const offVar = engine.on('tfvar', (p) => applyTfVar(p.name, p.value));
     const offKeys = engine.on('tfkeys', (p) => setTfBindings(p.seqs));
@@ -215,6 +218,7 @@ export function App({ engine }: { engine: EngineAPI }) {
         )}
         <StatusBar />
         <LiveRegion />
+        <GfxHost engine={engine} />
         <Toasts />
         <Dialogs />
         <UploadHost />

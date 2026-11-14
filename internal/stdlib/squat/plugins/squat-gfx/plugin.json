@@ -1,0 +1,1 @@
+{"name": "squat-gfx", "version": "1.0", "description": "Lua module over the /gfx scene operations (require \"gfx\") and the Lua LCARS demo (/lcars)", "main": "main.lua"}

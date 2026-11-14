@@ -16,6 +16,7 @@ import (
 	"github.com/itsnotyoutoday/squatclient/internal/app"
 	"github.com/itsnotyoutoday/squatclient/internal/config"
 	"github.com/itsnotyoutoday/squatclient/internal/secrets"
+	"github.com/itsnotyoutoday/squatclient/internal/stdlib"
 )
 
 // App is bound to the front end as window.go.main.App.<Name>. Every method is a
@@ -77,6 +78,18 @@ func (a *App) build(ctx context.Context) (*app.Service, *config.Store, error) {
 	if scripts == "" {
 		scripts = dir
 	}
+	// SquatClient's own TinyFugue library (docs/LIB.md) is written into <scripts>/lib/squat at every start and loaded as
+	// the standard library; SQUATCLIENT_TFLIB names a directory with another one (real tf's lib/tf, say) instead.
+	stdLib := os.Getenv("SQUATCLIENT_TFLIB")
+	libDirs := []string{scripts}
+	if lib, err := stdlib.Install(scripts); err != nil {
+		slog.Warn("standard library not installed", "err", err)
+	} else {
+		libDirs = []string{lib, scripts}
+		if stdLib == "" {
+			stdLib = lib
+		}
+	}
 	svc, err := app.New(app.Options{
 		Config:  cfg,
 		Secrets: secrets.Keychain{},
@@ -94,9 +107,7 @@ func (a *App) build(ctx context.Context) (*app.Service, *config.Store, error) {
 			// unrestricted by default. SQUATCLIENT_TF_RESTRICT=shell|file|world starts it more tightly
 			// (a script can raise the level with /restrict, never lower it).
 			Restrict: tfRestrictFromEnv(),
-			// SQUATCLIENT_TFLIB names a directory with real tf's lib/tf (or its stdlib.tf): it is loaded at start,
-			// as tf does, which defines tf's library commands. Not bundled.
-			TF: tfengine.Options{StdLib: os.Getenv("SQUATCLIENT_TFLIB")},
+			TF:       tfengine.Options{StdLib: stdLib, LibDirs: libDirs},
 		},
 	})
 	return svc, cfg, err

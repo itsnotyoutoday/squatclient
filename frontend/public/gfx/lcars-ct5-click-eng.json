@@ -1,0 +1,1 @@
+{"ops":[{"id":"reticle","op":"set","props":{"y":0},"scene":"lcars"},{"expr":"420 + (lc_b5 \u003e 180 ? lc_b5 - 360 : lc_b5) * 4.2","id":"reticle","op":"bind","prop":"x","scene":"lcars","smooth":0.4},{"id":"reticle","op":"set","props":{"y":310},"scene":"lcars"},{"dur":0.3,"op":"tween","scene":"lcars","target":"reticle","tracks":{"opacity":{"to":1}}}],"vars":null,"delta":true}
