@@ -24,6 +24,14 @@ What a squatter script does is visible: its `/echo` output and the commands it s
 session output and scrollback like anything else, and every action goes into a journal that the
 client shows.
 
+## Staying in sync without a goodbye
+
+A client that goes to sleep or loses its network cannot upload anything at that moment. So the
+squatter's copy is kept current continuously: while a client is attached, every change to a
+squatter-placed script or its variables is pushed as it happens. The squatter always has what it
+needs when the client vanishes. (Scripts still run in one place only; this is not a second
+interpreter running the same script.)
+
 ## No shell, no files, no network: ever, on the squatterd
 
 The squatter host of the interpreters provides only what a script needs to react to a game.
@@ -47,10 +55,20 @@ The squatter host of the interpreters provides only what a script needs to react
 
 ## Opt-in controls
 
-1. `squatterd --allow-automation` (off by default). Without it the squatter refuses script uploads.
-2. A per-device permission: a paired device can be allowed to read sessions without being allowed to
-   upload code.
+1. A ceiling set when the squatterd starts, `--automation-level`, that nothing a client sends can
+   raise: `off` (default: uploads refused), `notify` (triggers may only notify), `send` (triggers and
+   timers may also send to their own session, rate-limited) or `scripts` (full TF and Lua scripts).
+   Shell, file and network access is not a level: it is off at every setting.
+2. A per-device permission on top of the ceiling: a paired device can be allowed to read sessions
+   without being allowed to upload code (the device roles `viewer`, `operator`, `admin`).
 3. A kill switch in the client turns all squatter automation off at once.
+
+## Users
+
+The squatterd is single-owner: every paired device has full access to every session, and several
+devices of one person can attach to the same session together. Different people should run separate
+squatterds (own data directory and port). If real multi-user is added later, scripts and variables are
+isolated per user, and the automation level is enforced per user.
 
 ## Phases
 
