@@ -175,7 +175,7 @@
 ["squatter/tinyfugue","","k","copilot"],
 ["squatter/tinyfugue","","k","control"],
 ["squatter/tinyfugue","","b","If you already run TinyFugue (TF) on a server, it can act as your squatter. You see all of its connections in SquatClient, read their history and type into them, while TinyFugue keeps running its own triggers and macros."],
-["squatter/tinyfugue","setting-it-up","b","In TinyFugue (built with the squat support) run /squat start, then /squat pair. It prints a one-time pairing code and its fingerprint."],
+["squatter/tinyfugue","setting-it-up","b","In TinyFugue (built with the squat support) run /squat on, then /squat pair. It prints a one-time pairing code and its fingerprint."],
 ["squatter/tinyfugue","setting-it-up","b","In SquatClient open the Squatters dialog, choose Add a squatter, set Type to TinyFugue, and enter the host, the port (10328 unless you changed it) and the code."],
 ["squatter/tinyfugue","setting-it-up","b","Compare the fingerprint, then press Trust and pair."],
 ["squatter/tinyfugue","setting-it-up","b","A TinyFugue squatter and a squatterd use different ports and different protocol paths. If you pick the wrong Type, SquatClient says so and nothing is sent to the server."],
