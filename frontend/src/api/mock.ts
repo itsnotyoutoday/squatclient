@@ -579,6 +579,21 @@ export class MockEngine implements EngineAPI {
     sd.info = { ...sd.info, ...(worldId ? { worldId } : {}) };
     this.emit('session', sd.info);
   }
+  // ---- Lua variables and the layout's Lua block (the real Lua runs in Go; the mock keeps the variables)
+  private luaVarStore = new Map<string, unknown>();
+  /** Test hook: the last Lua block a layout asked to load. */
+  layoutLuaLoaded: { id: string; code: string } | null = null;
+  async luaVars(): Promise<Record<string, unknown>> {
+    return Object.fromEntries(this.luaVarStore);
+  }
+  async setLuaVar(name: string, value: unknown): Promise<void> {
+    if (value === null || value === undefined) this.luaVarStore.delete(name);
+    else this.luaVarStore.set(name, value);
+    this.emit('vars', { vars: { [name]: value ?? null } });
+  }
+  async setLayoutLua(id: string, code: string): Promise<void> {
+    this.layoutLuaLoaded = id && code ? { id, code } : null;
+  }
   // ---- themes folder (the real one is a directory on disk)
   private themeFiles = new Map<string, string>();
   async listThemes(): Promise<ThemeFile[]> {

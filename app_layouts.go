@@ -104,3 +104,29 @@ func (a *App) DeleteTheme(id string) error {
 	}
 	return s.DeleteTheme(id)
 }
+
+// Lua <-> layout variables (see internal/app/layouts.go).
+
+func (a *App) LuaVars() (map[string]any, error) {
+	s, err := a.service()
+	if err != nil {
+		return nil, err
+	}
+	return s.LuaVars(), nil
+}
+
+func (a *App) SetLuaVar(name string, value any) error {
+	s, err := a.service()
+	if err != nil {
+		return err
+	}
+	return s.SetLuaVar(name, value)
+}
+
+func (a *App) SetLayoutLua(id, code string) error {
+	s, err := a.service()
+	if err != nil {
+		return err
+	}
+	return s.SetLayoutLua(id, code)
+}

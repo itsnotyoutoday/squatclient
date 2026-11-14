@@ -147,3 +147,38 @@ func (s *Service) watchThemes() {
 		}
 	}()
 }
+
+// Lua and the layout talk through the engine's variable store (squat.var): Lua sets a variable and the
+// window's layout shows it; the layout sets one and Lua reads it. Changes are batched into one "vars" event.
+
+// luaVarChanged is called by the engine (with its Lua lock held): note the change and flush soon.
+func (s *Service) luaVarChanged(name string, value any) {
+	s.varMu.Lock()
+	if s.varPending == nil {
+		s.varPending = map[string]any{}
+		time.AfterFunc(40*time.Millisecond, s.flushLuaVars)
+	}
+	s.varPending[name] = value
+	s.varMu.Unlock()
+}
+
+func (s *Service) flushLuaVars() {
+	s.varMu.Lock()
+	p := s.varPending
+	s.varPending = nil
+	s.varMu.Unlock()
+	if len(p) > 0 && s.ctx.Err() == nil {
+		s.emit("vars", struct {
+			Vars map[string]any `json:"vars"`
+		}{p})
+	}
+}
+
+// LuaVars returns every Lua variable (the layout's starting point).
+func (s *Service) LuaVars() map[string]any { return s.eng.LuaVars() }
+
+// SetLuaVar sets (or, with nil, deletes) a Lua variable on behalf of the layout.
+func (s *Service) SetLuaVar(name string, value any) error { return s.eng.SetLuaVar(name, value) }
+
+// SetLayoutLua loads the <lua> block of the layout in use; empty code unloads the previous one.
+func (s *Service) SetLayoutLua(id, code string) error { return s.eng.SetLayoutLua(id, code) }

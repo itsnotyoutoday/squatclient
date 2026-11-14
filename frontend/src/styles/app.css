@@ -1412,17 +1412,78 @@ h3.lay-panel-title {
   flex-wrap: wrap;
   gap: 4px;
 }
-.lay-notice { flex: none; padding: 4px 10px; font-size: 12px; background: var(--ui-warn); color: var(--bg); }
-.lay-consent { flex: none; padding: 8px 12px; font-size: 13px; background: var(--ui-panel); border-bottom: 1px solid var(--ui-warn); }
-.lay-consent p { margin: 0 0 6px; }
-.lay-consent-actions { display: flex; gap: 6px; }
-.lay-consent-source { max-height: 220px; overflow: auto; margin: 8px 0 0; padding: 6px; background: var(--ui-panel-alt); font-size: 12px; white-space: pre-wrap; }
-.lay-notice { white-space: pre-wrap; }
-.layouts h3 { margin: 12px 0 4px; font-size: 13px; }
-.layouts-list { list-style: none; margin: 0; padding: 0; }
-.layouts-list li { display: flex; align-items: center; gap: 8px; padding: 3px 0; }
-.layouts-edit textarea { width: 100%; font-family: var(--font, monospace); font-size: 12px; box-sizing: border-box; }
-.layouts h3 { margin: 12px 0 4px; font-size: 13px; }
-.layouts-list { list-style: none; margin: 0; padding: 0; }
-.layouts-list li { display: flex; align-items: center; gap: 8px; padding: 3px 0; }
-.layouts-edit textarea { width: 100%; font-family: var(--font, monospace); font-size: 12px; box-sizing: border-box; }
+.lay-notice {
+  flex: none;
+  padding: 4px 10px;
+  font-size: 12px;
+  background: var(--ui-warn);
+  color: var(--bg);
+}
+.lay-consent {
+  flex: none;
+  padding: 8px 12px;
+  font-size: 13px;
+  background: var(--ui-panel);
+  border-bottom: 1px solid var(--ui-warn);
+}
+.lay-consent p {
+  margin: 0 0 6px;
+}
+.lay-consent-actions {
+  display: flex;
+  gap: 6px;
+}
+.lay-consent-source {
+  max-height: 220px;
+  overflow: auto;
+  margin: 8px 0 0;
+  padding: 6px;
+  background: var(--ui-panel-alt);
+  font-size: 12px;
+  white-space: pre-wrap;
+}
+.lay-notice {
+  white-space: pre-wrap;
+}
+.layouts h3 {
+  margin: 12px 0 4px;
+  font-size: 13px;
+}
+.layouts-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.layouts-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+}
+.layouts-edit textarea {
+  width: 100%;
+  font-family: var(--font, monospace);
+  font-size: 12px;
+  box-sizing: border-box;
+}
+.layouts h3 {
+  margin: 12px 0 4px;
+  font-size: 13px;
+}
+.layouts-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.layouts-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+}
+.layouts-edit textarea {
+  width: 100%;
+  font-family: var(--font, monospace);
+  font-size: 12px;
+  box-sizing: border-box;
+}

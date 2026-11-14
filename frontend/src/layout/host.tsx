@@ -60,6 +60,17 @@ export function LayoutHost({
     document.head.appendChild(el);
     return () => el.remove();
   }, [css, id]);
+  // the layout's <lua> block runs in the engine for as long as this layout is shown
+  const lua = user.status === 'ready' ? user.bundle.lua : undefined;
+  useEffect(() => {
+    if (!engine || !lua) return;
+    void engine.setLayoutLua(id, lua).catch((e: unknown) => {
+      useUi.getState().toast('warn', `Layout "${id}" Lua: ${e instanceof Error ? e.message : String(e)}`);
+    });
+    return () => {
+      void engine.setLayoutLua('', '').catch(() => undefined);
+    };
+  }, [engine, id, lua]);
   const [problem, setProblem] = useState<{ id: string; text: string } | null>(null);
   const failed = problem?.id === id;
   const counts = useRef({ mush: 0, input: 0 });

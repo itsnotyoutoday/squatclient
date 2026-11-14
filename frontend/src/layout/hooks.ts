@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import type { SessionInfo } from '../api/types';
-import { useSessions } from '../state/stores';
+import { useSessions, useUi } from '../state/stores';
 import { useLayoutEnv } from './context';
 import { getIn, parseBinding, resolveGmcp } from './paths';
 import { useLayoutData } from './store';
@@ -27,19 +27,22 @@ export function useMsdp(path: string): unknown {
   });
 }
 
-/** A script variable of this world (set by Lua with squat.var.set, or by setVar). */
+/** A script variable: Lua's squat.var (shared with every layout), else one this world's layout set. */
 export function useVar(name: string): unknown {
   const { scope } = useLayoutEnv();
   return useLayoutData((s) => {
     const segs = name.split('.');
-    return getIn(s.vars[scope]?.[segs[0]], segs.slice(1));
+    return getIn(segs[0] in s.lua ? s.lua[segs[0]] : s.vars[scope]?.[segs[0]], segs.slice(1));
   });
 }
 
-/** Set a script variable of this world. */
+/** Set a script variable. It is Lua's too: `squat.var.get(name)` sees it, and Lua's changes come back. */
 export function useSetVar(): (name: string, value: unknown) => void {
-  const { scope } = useLayoutEnv();
-  return (name, value) => useLayoutData.getState().setVar(scope, name, value);
+  const engine = useUi((s) => s.engine);
+  return (name, value) => {
+    useLayoutData.getState().setLua({ [name]: value });
+    void engine?.setLuaVar(name, value ?? null).catch(() => undefined);
+  };
 }
 
 /** Resolve a binding string (`gmcp:Char.Vitals.hp`, `msdp:HEALTH`, `var:hp`) or pass a literal through. */
@@ -59,7 +62,7 @@ export function useBinding(spec: unknown): unknown {
       }
       case 'var': {
         const segs = b.path.split('.');
-        return getIn(s.vars[scope]?.[segs[0]], segs.slice(1));
+        return getIn(segs[0] in s.lua ? s.lua[segs[0]] : s.vars[scope]?.[segs[0]], segs.slice(1));
       }
     }
   });

@@ -52,14 +52,16 @@ type Service struct {
 	win   func(string)
 	flush time.Duration
 
-	ctx     context.Context
-	cancel  context.CancelFunc // stops squatter connects at shutdown
-	boot    sync.WaitGroup
-	keyMu   sync.Mutex
-	pair    pairing
-	hist    *historyStore
-	lay     *layouts.Manager
-	layOnce sync.Once
+	ctx        context.Context
+	cancel     context.CancelFunc // stops squatter connects at shutdown
+	boot       sync.WaitGroup
+	keyMu      sync.Mutex
+	pair       pairing
+	hist       *historyStore
+	lay        *layouts.Manager
+	varMu      sync.Mutex
+	varPending map[string]any
+	layOnce    sync.Once
 
 	fgMu     sync.Mutex
 	uiFg     string // foreground the UI last chose or was told about
@@ -103,6 +105,7 @@ func New(o Options) (*Service, error) {
 		}
 		return pw
 	}
+	eo.OnLuaVar = s.luaVarChanged
 	s.eng = engine.New(eo)
 	s.eng.SetAutoReconnectSquatters(o.Config.Settings().AutoReconnectSquatters)
 	s.eng.SetShowGagged(o.Config.Settings().ShowGagged)

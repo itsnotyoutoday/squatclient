@@ -183,6 +183,9 @@ export class WailsEngine implements EngineAPI {
   deleteLayout = (id: string) => call<void>('DeleteLayout', id);
   layoutStarters = () => list(call<LayoutStarter[] | null>('LayoutStarters'));
   layoutsDir = () => call<string>('LayoutsDir');
+  luaVars = () => call<Record<string, unknown> | null>('LuaVars').then((v) => v ?? {});
+  setLuaVar = (name: string, value: unknown) => call<void>('SetLuaVar', name, value);
+  setLayoutLua = (id: string, code: string) => call<void>('SetLayoutLua', id, code);
   listThemes = () => list(call<ThemeFile[] | null>('ListThemes'));
   themesDir = () => call<string>('ThemesDir');
   saveTheme = (id: string, json: string) => call<void>('SaveTheme', id, json);

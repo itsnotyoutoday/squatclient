@@ -130,4 +130,42 @@ describe('evaluateLayout', () => {
       evaluateLayout('const sq = require("squat"); exports.default = function L() { return sq.Mush; };'),
     ).not.toThrow();
   });
+
+  it("shares variables with Lua both ways and loads the layout's Lua block", async () => {
+    await boot();
+    const VAR_LAYOUT = `
+"use strict";
+exports.default = function Layout() {
+  const mood = useVar("mood");
+  const setVar = useSetVar();
+  return React.createElement(App, null,
+    React.createElement(Mush),
+    React.createElement("button", { onClick: () => setVar("clicked", 1) }, "go " + (mood ?? "none")),
+    React.createElement(InputBar));
+};`;
+    engine.setLayout('vars', '<App/>', VAR_LAYOUT, { lua: 'squat.var.set("x", 1)' });
+    use('vars');
+    expect(await screen.findByRole('button', { name: 'go none' })).toBeInTheDocument();
+    await waitFor(() =>
+      expect(engine.layoutLuaLoaded).toEqual({ id: 'vars', code: 'squat.var.set("x", 1)' }),
+    );
+    // Lua sets a variable: the layout shows it
+    act(() =>
+      (engine as unknown as { emit: (n: string, p: unknown) => void }).emit('vars', {
+        vars: { mood: 'calm' },
+      }),
+    );
+    expect(await screen.findByRole('button', { name: 'go calm' })).toBeInTheDocument();
+    // the layout sets one: Lua's store has it
+    await userEvent.click(screen.getByRole('button', { name: 'go calm' }));
+    await waitFor(async () => expect((await engine.luaVars()).clicked).toBe(1));
+    // a Lua-side delete clears it
+    act(() =>
+      (engine as unknown as { emit: (n: string, p: unknown) => void }).emit('vars', { vars: { mood: null } }),
+    );
+    expect(await screen.findByRole('button', { name: 'go none' })).toBeInTheDocument();
+    // leaving the layout unloads its Lua
+    use('classic');
+    await waitFor(() => expect(engine.layoutLuaLoaded).toBeNull());
+  });
 });

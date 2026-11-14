@@ -278,6 +278,8 @@ export interface EngineEvents {
   'layouts-changed': Record<string, never>;
   /** The themes folder changed: reload the theme list. */
   'themes-changed': Record<string, never>;
+  /** Lua variables (squat.var) that were set (or, with null, deleted). */
+  vars: { vars: Record<string, unknown> };
 }
 
 /** A file in the user's themes folder; `json` is its contents, validated by the window. */
@@ -629,6 +631,11 @@ export interface EngineAPI {
   deleteLayout(id: string): Promise<void>;
   layoutStarters(): Promise<LayoutStarter[]>;
   layoutsDir(): Promise<string>;
+  /** Lua variables (squat.var), shared with layouts both ways. */
+  luaVars(): Promise<Record<string, unknown>>;
+  setLuaVar(name: string, value: unknown): Promise<void>;
+  /** Loads the `<lua>` block of the layout in use (empty id or code unloads the previous one). */
+  setLayoutLua(id: string, code: string): Promise<void>;
   /** The themes folder: `<id>.json` or `<id>/theme.json` per theme. */
   listThemes(): Promise<ThemeFile[]>;
   themesDir(): Promise<string>;

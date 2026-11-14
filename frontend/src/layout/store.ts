@@ -92,6 +92,10 @@ interface LayoutDataState {
   sessions: Record<string, SessionData>;
   /** Script variables, by scope: the world id (or the session id for a quick connect). */
   vars: Record<string, Record<string, unknown>>;
+  /** The engine's Lua variables (squat.var): shared by Lua scripts and every layout, whatever the world. */
+  lua: Record<string, unknown>;
+  /** Set variables (undefined deletes). */
+  setLua(values: Record<string, unknown>): void;
   ingestGmcp(session: string, pkg: string, data: unknown, at?: number): void;
   ingestMsdp(session: string, vars: Record<string, unknown>): void;
   /** A snapshot (after attaching): replaces what is known. */
@@ -109,6 +113,16 @@ interface LayoutDataState {
 export const useLayoutData = create<LayoutDataState>((set) => ({
   sessions: {},
   vars: {},
+  lua: {},
+  setLua: (values) =>
+    set((s) => {
+      const lua = { ...s.lua };
+      for (const [k, v] of Object.entries(values)) {
+        if (v === undefined || v === null) delete lua[k];
+        else lua[k] = v;
+      }
+      return { lua };
+    }),
   ingestGmcp: (session, pkg, data, at = Date.now()) =>
     set((s) => {
       const cur = s.sessions[session] ?? EMPTY;
@@ -161,5 +175,5 @@ export const sessionData = (id: string | undefined): SessionData =>
 
 export { getIn };
 export function resetLayoutData(): void {
-  useLayoutData.setState({ sessions: {}, vars: {} });
+  useLayoutData.setState({ sessions: {}, vars: {}, lua: {} });
 }

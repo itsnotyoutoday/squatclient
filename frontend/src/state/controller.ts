@@ -5,6 +5,9 @@ import { runUndoRedo } from '../lib/editcommands';
 import { useLayoutData } from '../layout/store';
 import { setFolderThemes } from '../themes';
 
+const nullToUndefined = (o: Record<string, unknown>): Record<string, unknown> =>
+  Object.fromEntries(Object.entries(o).map(([k, v]) => [k, v ?? undefined]));
+
 /** Sessions that need attention when the UI attaches: unread output or ended. */
 export function awaySessions(list: readonly SessionInfo[]): SessionInfo[] {
   return list.filter((s) => s.unread > 0 || s.state === 'ended');
@@ -156,6 +159,13 @@ export async function startController(
       }
     }),
   );
+
+  // Lua variables: what the engine has now, and every change after that
+  offs.push(engine.on('vars', (e) => useLayoutData.getState().setLua(nullToUndefined(e.vars))));
+  void engine
+    .luaVars()
+    .then((v) => useLayoutData.getState().setLua(v))
+    .catch(() => undefined);
 
   // the themes folder: loaded now and whenever it changes
   const loadThemes = (): void => {
