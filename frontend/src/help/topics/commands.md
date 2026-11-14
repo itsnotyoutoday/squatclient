@@ -52,7 +52,7 @@ The scripting language provides the rest. Open any of them with `/help name`.
 
 Start at [the scripting language](help:scripting), especially [Commands](help:scripting/commands), and see [TinyFugue Script Compatibility](help:compat) for which commands behave differently from TinyFugue.
 
-The scripting language is the shared **gtfparser** engine, the same one the `gtf` terminal client uses; `docs/COMMAND-STATUS.md` in the source lists every TinyFugue command and how SquatClient answers it. A command that TinyFugue has but SquatClient cannot offer says `not supported by this client`.
+The scripting language is the shared **gtfparser** engine, the same one the `gtf` terminal client uses. A command that TinyFugue has but SquatClient cannot offer says `not supported by this client`.
 
 Typing a command that does not exist prints `no such command. Type /help for help.`
 
