@@ -22,13 +22,12 @@ if (pane) {
   const [pw, ph] = [Number(pane[1]), Number(pane[2])];
   const share = Number(q.get('size') ?? 60);
   document.body.style.cssText += `;display:flex;flex-direction:column;width:${pw}px;height:${ph + 36}px;`;
-  stage.style.cssText = `position:relative;flex:0 0 ${share}%;`;
+  stage.style.cssText = `position:relative;flex:0 0 ${share}%;min-height:0;overflow:hidden;`; // min-height 0: the canvas size must never grow the stage
   const out = document.createElement('div');
   out.style.cssText = 'flex:1;min-height:0;overflow:hidden;background:#101418;color:#cfd8dc;font:13px ui-monospace,monospace;padding:6px 10px;box-sizing:border-box;';
   out.innerHTML = ['Ann says, "Shields to full, helm."', 'Bo pages: heading change in two minutes', 'The Endeavour hums as the warp field stabilises.', 'Chen says, "Contact bearing 335, hostile."', 'You say, "Red alert."'].map((l) => `<div>${l}</div>`).join('');
-  const inp = document.createElement('div');
-  inp.id = 'input';
-  inp.style.cssText = 'position:static;opacity:1;flex:0 0 36px;height:36px;line-height:36px;border:0;border-top:1px solid #333;border-radius:0;right:auto;';
+  const inp = document.getElementById('input')!; // the page's own input box stands in for the real input line
+  inp.style.cssText = 'box-sizing:border-box;position:static;opacity:1;flex:0 0 36px;height:36px;line-height:34px;padding:0 10px;border:1px solid #333;border-radius:4px;background:#0b0b0b;color:#9c9;font:14px ui-monospace,monospace;z-index:6;';
   inp.textContent = '> ';
   document.body.append(out, inp);
   paneOut = out;
@@ -143,7 +142,7 @@ function layoutPane(): void {
     const inp = document.getElementById('input');
     if (plan.input && inp) {
       const i = plan.input;
-      inp.style.cssText += `;position:absolute;left:${i.x}px;top:${i.y}px;width:${i.w}px;height:${i.h}px;flex:none;z-index:6;right:auto;bottom:auto;`;
+      inp.style.cssText += `;position:absolute;left:${i.x}px;top:${i.y}px;width:${i.w}px;height:${i.h}px;flex:none;z-index:6;right:auto;bottom:auto;line-height:${i.h - 2}px;`;
       stage.appendChild(inp);
       holes.push(i);
     }
