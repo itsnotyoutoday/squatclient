@@ -102,7 +102,15 @@ Custom themes move from the browser's local storage to files in a user folder. T
 2. A Go call compiles the layout when it is selected or changed: esbuild as a library (MIT, GPL-compatible)
    bundles multi-file layouts and reports errors with line numbers. React and the `squat` layout API are
    provided to the code, not bundled into it.
+   Layout files may be `.tsx`, `.jsx`, `.ts` or `.js`: plain JavaScript is valid (TSX is JavaScript plus
+   JSX syntax and type annotations), so authors who do not want types can leave them out.
 3. The window runs the result inside an error boundary; a file watcher recompiles on edit.
+   Speed: compilation happens once, when a layout is selected or changed (milliseconds); the compiled
+   output is cached by file contents, so an unchanged layout is not compiled again on the next start, and
+   layouts shipped with the app are compiled at build time. At run time it is ordinary compiled JavaScript.
+   Widgets subscribe only to the GMCP path or variable they show, so a `Char.Vitals` update that arrives
+   several times a second redraws only the affected gauges, not the whole layout; updates are batched to one
+   per animation frame.
 4. The `squat` layout API is versioned and kept stable, because layouts depend on it.
 
 ## Safety
