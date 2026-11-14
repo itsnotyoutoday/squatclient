@@ -150,12 +150,12 @@ jobs:
         if: runner.os == 'Windows'
         working-directory: squatClient/build/bin
         run: |
-          7z a ../../../squatclient-${{ steps.v.outputs.version }}-${{ matrix.name }}.zip squatclient.exe
-          cp *-installer.exe ../../../squatclient-${{ steps.v.outputs.version }}-${{ matrix.name }}-setup.exe
+          7z a ../../squatclient-${{ steps.v.outputs.version }}-${{ matrix.name }}.zip squatclient.exe
+          cp *-installer.exe ../../squatclient-${{ steps.v.outputs.version }}-${{ matrix.name }}-setup.exe
       - name: Package (macOS)
         if: runner.os == 'macOS'
         working-directory: squatClient/build/bin
-        run: ditto -c -k --keepParent squatclient.app ../../../squatclient-${{ steps.v.outputs.version }}-${{ matrix.name }}.zip
+        run: ditto -c -k --keepParent squatclient.app ../../squatclient-${{ steps.v.outputs.version }}-${{ matrix.name }}.zip
       - uses: actions/upload-artifact@v4
         with:
           name: squatclient-${{ matrix.name }}
@@ -180,4 +180,5 @@ jobs:
         with:
           files: dist/*
           generate_release_notes: true
+          body: ${{ contains(github.ref_name, '-') && 'UNSIGNED TEST BUILD. Windows will show an "unknown publisher" (SmartScreen) warning and macOS will ask you to right-click and choose Open. Releases without a dash in the tag are the ones that will be signed. Please report problems as issues, with your OS version.' || '' }}
           prerelease: ${{ contains(github.ref_name, '-') }}   # v0.1.0-test1 is a pre-release, v0.1.0 is not
