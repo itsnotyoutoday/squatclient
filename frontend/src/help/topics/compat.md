@@ -5,9 +5,9 @@ keywords: compatibility, tinyfugue, differences, tf, matrix, not available, gui
 aliases: compat, compatibility, differences, tf-compat, tinyfugue compatibility
 ---
 
-SquatClient's scripting language is modelled on **TinyFugue** ("tf") and designed so that most existing TinyFugue scripts run as written. This page is the short version: what works the same, what is different and why, and what is not available. The pages below it list every command, function, hook and variable.
+SquatClient's scripting runs on **gtfparser**, a Go implementation of the TinyFugue language that is tested against a real TinyFugue and that runs TinyFugue's own library files unchanged, so most existing TinyFugue scripts run as written. (Older versions of SquatClient had their own interpreter; the detailed tables below were written for it and are being brought up to date: when a table and `/help name` disagree, the command's own message wins.) This page is the short version: what works the same, what is different and why, and what is not available. The pages below it list every command, function, hook and variable.
 
-SquatClient is a new, independent implementation. It contains no TinyFugue code or help text. It follows TinyFugue's documented behaviour and was compared side by side with a real TinyFugue 5.2. Thank you to Ken Keys and the TinyFugue community; see [About and credits](help:about#tinyfugue).
+gtfparser is an independent implementation. It follows TinyFugue's documented behaviour and is compared side by side with a real TinyFugue 5.2. Thank you to Ken Keys and the TinyFugue community; see [About and credits](help:about#tinyfugue).
 
 ## Summary
 

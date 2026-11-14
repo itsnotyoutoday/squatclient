@@ -36,13 +36,14 @@ type SquatterView struct {
 // The pairing code stays in memory only and is NOT sent until the user trusts
 // the fingerprint (trust on first use).
 type pendingPair struct {
-	kind string
-	host string
-	port int
-	name string
-	code string
-	fp   string
-	at   time.Time
+	kind   string
+	flavor string
+	host   string
+	port   int
+	name   string
+	code   string
+	fp     string
+	at     time.Time
 }
 
 const pairTTL = 10 * time.Minute // pairing codes live 10 minutes on the daemon
@@ -108,14 +109,22 @@ func (s *Service) ListSquatters() ([]SquatterView, error) {
 // PairSquatter is step 1 of trust on first use: it performs only a TLS
 // handshake to read the server's certificate fingerprint. The pairing code is
 // NOT sent; it is kept in memory until ConfirmSquatter(id, true). kind is "squatterd"
-// (default) or "tf-squatterd".
+// (default), "tf-squatterd" or "gtf" (GoTinyFugue's built-in squatter: stored as a
+// tf-squatterd with flavor "gtf").
 func (s *Service) PairSquatter(host string, port int, name, pairCode, kind string) (PairResult, error) {
 	host = strings.TrimSpace(host)
 	pairCode = strings.TrimSpace(pairCode)
 	if host == "" || port < 1 || port > 65535 {
 		return PairResult{}, errors.New("host and a port between 1 and 65535 are required")
 	}
+	flavor := ""
+	if kind == config.FlavorGTF {
+		kind, flavor = config.KindTFSquatterd, config.FlavorGTF
+	}
 	if pairCode == "" {
+		if flavor == config.FlavorGTF {
+			return PairResult{}, errors.New("the pairing code is required (in gtf run /pair; squatter=on must be set)")
+		}
 		if kind == config.KindTFSquatterd {
 			return PairResult{}, errors.New("the pairing code is required (in TinyFugue run /squat pair)")
 		}
@@ -132,7 +141,9 @@ func (s *Service) PairSquatter(host string, port int, name, pairCode, kind strin
 	fp, err := engine.ProbeSquatter(ctx, host, port)
 	if err != nil {
 		running := "squatterd"
-		if kind == config.KindTFSquatterd {
+		if flavor == config.FlavorGTF {
+			running = "gtf with squatter=on (/set squatter=on, then /squatter)"
+		} else if kind == config.KindTFSquatterd {
 			running = "the TinyFugue bridge (/squat on)"
 		}
 		return PairResult{}, fmt.Errorf("cannot reach a squatter at %s:%d (is %s running and the port open?): %w", host, port, running, err)
@@ -148,7 +159,7 @@ func (s *Service) PairSquatter(host string, port int, name, pairCode, kind strin
 			delete(s.pair.pending, k)
 		}
 	}
-	s.pair.pending[id] = pendingPair{kind: kind, host: host, port: port, name: strings.TrimSpace(name), code: pairCode, fp: fp, at: time.Now()}
+	s.pair.pending[id] = pendingPair{kind: kind, flavor: flavor, host: host, port: port, name: strings.TrimSpace(name), code: pairCode, fp: fp, at: time.Now()}
 	return PairResult{ID: id, Fingerprint: fp}, nil
 }
 
@@ -173,7 +184,7 @@ func (s *Service) ConfirmSquatter(id string, accept bool) error {
 	if err != nil {
 		return err
 	}
-	q, err := s.cfg.SaveSquatter(config.Squatter{ID: id, Name: p.name, Host: p.host, Port: p.port, Fingerprint: p.fp, Paired: false, Kind: p.kind})
+	q, err := s.cfg.SaveSquatter(config.Squatter{ID: id, Name: p.name, Host: p.host, Port: p.port, Fingerprint: p.fp, Paired: false, Kind: p.kind, Flavor: p.flavor})
 	if err != nil {
 		return err
 	}

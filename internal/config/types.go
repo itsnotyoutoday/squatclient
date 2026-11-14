@@ -50,7 +50,15 @@ type Squatter struct {
 	// Automation (tf-squatterd only): "tf" (default: TinyFugue runs the triggers, this client
 	// only displays) or "client" (this client runs them while it is connected).
 	Automation string `json:"automation,omitempty"`
+	// Flavor refines Kind: "gtf" marks a tf-squatterd that is GoTinyFugue's built-in squatter
+	// (docs/GTF-INTEGRATION.md). It speaks the same protocol, but its worlds and scripts are
+	// managed in gtf itself and it always runs its own triggers, so the app does not mirror
+	// worlds into it, upload scripts or offer takeover controls. Empty for everything else.
+	Flavor string `json:"flavor,omitempty"`
 }
+
+// FlavorGTF is Squatter.Flavor of a gtf squatter.
+const FlavorGTF = "gtf"
 
 // Squatter kinds.
 const (
@@ -65,6 +73,9 @@ func (q Squatter) KindOrDefault() string {
 	}
 	return KindSquatterd
 }
+
+// IsGTF reports whether the squatter is the built-in squatter of GoTinyFugue.
+func (q Squatter) IsGTF() bool { return q.IsTF() && q.Flavor == FlavorGTF }
 
 // IsTF reports whether the squatter is a TinyFugue bridge.
 func (q Squatter) IsTF() bool { return q.KindOrDefault() == KindTFSquatterd }

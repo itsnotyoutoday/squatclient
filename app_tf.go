@@ -163,3 +163,32 @@ func (a *App) RenameSession(sessionID, newName string) error {
 	}
 	return s.RenameSession(sessionID, newName)
 }
+
+// StopScript interrupts a runaway TinyFugue script (same as typing /stop).
+func (a *App) StopScript() error {
+	s, err := a.service()
+	if err != nil {
+		return err
+	}
+	s.StopScripts()
+	return nil
+}
+
+// TFKeyBindings lists the key sequences scripts have bound ("^A", "^[x", ...).
+func (a *App) TFKeyBindings() ([]string, error) {
+	s, err := a.service()
+	if err != nil {
+		return nil, err
+	}
+	return s.TFKeyBindings(), nil
+}
+
+// TFKey runs the script binding of one keystroke of the input line; text and cursor (a byte offset) are the
+// input line as it is, the result is the line after the bound macro ran.
+func (a *App) TFKey(sessionID, seq, text string, cursor int) (app.TFKeyResult, error) {
+	s, err := a.service()
+	if err != nil {
+		return app.TFKeyResult{}, err
+	}
+	return s.TFKey(sessionID, seq, text, cursor)
+}

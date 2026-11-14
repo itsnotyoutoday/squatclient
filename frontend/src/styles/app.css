@@ -265,6 +265,25 @@ textarea {
   position: relative;
   width: 100%;
 }
+/* TinyFugue's wrap variables (wrap, wrapsize, wrapspace), reported by the engine (lib/tfvars.ts) */
+:root[data-tf-wrap='off'] .output {
+  overflow-x: auto;
+}
+:root[data-tf-wrap='off'] .output-inner {
+  width: max-content;
+  min-width: 100%;
+}
+:root[data-tf-wrap='off'] .row {
+  white-space: pre;
+  overflow-wrap: normal;
+  width: max-content;
+  min-width: 100%;
+}
+:root[data-tf-wrap='on'] .row .text {
+  max-width: var(--tf-wrapsize, none);
+  padding-left: var(--tf-wrapspace, 0);
+  text-indent: calc(-1 * var(--tf-wrapspace, 0));
+}
 .row {
   position: absolute;
   top: 0;

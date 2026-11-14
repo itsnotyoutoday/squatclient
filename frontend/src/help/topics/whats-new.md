@@ -9,6 +9,7 @@ Recent additions you can see and use.
 
 ## TinyFugue
 
+- **A new scripting engine.** TinyFugue scripts now run on the shared `gtfparser` engine, which runs TinyFugue's own library files unchanged. New: `/tf` and `/local` to choose where one command runs, `/stop` to interrupt a script, and more of TinyFugue's commands. See [Commands](help:commands).
 - **TinyFugue as a squatter.** Pair with a TinyFugue running on a server, see all its connections and choose who types and who runs triggers. See [TinyFugue as a squatter](help:squatter/tinyfugue).
 
 ## Command window

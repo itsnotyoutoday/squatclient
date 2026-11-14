@@ -20,12 +20,12 @@ A TinyFugue squatter and a `squatterd` use different ports and different protoco
 
 Every TinyFugue connection shows a badge on its tab and a **Keyboard** control in the status bar:
 
-| Choice | Keyboard | Triggers and macros |
-| --- | --- | --- |
-| **Watch only** | TinyFugue | TinyFugue |
-| **Type too** | both of you | TinyFugue |
-| **Take the keyboard** | only SquatClient | TinyFugue |
-| **Take over fully** | only SquatClient | SquatClient |
+| Choice                | Keyboard         | Triggers and macros |
+| --------------------- | ---------------- | ------------------- |
+| **Watch only**        | TinyFugue        | TinyFugue           |
+| **Type too**          | both of you      | TinyFugue           |
+| **Take the keyboard** | only SquatClient | TinyFugue           |
+| **Take over fully**   | only SquatClient | SquatClient         |
 
 While TinyFugue keeps the keyboard, the input line is disabled and says so. If TinyFugue is set to ask first (`squat_takeover=ask`), the change waits until its user allows it and you see a message meanwhile.
 
@@ -35,7 +35,7 @@ Lines you did not type are marked in the output: `[tf]` for TinyFugue's own keyb
 
 ## One set of worlds, kept in agreement
 
-A world whose **Connect via** is a TinyFugue squatter *is* a world record in TinyFugue, and the two are kept in agreement both ways:
+A world whose **Connect via** is a TinyFugue squatter _is_ a world record in TinyFugue, and the two are kept in agreement both ways:
 
 - **Save, rename or delete it here** and TinyFugue's record is created, renamed or deleted (and saved with `/saveworld`, so it survives a restart). Credentials are never copied: this app logs in with its own saved password, unless the record in TinyFugue has its own login.
 - **Rename it in TinyFugue** (or add, delete or change one at its keyboard) and the tab, this app's world and the world lists here follow.
@@ -56,17 +56,21 @@ Press **Scripts…** (admin devices) to send a TinyFugue macro file to TinyFugue
 
 What the script may do is decided in TinyFugue, by `squat_scripts`:
 
-| Setting | Effect |
-| --- | --- |
-| off (default) | uploads are refused |
-| `safe` | the script runs **sandboxed**: no shell (`/sh`, `/quote !`), no files, no new connections, no Lua, and it cannot change TinyFugue's `squat_` settings or its restriction level. The same holds whenever one of its triggers or macros fires later |
-| `on` | the script runs with TinyFugue's own rights, like a file you loaded yourself |
+| Setting       | Effect                                                                                                                                                                                                                                            |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| off (default) | uploads are refused                                                                                                                                                                                                                               |
+| `safe`        | the script runs **sandboxed**: no shell (`/sh`, `/quote !`), no files, no new connections, no Lua, and it cannot change TinyFugue's `squat_` settings or its restriction level. The same holds whenever one of its triggers or macros fires later |
+| `on`          | the script runs with TinyFugue's own rights, like a file you loaded yourself                                                                                                                                                                      |
 
 Use `safe` unless you wrote the script. Deleting a script removes only the file: triggers it already defined stay until you undefine them or TinyFugue restarts.
 
 ## Keeping SquatClient's queries off TinyFugue's screen
 
 The Object Editor and game type detection ask the game questions through TinyFugue, and TinyFugue shows the answers on its own screen too. SquatClient spares that screen by itself: when an **admin** device connects to a TinyFugue that allows scripts (`squat_scripts` is `safe` or `on`), it sends TinyFugue a small script of gag macros. They hide the query's marker lines always, and the game's "I can't see that here" style refusals only while a query is running, so your own commands and any chat still show. SquatClient still receives every line, and `/recall` in TinyFugue still has them. The script is sent again each time SquatClient connects, because macros are lost when TinyFugue restarts, and it runs fine in `safe` mode. If TinyFugue does not allow scripts, nothing is sent and the queries simply also show there. Turn it off in **Settings** (Keep SquatClient's own queries off TinyFugue's screen).
+
+## Typing commands: here or in TinyFugue
+
+A `/command` you type on a session that runs through TinyFugue is answered by **SquatClient's own** engine, never sent to TinyFugue by itself, and plain text goes to the game as typed. To run one command in TinyFugue itself, put `/tf` in front: `/tf /def -t'hello*' = say hi` or `/tf who` (admin devices, with `squat_exec` on in TinyFugue; its answer appears in the session). `/local command` does the opposite: it runs in SquatClient even if a Lua alias claims the name.
 
 ## Gagged lines
 

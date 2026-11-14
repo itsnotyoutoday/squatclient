@@ -119,6 +119,8 @@ export interface SquatterConfig {
   paired: boolean;
   /** "squatterd" (default, absent in old records) or "tf-squatterd" (a TinyFugue bridge). */
   kind?: SquatterKind;
+  /** "gtf": a tf-squatterd that is GoTinyFugue's built-in squatter (own worlds, own triggers, no scripts upload). */
+  flavor?: 'gtf';
   /** tf-squatterd: "tf" (TinyFugue runs the triggers) or "client" (this client does while connected). */
   automation?: TFAutomation;
   /** tf-squatterd: this device's role, TinyFugue's instance id and offered features. */
@@ -254,6 +256,16 @@ export interface EngineEvents {
   bell: { session: string };
   gmcp: { session: string; package: string; data: unknown };
   quit: Record<string, never>;
+  /** A script ran /help: open the help browser on this topic. */
+  help: { topic: string };
+  /** A script ran /input: insert this text into the input line (it is never sent). */
+  input: { text: string };
+  /** A world command typed alone asks for its window ("worlds"). */
+  dialog: { name: string };
+  /** A TinyFugue variable that shapes the output window changed (wrap, wrapsize, wrapspace, wrappunct, visual, more). */
+  tfvar: { name: string; value: string };
+  /** The key sequences TinyFugue scripts have bound (/bind notation). */
+  tfkeys: { seqs: string[] };
   /** A session was dismissed (by this or another client). */
   'session-removed': { id: string };
   /** The engine changed the foreground session (e.g. a script ran /fg). */
@@ -374,6 +386,13 @@ export interface TFScript {
   size: number;
   /** unix milliseconds */
   mtime: number;
+}
+
+export interface TFKeyResult {
+  handled: boolean;
+  text: string;
+  /** a byte offset */
+  cursor: number;
 }
 
 export interface TFExecResult {
@@ -588,8 +607,8 @@ export interface EngineAPI {
     port: number,
     name: string,
     pairCode: string,
-    /** "squatterd" (default) or "tf-squatterd". */
-    kind?: SquatterKind,
+    /** "squatterd" (default), "tf-squatterd", or "gtf" (stored as a tf-squatterd with flavor "gtf"). */
+    kind?: SquatterKind | 'gtf',
   ): Promise<{ id: string; fingerprint: string }>;
   confirmSquatter(id: string, accept: boolean): Promise<void>;
   removeSquatter(id: string): Promise<void>;
@@ -628,6 +647,10 @@ export interface EngineAPI {
   listTFScripts(squatterId: string): Promise<TFScript[]>;
   deleteTFScript(squatterId: string, name: string): Promise<void>;
   sendGmcp(sessionId: string, pkg: string, dataJson: string): Promise<void>;
+  /** The key sequences TinyFugue scripts have bound. */
+  tfKeyBindings(): Promise<string[]>;
+  /** Run the script binding of one keystroke; text and cursor (a byte offset) are the input line as it is. */
+  tfKey(sessionId: string, seq: string, text: string, cursor: number): Promise<TFKeyResult>;
   sendMsdp(sessionId: string, varsJson: string): Promise<void>;
   getSessionData(sessionId: string): Promise<SessionData>;
   /** Retry lost squatter links immediately (wake, window shown, network back); returns how many it is retrying. */

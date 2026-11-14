@@ -47,7 +47,8 @@ Linux, macOS and Windows. If there is no release for your platform yet, [build i
   that decides which tools apply.
 - **An in-game object and attribute editor** for MU\* games: browse and edit objects, attributes, flags and
   locks in a workspace instead of typing `@set` lines.
-- **Scripting in two languages**: a [TinyFugue-compatible language](docs/) (triggers, macros, hooks, timers,
+- **Scripting in two languages**: the TinyFugue language, run by the shared [gtfparser](https://github.com/itsnotyoutoday/gtfparser)
+  engine that also runs TinyFugue's own library files (triggers, macros, hooks, timers,
   `/def`, `/load` of existing `.tf` files) and **Lua** plugins with an `squat.*` API. Scripts can open their own
   windows and panels.
 - **Themes and layouts** (below), the keyboard-first input line, a file-upload dialog for sending long text,
@@ -284,6 +285,15 @@ unless you need them: `squat_exec=on` is the same as a shell on that account) an
 control model and the security notes are in TinyFugue's `README.squat.md`.
 
 Games must be read while in the background: keep TinyFugue's `/set background=on` (the default).
+
+### TinyFugue scripting and the remote TinyFugue
+
+Typed `/commands` are answered by SquatClient's own script engine, also on sessions that run through a remote
+TinyFugue; plain text goes to the game as typed. To run one command in the remote TinyFugue itself, prefix it
+with `/tf` (`/tf /def ...`; admin device, `squat_exec` on); `/local cmd` forces the local engine past Lua aliases,
+and `/stop` interrupts a runaway script. The desktop app runs scripts unrestricted by default; start it more
+tightly with `SQUATCLIENT_TF_RESTRICT=shell|file|world`. Details: the daemon repository's `docs/TF-ENGINE.md`,
+`docs/TF-ROUTING.md` and `docs/COMMAND-STATUS.md`.
 
 ## Files and settings
 

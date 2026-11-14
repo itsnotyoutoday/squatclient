@@ -16,6 +16,11 @@ interface Item {
   run(): void;
 }
 
+/** A session held by gtf: its worlds live in gtf, the app cannot rename them. */
+function gtfSession(s: { via?: string }): boolean {
+  return useUi.getState().squatters.some((q) => q.id === s.via && q.flavor === 'gtf');
+}
+
 /** The menu of a session tab (right-click, or Shift-F10 / the Menu key on the tab). */
 export function TabMenu({ session: s, x, y, onClose, onCloseSession }: TabMenuProps) {
   const ref = useRef<HTMLDivElement>(null);
@@ -23,11 +28,15 @@ export function TabMenu({ session: s, x, y, onClose, onCloseSession }: TabMenuPr
   const ended = s.state === 'ended';
   const items: (Item | 'sep')[] = [
     { label: 'Connection settings...', run: () => ui.openSessionSettings(s.id) },
-    {
-      // a connection opened by address through TinyFugue is a temporary "(unnamedN)" world there: naming it keeps it
-      label: s.tf?.world.startsWith('(') ? 'Save as a world in TinyFugue...' : 'Rename...',
-      run: () => ui.openRename(s.id),
-    },
+    ...(!gtfSession(s)
+      ? [
+          {
+            // a connection opened by address through TinyFugue is a temporary "(unnamedN)" world there: naming it keeps it
+            label: s.tf?.world.startsWith('(') ? 'Save as a world in TinyFugue...' : 'Rename...',
+            run: () => ui.openRename(s.id),
+          },
+        ]
+      : []), // gtf holds its own worlds: the app cannot rename them
     ...(s.worldId
       ? [
           {

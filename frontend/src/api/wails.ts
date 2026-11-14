@@ -35,6 +35,7 @@ import type {
   SquatterKind,
   TFAutomation,
   TFExecResult,
+  TFKeyResult,
   TFScript,
   TFScriptResult,
   TFPreset,
@@ -145,7 +146,13 @@ export class WailsEngine implements EngineAPI {
   getSettings = () => call<Settings>('GetSettings');
   saveSettings = (s: Settings) => call<void>('SaveSettings', s);
   listSquatters = () => list(call<Awaited<ReturnType<EngineAPI['listSquatters']>> | null>('ListSquatters'));
-  pairSquatter = (host: string, port: number, name: string, code: string, kind: SquatterKind = 'squatterd') =>
+  pairSquatter = (
+    host: string,
+    port: number,
+    name: string,
+    code: string,
+    kind: SquatterKind | 'gtf' = 'squatterd',
+  ) =>
     call<{ id: string; fingerprint: string }>(
       'PairSquatter',
       host,
@@ -161,7 +168,8 @@ export class WailsEngine implements EngineAPI {
   listTFWorlds = (id: string) => list(call<TFWorld[] | null>('ListTFWorlds', id));
   putTFWorld = (id: string, w: TFWorldPut) => call<void>('PutTFWorld', id, w);
   deleteTFWorld = (id: string, name: string) => call<void>('DeleteTFWorld', id, name);
-  renameTFWorld = (id: string, name: string, newName: string) => call<void>('RenameTFWorld', id, name, newName);
+  renameTFWorld = (id: string, name: string, newName: string) =>
+    call<void>('RenameTFWorld', id, name, newName);
   renameTFSession = (id: string, newName: string) => call<void>('RenameTFSession', id, newName);
   renameSession = (id: string, newName: string) => call<void>('RenameSession', id, newName);
   connectTFWorld = (id: string, name: string) => call<SessionInfo>('ConnectTFWorld', id, name);
@@ -171,6 +179,9 @@ export class WailsEngine implements EngineAPI {
     call<TFScriptResult>('PutTFScript', id, name, content, load).then((r) => ({ ...r, out: r.out ?? [] }));
   listTFScripts = (id: string) => list(call<TFScript[] | null>('ListTFScripts', id));
   deleteTFScript = (id: string, name: string) => call<void>('DeleteTFScript', id, name);
+  tfKeyBindings = () => list(call<string[] | null>('TFKeyBindings'));
+  tfKey = (id: string, seq: string, text: string, cursor: number) =>
+    call<TFKeyResult>('TFKey', id, seq, text, cursor);
   sendGmcp = (id: string, pkg: string, json: string) => call<void>('SendGmcp', id, pkg, json);
   sendMsdp = (id: string, json: string) => call<void>('SendMsdp', id, json);
   getSessionData = (id: string) => call<SessionData>('GetSessionData', id);

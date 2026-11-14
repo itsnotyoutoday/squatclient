@@ -10,6 +10,7 @@ import (
 
 	"github.com/itsnotyoutoday/squatClientDaemon/pkg/engine"
 	"github.com/itsnotyoutoday/squatClientDaemon/pkg/proto"
+	"github.com/itsnotyoutoday/squatClientDaemon/pkg/tfengine"
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"github.com/itsnotyoutoday/squatclient/internal/app"
@@ -89,6 +90,13 @@ func (a *App) build(ctx context.Context) (*app.Service, *config.Store, error) {
 		Engine: engine.Options{
 			ConfigDir: scripts, // startup.tf, plugins/*.lua, logs/
 			Version:   version,
+			// The desktop app runs the user's own scripts on the user's own machine, so TF scripting is
+			// unrestricted by default. SQUATCLIENT_TF_RESTRICT=shell|file|world starts it more tightly
+			// (a script can raise the level with /restrict, never lower it).
+			Restrict: tfRestrictFromEnv(),
+			// SQUATCLIENT_TFLIB names a directory with real tf's lib/tf (or its stdlib.tf): it is loaded at start,
+			// as tf does, which defines tf's library commands. Not bundled.
+			TF: tfengine.Options{StdLib: os.Getenv("SQUATCLIENT_TFLIB")},
 		},
 	})
 	return svc, cfg, err
@@ -441,4 +449,15 @@ func (a *App) report(err error) {
 	if ctx != nil {
 		wailsruntime.EventsEmit(ctx, "notice", map[string]string{"level": "error", "text": err.Error()})
 	}
+}
+
+// tfRestrictFromEnv reads SQUATCLIENT_TF_RESTRICT (none, shell, file, world).
+func tfRestrictFromEnv() tfengine.Restrict {
+	v := os.Getenv("SQUATCLIENT_TF_RESTRICT")
+	r, ok := tfengine.ParseRestrict(v)
+	if !ok {
+		slog.Warn("SQUATCLIENT_TF_RESTRICT: expected none, shell, file or world", "value", v)
+		return tfengine.RestrictShell // a typo must not loosen the policy
+	}
+	return r
 }

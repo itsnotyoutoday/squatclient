@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { ClipboardEvent, KeyboardEvent } from 'react';
+import { byteOffset, hasTfBindings, indexOfByte, isTfBound, tfKeySeq } from '../../lib/tfkeys';
 import { handleKey, initialEdit, keyName, NO_NAV, pasteToLines } from '../../lib/keymap';
 import { checkBalance } from '../../lib/mushcode';
 import type { BalanceIssue } from '../../lib/mushcode';
@@ -104,7 +105,13 @@ function UnbalancedDialog({
   );
 }
 
-export function InputLine({ sessionId, remoteEcho, disabled, disabledReason, keymap = DEFAULT_KEYMAP }: InputLineProps) {
+export function InputLine({
+  sessionId,
+  remoteEcho,
+  disabled,
+  disabledReason,
+  keymap = DEFAULT_KEYMAP,
+}: InputLineProps) {
   const engine = useUi((s) => s.engine);
   const settings = useSettings((s) => s.settings);
   const session = useSessions((s) => s.sessions[sessionId]);
@@ -359,6 +366,21 @@ export function InputLine({ sessionId, remoteEcho, disabled, disabledReason, key
     if (e.nativeEvent.isComposing || disabled) return;
     const name = keyName(e);
     const el = e.currentTarget;
+    // keys a TinyFugue script bound (/bind, /def -b) run its macro, which may edit this very line
+    const seq = hasTfBindings() ? tfKeySeq(e.nativeEvent) : null;
+    if (seq && isTfBound(seq) && engine) {
+      e.preventDefault();
+      const text = st.text;
+      const at = byteOffset(text, el.selectionStart ?? st.cursor);
+      void engine
+        .tfKey(sessionId, seq, text, at)
+        .then((r) => {
+          if (r.handled)
+            setSt((s) => ({ ...s, text: r.text, cursor: indexOfByte(r.text, r.cursor), nav: NO_NAV }));
+        })
+        .catch((err: unknown) => useUi.getState().toast('error', String(err)));
+      return;
+    }
     if (NATIVE_DELETE.has(name) && el.selectionStart !== el.selectionEnd) return;
     const res = handleKey(
       { ...st, cursor: el.selectionStart ?? st.cursor },

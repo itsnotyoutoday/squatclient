@@ -16,7 +16,9 @@ export function TFWorldsDialog() {
   const [isNew, setIsNew] = useState(false);
   const [origName, setOrigName] = useState('');
   const [err, setErr] = useState('');
-  const canEdit = squatter?.role !== 'viewer';
+  const isGtf = squatter?.flavor === 'gtf';
+  // gtf keeps its world list itself (no world.put/rename/delete): the app lists them and connects by name
+  const canEdit = squatter?.role !== 'viewer' && !isGtf;
   const fail = (e: unknown): void => setErr(e instanceof Error ? e.message : String(e));
 
   const reload = useCallback(async (): Promise<void> => {
@@ -69,11 +71,16 @@ export function TFWorldsDialog() {
   };
 
   return (
-    <Dialog title={`TinyFugue worlds: ${squatter?.name ?? ''}`} onClose={close} wide>
+    <Dialog title={`${isGtf ? 'gtf' : 'TinyFugue'} worlds: ${squatter?.name ?? ''}`} onClose={close} wide>
       {draft ? (
         <form className="form grid" onSubmit={(e) => void save(e)}>
           <Field label="Name">
-            <input required aria-label="Name" value={draft.name} onChange={(e) => set('name', e.target.value)} />
+            <input
+              required
+              aria-label="Name"
+              value={draft.name}
+              onChange={(e) => set('name', e.target.value)}
+            />
           </Field>
           <Field label="Host">
             <input required value={draft.host} onChange={(e) => set('host', e.target.value)} />
@@ -124,7 +131,7 @@ export function TFWorldsDialog() {
       ) : (
         <>
           {worlds.length === 0 ? (
-            <p className="hint">TinyFugue has no world records.</p>
+            <p className="hint">{isGtf ? 'gtf has no worlds defined.' : 'TinyFugue has no world records.'}</p>
           ) : (
             <ul className="plain">
               {worlds.map((w) => (
@@ -171,6 +178,12 @@ export function TFWorldsDialog() {
                 </li>
               ))}
             </ul>
+          )}
+          {isGtf && (
+            <p className="hint">
+              These are gtf’s own worlds. Add or change them in gtf (/addworld, /unworld); Connect opens one
+              there.
+            </p>
           )}
           <div className="actions">
             <button type="button" onClick={close}>
