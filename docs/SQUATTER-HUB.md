@@ -1,33 +1,38 @@
 # Squatter hub for a select set of users (design note)
 
-Status: design only, nothing is built. Not an open service: a hub for a small trusted group.
+Status: the squatterd side of named users, key login and administration is built (daemon repo, branch
+`hub-auth`, see its docs/PROTOCOL.md sections 2a and 2b); the client side (the SquatterAdmin menu, the
+Squatters dialog, the ssh-agent signer) and per-user session separation are not. Not an open service: a
+hub for a small trusted group.
 
-## Logging in with SSH keys
+## Logging in: two kinds of key, both supported
 
-Not an SSH connection: the transport stays TLS + WebSocket (it works for browsers and phones, and the
-fingerprint pinning is already there). What is reused is the user's **SSH key pair** as the credential.
+The transport stays TLS + WebSocket (it works for browsers and phones, and the fingerprint pinning is
+already there). A named user, e.g. `nereus`, proves who they are with a key pair; **the private key never
+leaves the client**, and the signed data includes the server's TLS fingerprint, so a signature cannot be
+replayed against another server. A user may have keys of either kind, and the old anonymous
+paired-device login (`squatterd pair`) is unchanged.
 
-- The client says who it is, e.g. `nereus`, and offers a public key from the user's ssh-agent
-  (`SSH_AUTH_SOCK`, or the Windows OpenSSH agent / Pageant) or from `~/.ssh` (ed25519, ECDSA, RSA; keys
-  held in hardware work through the agent). The user can also pick a key file in the app.
-- The squatterd sends a random challenge; the client signs it with the private key and sends back the
-  signature. **The private key never leaves the client.** The signed data includes the server's TLS
-  fingerprint, so a signature cannot be replayed against another server.
-- The squatterd keeps an `authorized_keys`-style file: for each user name, the public keys allowed, with
-  an optional role (`viewer`, `operator`, `admin`). `squatterd authorize nereus < id_ed25519.pub` adds
-  one, the same habit as `ssh-copy-id`. No pairing code is needed; pairing codes remain as a way for a
-  user to enrol a key without shell access to the host.
-- The Go library is `golang.org/x/crypto/ssh` (BSD licence, GPL-compatible; already in the client's
-  dependency tree): key parsing, signatures and the agent client. The existing challenge/response
-  (`pkg/auth`) signs the nonce with a per-device ed25519 key today; this swaps the key source and the
-  key format, not the protocol.
-- If a user name is given, the name selects which keys are acceptable; with the hub, the name is the
-  user.
+1. **An ssh key** (the key pair the user already uses for ssh; ed25519 for now). **No pairing code is
+   needed**: a public key is not a secret, so it is simply added: the user sends their `id_ed25519.pub`;
+   the host runs `squatterd user authorize nereus < id_ed25519.pub` (the same habit as `ssh-copy-id`), or
+   an admin adds it as the user's first key, or one of the user's own devices adds it for another.
+   The client signs with the key from ssh-agent (`SSH_AUTH_SOCK`, the Windows OpenSSH agent or Pageant;
+   keys in hardware work through the agent) or a key file chosen in the app.
+2. **An app-generated device key**, for people who would rather not use their ssh key: the app makes a
+   key and a one-time **pairing code** enrols it (`squatterd user pair nereus`, or from one of the user's
+   own devices). Its public key can also be added directly, like an ssh key.
+
+Keys live in a `users.json` file on the squatterd (per user: role `viewer`, `operator` or `admin`, and the
+keys with fingerprint, who added them and when they were last used). The signature code is plain
+standard-library Go on the daemon (no ssh library there); the client needs `golang.org/x/crypto/ssh` (BSD
+licence, GPL-compatible, already in its dependency tree) for the agent and for reading key files.
+Accepted key types: ed25519; RSA and ECDSA are refused with a clear message for now.
 
 ## Administration
 
-- **On the host:** `squatterd user list|add|remove|pair|kill`. `add` creates a user; `pair` prints a
-  one-time code for them; `list` shows role, key fingerprints, last seen and live sessions; `kill` ends
+- **On the host:** `squatterd user list|add|remove|authorize|pair|reset|audit|...`. `add` creates a user;
+  `authorize` adds a public key (no code); `pair` prints a one-time code for an app-generated key; `list` shows role, key fingerprints, last seen and live sessions; `kill` ends
   a user's sessions and drops their connections but keeps the account; `remove` also revokes their keys.
   The command line is trusted because the caller can reach the data directory; the first admin key is
   set up this way.
@@ -39,12 +44,12 @@ fingerprint pinning is already there). What is reused is the user's **SSH key pa
 - **Manage is not read:** an admin manages users and sessions but does not attach to another user's
   session unless a separate, explicit support role allows it. Whoever has a shell on the host can still
   read the logs on disk.
-- **What an admin can do:** create users and issue the first pairing code of a *new* user (no sessions
+- **What an admin can do:** create users and add the first key (or issue the first pairing code) of a *new* user (no sessions
   yet); list users with metadata only (role, key fingerprints, last seen, session count); `kill` a
   user's sessions and connections; disable or remove an account (revokes keys, ends sessions, and asks
   whether to keep or delete the stored logs); **reset** an existing user's access (voids old keys and
   sessions, then issues a new code).
-- **No takeover through pairing:** a pairing code for a user who already has sessions can only be
+- **No takeover through keys or codes:** adding a key, or creating a pairing code, for a user who already has keys can only be
   created or approved from one of that user's own devices, never by an admin alone. Otherwise an admin
   could redeem it with their own key and read the sessions. Every key addition is shown on the user's
   other devices and written to the audit log. Reset is the admin's way to give back access, and it
