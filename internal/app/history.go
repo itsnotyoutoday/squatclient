@@ -79,12 +79,15 @@ func historyFile(key string) string {
 		}
 	}
 	name := strings.TrimLeft(b.String(), ".")
-	if name != key || name == "" || len(name) > 80 {
+	if name != key || name == "" || len(name) > 80 || windowsReserved(name) {
 		sum := sha1.Sum([]byte(key)) //nolint:gosec
 		if len(name) > 60 {
 			name = name[:60]
 		}
 		name += "-" + hex.EncodeToString(sum[:4])
+	}
+	if windowsReserved(name) { // "con.txt-1234" is still the device CON: a prefix is what makes it an ordinary file
+		name = "_" + name
 	}
 	return name + ".ndjson"
 }
@@ -379,4 +382,21 @@ func (s *Service) ClearHistory(sessionID string) error {
 		return err
 	}
 	return s.hist.clear(key)
+}
+
+// windowsReserved reports names Windows refuses as file names, with or without an extension
+// ("con", "nul", "com1"...). They get a hash suffix like any other awkward name.
+func windowsReserved(name string) bool {
+	base := strings.ToLower(name)
+	if i := strings.IndexByte(base, '.'); i >= 0 {
+		base = base[:i]
+	}
+	switch base {
+	case "con", "prn", "aux", "nul":
+		return true
+	}
+	if len(base) == 4 && (strings.HasPrefix(base, "com") || strings.HasPrefix(base, "lpt")) && base[3] >= '1' && base[3] <= '9' {
+		return true
+	}
+	return false
 }

@@ -414,3 +414,23 @@ func TestServiceRestartKeepsHistoryAndCapFollowsSetting(t *testing.T) {
 		t.Fatalf("max -> %d", g.HistoryMax)
 	}
 }
+
+func TestHistoryFileNamesAreSafeOnWindowsToo(t *testing.T) {
+	seen := map[string]string{}
+	for _, key := range []string{"con", "CON", "nul", "aux", "prn", "com1", "LPT9", "con.txt", "host:4201", "a/b\\c", "..", "", "com10", "console", "normal-world"} {
+		n := historyFile(key)
+		if windowsReserved(strings.TrimSuffix(n, ".ndjson")) {
+			t.Errorf("%q -> %q is a Windows reserved name", key, n)
+		}
+		if strings.ContainsAny(n, `<>:"/\|?*`) {
+			t.Errorf("%q -> %q has characters Windows refuses", key, n)
+		}
+		if other, dup := seen[n]; dup && other != key {
+			t.Errorf("%q and %q share the file %q", key, other, n)
+		}
+		seen[n] = key
+	}
+	if historyFile("normal-world") != "normal-world.ndjson" {
+		t.Errorf("an ordinary name must stay readable, got %q", historyFile("normal-world"))
+	}
+}

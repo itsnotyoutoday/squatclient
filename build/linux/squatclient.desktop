@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=SquatClient
+Comment=A graphical MU*/MUSH client
+Exec=squatclient
+Icon=squatclient
+Terminal=false
+Categories=Network;Game;
+StartupWMClass=squatclient

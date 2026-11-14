@@ -1,0 +1,183 @@
+# Tests the client and builds installable apps for Linux, Windows and macOS.
+#
+#   push / pull request   run the tests and build all three (apps are kept as run artifacts)
+#   tag v*                the same, then publish the files as a GitHub Release
+#   manual run            "Run workflow" in the Actions tab; the daemon branch can be chosen
+#
+# squatClient imports the engine from the squatClientDaemon repository (go.mod "replace ../squatClientDaemon"),
+# so both repositories are checked out next to each other.
+name: build
+
+on:
+  push:
+    branches: [main, squatterbridge]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      daemon_ref:
+        description: Branch or tag of squatClientDaemon to build against
+        default: squatterbridge
+
+env:
+  DAEMON_REPO: itsnotyoutoday/squatClientDaemon
+  # Until the engine changes are on the daemon's main branch, build against squatterbridge.
+  DAEMON_REF: ${{ inputs.daemon_ref || 'squatterbridge' }}
+  WAILS_VERSION: v2.10.2
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: squatClient
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ env.DAEMON_REPO }}
+          ref: ${{ env.DAEMON_REF }}
+          path: squatClientDaemon
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: squatClient/go.mod
+          cache-dependency-path: squatClient/go.sum
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: squatClient/frontend/package-lock.json
+      - name: Linux libraries for Wails
+        run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev
+      - name: Go tests
+        working-directory: squatClient
+        run: |
+          mkdir -p frontend/dist && touch frontend/dist/.gitkeep   # go:embed needs the folder to exist
+          go vet ./...
+          go test ./internal/...
+      - name: Frontend checks
+        working-directory: squatClient/frontend
+        run: |
+          npm ci
+          npm run typecheck
+          npm run lint
+          npm test -- --retry=2
+
+  build:
+    needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux-amd64
+            os: ubuntu-22.04
+            platform: linux/amd64
+          - name: windows-amd64
+            os: windows-latest
+            platform: windows/amd64
+          - name: macos-universal
+            os: macos-latest
+            platform: darwin/universal
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: squatClient
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ env.DAEMON_REPO }}
+          ref: ${{ env.DAEMON_REF }}
+          path: squatClientDaemon
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: squatClient/go.mod
+          cache-dependency-path: squatClient/go.sum
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: squatClient/frontend/package-lock.json
+      - name: Linux libraries for Wails
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev
+      - name: NSIS (Windows installer)
+        if: runner.os == 'Windows'
+        run: |
+          choco install nsis -y --no-progress
+          echo "C:/Program Files (x86)/NSIS" >> "$GITHUB_PATH"   # wails looks for makensis on PATH
+      - name: Wails CLI
+        run: |
+          go install github.com/wailsapp/wails/v2/cmd/wails@${WAILS_VERSION}
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+      - name: Version
+        id: v
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then v="${GITHUB_REF_NAME#v}"; else v="0.0.0-${GITHUB_SHA::7}"; fi
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+      - name: Stamp the version into wails.json (the installer and "Installed apps" show it)
+        working-directory: squatClient
+        run: |
+          python3 - <<'PY'
+          import json, os, re
+          v = re.match(r"\d+\.\d+\.\d+", "${{ steps.v.outputs.version }}")  # numeric part: a tag like 0.1.0-test1 -> 0.1.0
+          if v:
+              d = json.load(open("wails.json"))
+              d["info"]["productVersion"] = v.group(0)
+              json.dump(d, open("wails.json", "w"), indent=2)
+          PY
+      - name: Build
+        working-directory: squatClient
+        run: |
+          flags=""
+          if [[ "$RUNNER_OS" == "Windows" ]]; then flags="-nsis"; fi
+          wails build -platform ${{ matrix.platform }} $flags -ldflags "-X main.version=${{ steps.v.outputs.version }}"
+          ls -la build/bin
+      - name: Package (Linux)
+        if: runner.os == 'Linux'
+        working-directory: squatClient
+        run: |
+          d=squatclient-${{ steps.v.outputs.version }}-${{ matrix.name }}
+          mkdir "$d"
+          cp build/bin/squatclient build/linux/install.sh build/linux/squatclient.desktop "$d/"
+          cp build/appicon.png "$d/squatclient.png"
+          tar -czf "$d.tar.gz" "$d"
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        working-directory: squatClient/build/bin
+        run: |
+          7z a ../../../squatclient-${{ steps.v.outputs.version }}-${{ matrix.name }}.zip squatclient.exe
+          cp *-installer.exe ../../../squatclient-${{ steps.v.outputs.version }}-${{ matrix.name }}-setup.exe
+      - name: Package (macOS)
+        if: runner.os == 'macOS'
+        working-directory: squatClient/build/bin
+        run: ditto -c -k --keepParent squatclient.app ../../../squatclient-${{ steps.v.outputs.version }}-${{ matrix.name }}.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: squatclient-${{ matrix.name }}
+          path: |
+            squatClient/squatclient-*.tar.gz
+            squatClient/squatclient-*.zip
+            squatClient/squatclient-*-setup.exe
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
+          prerelease: ${{ contains(github.ref_name, '-') }}   # v0.1.0-test1 is a pre-release, v0.1.0 is not

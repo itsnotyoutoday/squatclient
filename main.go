@@ -9,6 +9,7 @@ import (
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+	"github.com/wailsapp/wails/v2/pkg/options/linux"
 	"github.com/wailsapp/wails/v2/pkg/options/mac"
 
 	"github.com/itsnotyoutoday/squatclient/internal/config"
@@ -19,6 +20,12 @@ import (
 //
 //go:embed all:frontend/dist
 var assets embed.FS
+
+// The window icon on Linux (Windows and macOS take theirs from the executable and the app bundle,
+// which are built from the same file).
+//
+//go:embed build/appicon.png
+var appIcon []byte
 
 const (
 	appName = "SquatClient"
@@ -59,6 +66,7 @@ func main() {
 		// Windows/Linux keep the native frame (ADR 0002); macOS uses an
 		// integrated title bar below.
 		Frameless: false,
+		Linux:     &linux.Options{Icon: appIcon, ProgramName: "squatclient"},
 		Mac: &mac.Options{
 			TitleBar:             mac.TitleBarHiddenInset(),
 			Appearance:           mac.NSAppearanceNameDarkAqua,
