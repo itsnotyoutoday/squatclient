@@ -50,16 +50,24 @@ func (s *Service) ListWorlds() ([]config.World, error) { return s.cfg.Worlds(), 
 
 // SaveWorld creates or updates a world; the stored copy is returned.
 func (s *Service) SaveWorld(w config.World) (config.World, error) {
+	var old *config.World
+	if w.ID != "" {
+		if o, err := s.cfg.World(w.ID); err == nil {
+			old = &o
+		}
+	}
 	out, err := s.cfg.SaveWorld(w)
 	if err != nil {
 		return config.World{}, err
 	}
 	s.syncWorlds()
+	s.afterSaveWorld(old, out) // a world routed through TinyFugue is a TinyFugue world record too
 	return out, nil
 }
 
 // DeleteWorld removes a world and its keychain entry.
 func (s *Service) DeleteWorld(id string) error {
+	gone, gerr := s.cfg.World(id)
 	if err := s.cfg.DeleteWorld(id); err != nil {
 		return err
 	}
@@ -67,6 +75,9 @@ func (s *Service) DeleteWorld(id string) error {
 		s.log.Warn("delete secret", "world", id, "err", err)
 	}
 	s.syncWorlds()
+	if gerr == nil {
+		s.afterDeleteWorld(gone)
+	}
 	return nil
 }
 
@@ -127,6 +138,9 @@ func (s *Service) Connect(t ConnectTarget) (engine.SessionInfo, error) {
 			if err != nil {
 				return engine.SessionInfo{}, fmt.Errorf("password for %s is unavailable: %w", w.Name, err)
 			}
+		}
+		if sq, ok := s.tfSquatterID(w.Via); ok {
+			return s.dialTFWorld(sq, w, pw)
 		}
 		return s.eng.Dial(toEngineWorld(w, s.cfg.Settings().DefaultEncoding), pw)
 	}

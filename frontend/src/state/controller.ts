@@ -116,6 +116,10 @@ export async function startController(
       });
       if (q.suspended !== undefined) useUi.getState().setSuspended(q.suspended);
     }),
+    engine.on('worlds', () => {
+      // the world list changed behind the UI's back (TinyFugue renamed a world): reload it
+      void engine.listWorlds().then((w) => useUi.getState().setWorlds(w));
+    }),
     engine.on('control-pending', (p) => {
       const name = useSessions.getState().sessions[p.session]?.name ?? 'TinyFugue';
       useUi.getState().toast('info', `Waiting for TinyFugue's user to allow ${p.axis} = ${p.mode} on ${name}…`);

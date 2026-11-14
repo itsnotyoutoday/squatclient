@@ -265,7 +265,9 @@ export interface EngineEvents {
   /** TinyFugue asks its user (squat_takeover=ask) whether this device may take control. */
   'control-pending': { session: string; axis: 'input' | 'automation'; mode: string; deviceName?: string };
   /** Another device changed TinyFugue's world records: reload the list. */
-  'tf-worlds': { squatter: string };
+  'tf-worlds': { squatter: string; oldName?: string; newName?: string };
+  /** The list of worlds changed behind the UI's back (e.g. TinyFugue renamed one): reload it. */
+  worlds: { reason?: string };
   /** MSDP variables a game sent (changed variables only). */
   msdp: { session: string; vars: Record<string, unknown> };
   /** Snapshot of a session's GMCP/MSDP data (after attach or on request). */
@@ -550,6 +552,10 @@ export interface EngineAPI {
   listTFWorlds(squatterId: string): Promise<TFWorld[]>;
   putTFWorld(squatterId: string, w: TFWorldPut): Promise<void>;
   deleteTFWorld(squatterId: string, name: string): Promise<void>;
+  /** Rename a world record in TinyFugue (also while connected); a world of this app routed through it follows. */
+  renameTFWorld(squatterId: string, name: string, newName: string): Promise<void>;
+  /** Rename the world behind a TinyFugue connection (its tab) in TinyFugue; the tab and the local world follow. */
+  renameTFSession(sessionId: string, newName: string): Promise<void>;
   /** Open a connection from one of TinyFugue's own world records. */
   connectTFWorld(squatterId: string, name: string): Promise<SessionInfo>;
   /** Run a TinyFugue command (admin devices only). */

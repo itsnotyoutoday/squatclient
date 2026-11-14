@@ -24,6 +24,7 @@ import { AboutDialog } from './components/dialogs/AboutDialog';
 import { SquattersDialog } from './components/dialogs/SquattersDialog';
 import { TFWorldsDialog } from './components/dialogs/TFWorldsDialog';
 import { TFScriptsDialog } from './components/dialogs/TFScriptsDialog';
+import { RenameDialog } from './components/dialogs/RenameDialog';
 import { canType } from './lib/tfcontrol';
 import { AwayDialog } from './components/dialogs/AwayDialog';
 import HistoryBrowser from './components/history/HistoryBrowser';
@@ -51,6 +52,8 @@ function Dialogs() {
       return <TFWorldsDialog />;
     case 'tfscripts':
       return <TFScriptsDialog />;
+    case 'rename':
+      return <RenameDialog />;
     case 'help':
       return (
         <Suspense fallback={null}>

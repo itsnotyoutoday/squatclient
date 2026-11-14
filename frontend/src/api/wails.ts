@@ -148,6 +148,8 @@ export class WailsEngine implements EngineAPI {
   listTFWorlds = (id: string) => list(call<TFWorld[] | null>('ListTFWorlds', id));
   putTFWorld = (id: string, w: TFWorldPut) => call<void>('PutTFWorld', id, w);
   deleteTFWorld = (id: string, name: string) => call<void>('DeleteTFWorld', id, name);
+  renameTFWorld = (id: string, name: string, newName: string) => call<void>('RenameTFWorld', id, name, newName);
+  renameTFSession = (id: string, newName: string) => call<void>('RenameTFSession', id, newName);
   connectTFWorld = (id: string, name: string) => call<SessionInfo>('ConnectTFWorld', id, name);
   tfExec = (id: string, line: string) =>
     call<TFExecResult>('TFExec', id, line).then((r) => ({ ...r, out: r.out ?? [] }));

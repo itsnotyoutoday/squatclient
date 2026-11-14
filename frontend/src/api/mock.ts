@@ -88,6 +88,7 @@ export class MockEngine implements EngineAPI {
   private squatters: SquatterConfig[] = [];
   private pending = new Map<string, SquatterConfig>();
   private tfWorlds = new Map<string, TFWorld[]>();
+  private tfTemp = 0;
   private tfScripts = new Map<string, Map<string, { content: string; mtime: number }>>();
   /** Mock of TinyFugue's squat_scripts setting: 'off' refuses, 'safe' / 'on' accept. */
   tfScriptsMode: 'off' | 'safe' | 'on' = 'safe';
@@ -500,6 +501,32 @@ export class MockEngine implements EngineAPI {
       (this.tfWorlds.get(squatterId) ?? []).filter((w) => w.name !== name),
     );
   }
+  async renameTFWorld(squatterId: string, name: string, newName: string): Promise<void> {
+    const list = this.tfWorlds.get(squatterId) ?? [];
+    const w = list.find((x) => x.name === name);
+    if (!w) throw new Error('no such world');
+    if (!/^[^\s(][^\s]*$/.test(newName) || newName === 'default') throw new Error('illegal world name');
+    if (list.some((x) => x.name === newName && x !== w)) throw new Error(`a world named ${newName} already exists`);
+    w.name = newName;
+    delete w.temp; // a temporary world becomes a kept one
+    // sessions of that world follow, like the tab of a connected world
+    for (const sd of this.sessions.values()) {
+      if (sd.info.via === squatterId && sd.info.tf?.world === name) {
+        sd.info.name = newName;
+        sd.info.tf = { ...sd.info.tf, world: newName };
+        this.emit('session', this.snapshot(sd));
+      }
+    }
+    for (const c of this.worlds) {
+      if (c.via === squatterId && c.name === name) c.name = newName;
+    }
+    this.emit('tf-worlds', { squatter: squatterId, oldName: name, newName });
+    this.emit('worlds', { reason: 'renamed in TinyFugue' });
+  }
+  async renameTFSession(sessionId: string, newName: string): Promise<void> {
+    const sd = this.tfSession(sessionId);
+    await this.renameTFWorld(sd.info.via, sd.info.tf!.world, newName);
+  }
   async connectTFWorld(squatterId: string, name: string): Promise<SessionInfo> {
     const w = (this.tfWorlds.get(squatterId) ?? []).find((x) => x.name === name);
     if (!w) throw new Error(`no such world: ${name}`);
@@ -612,6 +639,19 @@ export class MockEngine implements EngineAPI {
         target.tls,
         'connecting',
       );
+      // by address through a TinyFugue squatter: TinyFugue makes a temporary "(unnamedN)" world for it
+      const via = target.via ?? '';
+      if (this.squatters.find((q) => q.id === via)?.kind === 'tf-squatterd') {
+        const n = ++this.tfTemp;
+        sd.info.via = via;
+        sd.info.name = `(unnamed${n})`;
+        sd.info.link = 'attached';
+        sd.info.tf = { world: `(unnamed${n})`, fg: false, input: 'tf', automation: 'tf' };
+        this.tfWorlds.set(via, [
+          ...(this.tfWorlds.get(via) ?? []),
+          { name: `(unnamed${n})`, host: target.host, port: String(target.port), passSet: false, temp: true },
+        ]);
+      }
     }
     const info = this.snapshot(sd);
     const finish = (): void => {

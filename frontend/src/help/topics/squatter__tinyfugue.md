@@ -33,6 +33,19 @@ Triggers run in only one place at a time, so nothing fires twice. By default Tin
 
 Lines you did not type are marked in the output: `[tf]` for TinyFugue's own keyboard and `[remote]` for another device.
 
+## One set of worlds, kept in agreement
+
+A world whose **Connect via** is a TinyFugue squatter *is* a world record in TinyFugue, and the two are kept in agreement both ways:
+
+- **Save, rename or delete it here** and TinyFugue's record is created, renamed or deleted (and saved with `/saveworld`, so it survives a restart). Credentials are never copied: this app logs in with its own saved password, unless the record in TinyFugue has its own login.
+- **Rename it in TinyFugue** (or add, delete or change one at its keyboard) and the tab, this app's world and the world lists here follow.
+- **Connecting** goes by that record, so the tab, the world and TinyFugue all carry the same name.
+- **Rename a tab** (right-click the tab, **Rename (in TinyFugue)…**) and the world is renamed in TinyFugue, here, and on the tab.
+
+A connection you opened by address (not from a world) is only a temporary world in TinyFugue, `(unnamed1)` and the like. Right-click its tab and choose **Save as a world in TinyFugue…**: it becomes a named world in TinyFugue (kept after the connection closes) and in your list, and the tab follows. In TinyFugue itself the same is `/renameworld <name>`.
+
+Tabs of connections that run through TinyFugue end in an orange **(tf)**; hover a tab to see which squatter holds the connection.
+
 ## TinyFugue's worlds
 
 Press **Worlds…** next to a TinyFugue squatter to see, add, edit, delete and connect TinyFugue's own world records. Passwords are write-only: they are stored in TinyFugue and never shown or kept by SquatClient. TinyFugue logs in by itself, so SquatClient sends nothing for the login. A **viewer** device can look and connect but not edit.

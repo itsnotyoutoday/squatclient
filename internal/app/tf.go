@@ -203,3 +203,9 @@ func (s *Service) ListTFScripts(squatterID string) ([]TFScript, error) {
 func (s *Service) DeleteTFScript(squatterID, name string) error {
 	return s.eng.DeleteTFScript(squatterID, name)
 }
+
+// RenameTFWorld gives one of TinyFugue's world records a new name; a world of this app that is
+// routed through it follows (see tfmirror.go).
+func (s *Service) RenameTFWorld(squatterID, name, newName string) error {
+	return s.eng.RenameTFWorld(squatterID, name, strings.TrimSpace(newName), true)
+}

@@ -1122,3 +1122,11 @@ body.resizing {
 .seg.control select {
   font: inherit;
 }
+
+/* a connection that runs through TinyFugue: (tf) in orange after the name */
+.tfmark {
+  color: #e8890c;
+  font-size: 0.85em;
+  font-weight: 600;
+  margin-left: 0.25em;
+}
