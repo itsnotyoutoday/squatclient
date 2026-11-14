@@ -48,3 +48,10 @@ Client features that only fit one family of games are modules, gated by the sess
 families can get their own modules later. To do: a native-menu item that follows the module (the
 View > Object Editor entry is still always enabled and just reports when it does not apply), and
 per-flavour differences inside the MU* module (function names, `@list flags` formats) keyed on `gameType`.
+
+## Squatter-side automation
+
+Scripts placed on the squatter run while no client is attached; no shell, file or network access on
+the squatterd; opt-in by `squatterd --allow-automation` and a per-device permission. Design:
+[SQUATTER-AUTOMATION.md](SQUATTER-AUTOMATION.md). Phases: notify-only triggers, then placed TF/Lua
+scripts, then the client UI.
