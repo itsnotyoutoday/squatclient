@@ -49,6 +49,15 @@ fingerprint pinning is already there). What is reused is the user's **SSH key pa
   could redeem it with their own key and read the sessions. Every key addition is shown on the user's
   other devices and written to the audit log. Reset is the admin's way to give back access, and it
   destroys the old sessions, so it cannot be used to take one over.
+- **Host shell:** the command line works on the data directory directly, so it can do every admin
+  action and more (add a key to any user, read logs on disk): whoever has a shell on the host, or runs
+  the squatterd's account, is the final authority, and no software rule can stop someone who can edit its
+  files. To keep it honest, anything added from the shell is shown on that user's devices ("a key was
+  added from the host") and written to the audit log. Treat the shell as break-glass for whoever runs
+  the host, and the remote admin key as day-to-day user management under the limits above. With one
+  squatterd per operating-system account, the shell user is simply the owner.
+- A user should enrol at least two devices: if every device and key is lost, no one can recover the
+  running sessions, only reset the account (which ends them). The app can warn when a user has one.
 - Builds on the device roles (`viewer`, `operator`, `admin`) already started in the daemon tree.
 
 ## One squatterd per person, or one hub with named users
