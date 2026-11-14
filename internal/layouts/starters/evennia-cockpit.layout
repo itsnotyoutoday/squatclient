@@ -190,15 +190,31 @@ squat.var.set("levelups", squat.var.get("levelups", 0))
 ---------------------------------------------------------------------------------------------------
 local cap = nil
 
-local function finish()
-  local c = cap
-  cap = nil
-  if c then c.done(c.lines) end
-end
+local finish
 
 local function arm(wait)
   if cap.timer then squat.cancel(cap.timer) end
   cap.timer = squat.after(wait, finish)
+end
+
+-- Long output is paged by some games ("(Page [1/2] next | previous | top | end | quit)"): keep asking for
+-- the next page, then leave the pager, so the capture holds everything and the game is left as it was.
+function finish()
+  local c = cap
+  if not c then return end
+  local cur, total = (c.lines[#c.lines] or ""):match("^%(Page %[(%d+)/(%d+)%]")
+  if cur then
+    c.lines[#c.lines] = nil
+    if tonumber(cur) < tonumber(total) then
+      squat.send("next", world)
+    else
+      squat.send("quit", world)
+    end
+    arm(0.8)
+    return
+  end
+  cap = nil
+  c.done(c.lines)
 end
 
 local function request(cmd, done)
@@ -212,7 +228,7 @@ end
 squat.on("line", function(l)
   world = l.world or world
   if cap and l.live then
-    cap.lines[#cap.lines + 1] = l.text
+    if not l.text:match("^Exited pager") then cap.lines[#cap.lines + 1] = l.text end
     arm(0.4)
     return { gag = true }
   end
