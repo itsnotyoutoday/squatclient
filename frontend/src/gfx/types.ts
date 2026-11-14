@@ -42,6 +42,6 @@ export interface SceneConfig {
   font: string;
   /** a rectangle in scene units where the game's text output shows through */
   port?: [number, number, number, number];
-  /** a rectangle in scene units where the real input line sits */
-  inputPort?: [number, number, number, number];
+  /** id of an object whose x y w h are the text port (it can be tweened: the console's LOG toggle) */
+  portNode?: string;
 }

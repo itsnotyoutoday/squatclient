@@ -392,9 +392,7 @@ func TestRecordDevPageStreams(t *testing.T) {
 			g.h.advance(time.Second)
 			var delta []gfx.Op
 			for _, o := range g.ops[n:] {
-				if o["op"] != "vars" {
-					delta = append(delta, o)
-				}
+				delta = append(delta, o)
 			}
 			name := "lcars-" + strings.NewReplacer(":", "-", "_", "").Replace(key) + "-" + first + ".json"
 			if alert {
@@ -432,7 +430,7 @@ func TestLcarsReopensAndDocksInTheOutputArea(t *testing.T) {
 	f := startLua(t)
 	f.rt.OnInput("w", "/lcars")
 	sc := f.find("scene", "")
-	if sc["dock"] != "full" || fmt.Sprint(sc["port"]) != "[240 640 860 182]" {
+	if sc["dock"] != "full" || sc["portNode"] != "textport" {
 		t.Fatalf("default placement %v", sc)
 	}
 	f.rt.OnInput("w", "/lcars stop")
@@ -459,7 +457,7 @@ func TestLcarsReopensAndDocksInTheOutputArea(t *testing.T) {
 			last = o
 		}
 	}
-	if last == nil || last["dock"] != "top" || last["port"] != "none" {
+	if last == nil || last["dock"] != "top" || last["portNode"] != "none" {
 		t.Fatalf("size command: %v", last)
 	}
 	f.rt.OnInput("w", "/lcars full")
@@ -554,4 +552,64 @@ func countEchoes(h *luaHost, sub string) int {
 		}
 	}
 	return n
+}
+
+// The LOG button animates the text port between compact and about 80% of the content height; the state survives
+// console switches and reopening, and everything is renderer-side tweens.
+func TestLcarsLogToggleAnimatesThePortAndSurvivesSwitchesAndReopen(t *testing.T) {
+	f := startLua(t)
+	f.rt.OnInput("w", "/lcars")
+	tweenH := func(from int, id string) float64 {
+		var h float64
+		for _, o := range f.ops[from:] {
+			if o["op"] == "tween" && o["target"] == id {
+				if tr, ok := o["tracks"].(map[string]any)["h"].(map[string]any); ok {
+					h, _ = tr["to"].(float64)
+				}
+			}
+		}
+		return h
+	}
+	n := len(f.ops)
+	if err := f.hub.Event("lcars", "logbtn", "click", 1, 1); err != nil {
+		t.Fatal(err)
+	}
+	if h := tweenH(n, "textport"); h < 500 || h > 600 { // about 80% of the 710 px content height
+		t.Fatalf("expanded port height %v", h)
+	}
+	for _, id := range []string{"vsg", "rdg", "ctg", "m_eng", "m_tac", "m_ship"} {
+		found := false
+		for _, o := range f.ops[n:] {
+			if o["op"] == "tween" && o["target"] == id {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("%s was not tweened for the expanded layout", id)
+		}
+	}
+	f.h.advance(time.Second) // the end state is mirrored for a later reopen
+	if got := f.hub.Snapshot(); got == nil {
+		t.Fatal("no snapshot")
+	}
+	var mirrored float64
+	for _, o := range f.hub.Snapshot() {
+		if o["op"] == "create" && o["id"] == "textport" {
+			mirrored = o["props"].(map[string]any)["h"].(float64)
+		}
+	}
+	if mirrored != 552 {
+		t.Fatalf("mirrored port height %v", mirrored)
+	}
+	f.rt.OnInput("w", "/lcars eng") // switching consoles keeps the expanded state
+	if err := f.hub.Event("lcars", "#scene", "close", 0, 0); err != nil {
+		t.Fatal(err)
+	}
+	f.rt.OnInput("w", "/lcars")
+	n = len(f.ops)
+	f.rt.OnInput("w", "/lcars log")
+	if h := tweenH(n, "textport"); h != 182 {
+		t.Fatalf("collapse after reopen: %v", h)
+	}
+	f.errors(t)
 }

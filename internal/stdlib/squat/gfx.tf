@@ -5,7 +5,7 @@
 ;;;; squat_gfx_native=1 and the bridges below are not defined.  This file adds what is script:
 ;;;; the user-facing names and the variable sync that feeds data bindings.
 
-/loaded squat/gfx.tf
+/loaded gfx.tf
 
 /if (squat_gfx_native !~ "1") \
     /def -i _gfx    = /notify @gfx|%*%; \

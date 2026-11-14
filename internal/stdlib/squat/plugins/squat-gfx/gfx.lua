@@ -101,7 +101,7 @@ function M.reset() failures, disabled, gaveUp = 0, false, false end
 -- library, but SQUATCLIENT_TFLIB (another library) or a startup file may have replaced that. Call it from user commands.
 function M.ensure()
   M.reset()
-  local ok = squat.tf("/require gfx.tf")
+  local ok = squat.tf("/require -q gfx.tf")
   if not ok then
     disabled = true
     squat.echo("gfx: the graphics commands are not available (gfx.tf could not be loaded). Is SQUATCLIENT_TFLIB set to another library?")

@@ -94,7 +94,7 @@ export class GfxRuntime {
     const id = String(op.scene ?? 'main');
     const slot = this.slot(id);
     const wasOpen = slot.scene.cfg.open;
-    const place = JSON.stringify([slot.scene.cfg.dock, slot.scene.cfg.size, slot.scene.cfg.margin, slot.scene.cfg.w, slot.scene.cfg.h, slot.scene.cfg.bg === 'none', slot.scene.cfg.port, slot.scene.cfg.inputPort]);
+    const place = JSON.stringify([slot.scene.cfg.dock, slot.scene.cfg.size, slot.scene.cfg.margin, slot.scene.cfg.w, slot.scene.cfg.h, slot.scene.cfg.bg === 'none', slot.scene.cfg.port, slot.scene.cfg.portNode]);
     if (op.op === 'create' && op.type === 'pixelcanvas') {
       const p = (op.props ?? {}) as Record<string, unknown>;
       slot.canvases.set(String(op.id), new PixelCanvas(Number(p.w) || 1, Number(p.h) || 1, typeof p.bg === 'string' ? p.bg : undefined));
@@ -104,7 +104,7 @@ export class GfxRuntime {
     if (op.op === 'scene') {
       const c = slot.scene.cfg;
       if (op.pixel === true && op.w === undefined) { c.w = 0; c.h = 0; }
-      const placed = JSON.stringify([c.dock, c.size, c.margin, c.w, c.h, c.bg === 'none', c.port, c.inputPort]);
+      const placed = JSON.stringify([c.dock, c.size, c.margin, c.w, c.h, c.bg === 'none', c.port, c.portNode]);
       if (wasOpen !== c.open || place !== placed) this.onLayout?.();
     }
     for (const w of slot.scene.warnings.splice(0)) this.onMessage?.('warn', `gfx ${id}: ${w}`);

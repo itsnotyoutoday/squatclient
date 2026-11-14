@@ -18,13 +18,12 @@ describe('the text port and input are never covered (planScene)', () => {
     }
     expect(stripBasis('100%')).toBe(`max(0px, min(100%, calc(100% - ${MIN_TEXT_STRIP_H}px)))`);
   });
-  it('allows the frame layout only with a usable text port and input spot', () => {
-    const ok = cfg({ w: 1600, h: 900, port: [240, 640, 860, 182], inputPort: [492, 826, 762, 60] });
+  it('allows the frame layout only with a usable text port', () => {
+    const ok = cfg({ w: 1600, h: 900, port: [240, 640, 860, 182] });
     const p = planScene(ok, { w: 1100, h: 720 });
     expect(p.mode).toBe('frame');
     if (p.mode === 'frame') {
       expect(p.out.w).toBeGreaterThanOrEqual(MIN_TEXT.w);
-      expect(p.input!.h).toBeGreaterThanOrEqual(34);
     }
     // too small a pane for the scene plus a usable port: the graphics hide, the text stays
     expect(planScene(ok, { w: 380, h: 300 }).mode).toBe('hidden');
@@ -32,9 +31,9 @@ describe('the text port and input are never covered (planScene)', () => {
     expect(planScene(cfg({ port: [0, 0, 99999, 99999] }), { w: 900, h: 600 }).mode).toBe('hidden');
     expect(planScene(ok, { w: 0, h: 0 }).mode).toBe('hidden');
   });
-  it('a port too narrow or an input spot too small is refused', () => {
+  it('a port too small is refused', () => {
     expect(planScene(cfg({ w: 1600, h: 900, port: [0, 0, 40, 40] }), { w: 1600, h: 900 }).mode).toBe('hidden');
-    expect(planScene(cfg({ w: 1600, h: 900, port: [240, 640, 860, 182], inputPort: [0, 0, 20, 20] }), { w: 1600, h: 900 }).mode).toBe('hidden');
+    expect(planScene(cfg({ w: 1600, h: 900, port: [0, 0, 40, 40] }), { w: 1600, h: 900 }).mode).toBe('hidden');
   });
 });
 

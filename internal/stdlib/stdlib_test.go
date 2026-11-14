@@ -288,3 +288,14 @@ func TestGfxDemoScriptEndToEnd(t *testing.T) {
 		t.Fatalf("variable not synced to the renderer: %v", v)
 	}
 }
+
+// /lcars adds nothing to the text unless something fails: requiring gfx.tf again is silent.
+func TestRequireGfxIsQuietAndIdempotent(t *testing.T) {
+	e, h, _ := start(t)
+	before := len(h.echo)
+	_ = e.Exec("", "/require -q gfx.tf")
+	_ = e.Exec("", "/require -q gfx.tf")
+	if got := h.echo[before:]; len(got) != 0 {
+		t.Fatalf("/require -q printed %v", got)
+	}
+}

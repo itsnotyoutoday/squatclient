@@ -4,7 +4,7 @@ import type { CSSProperties, ReactNode } from 'react';
 import { OutputPane } from '../../components/output/OutputPane';
 import { InputLine } from '../../components/input/InputLine';
 import { EndedBanner } from '../../components/tabs/EndedBanner';
-import { GfxPane, useGfxInput, useGfxOrigin, useGfxPort } from '../../gfx/GfxHost';
+import { GfxPane, useGfxPortStore } from '../../gfx/GfxHost';
 import { SearchBar } from '../../components/search/SearchBar';
 import { canType } from '../../lib/tfcontrol';
 import { useUi } from '../../state/stores';
@@ -40,21 +40,28 @@ export function App({ children }: Kids) {
 export function Mush() {
   const env = useLayoutEnv();
   const searchOpen = useUi((s) => s.searchOpen);
-  const port = useGfxPort();
-  const setOrigin = useGfxOrigin();
-  const box = useRef<HTMLDivElement>(null);
+  const store = useGfxPortStore();
+  const out = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => env.register('mush'), [env]);
+  // a scene's text port: the text follows the (animated) rectangle by direct style writes, every frame
   useLayoutEffect(() => {
-    if (box.current) setOrigin({ x: box.current.offsetLeft, y: box.current.offsetTop });
-  });
+    const el = out.current;
+    if (!store || !el) return;
+    const apply = (r: { x: number; y: number; w: number; h: number } | null): void => {
+      el.classList.toggle('ported', !!r);
+      el.style.left = r ? `${r.x}px` : '';
+      el.style.top = r ? `${r.y}px` : '';
+      el.style.width = r ? `${r.w}px` : '';
+      el.style.height = r ? `${r.h}px` : '';
+    };
+    apply(store.rect);
+    return store.subscribe(apply);
+  }, [store]);
   return (
-    <div className="lay-mush" ref={box}>
+    <div className="lay-mush">
       {searchOpen && <SearchBar sessionId={env.sessionId} />}
       <GfxPane />
-      <div
-        className={port ? 'lay-output ported' : 'lay-output'}
-        style={port ? { left: port.x, top: port.y, width: port.w, height: port.h } : undefined}
-      >
+      <div className="lay-output" ref={out}>
         <OutputPane key={env.sessionId} sessionId={env.sessionId} />
       </div>
     </div>
@@ -65,11 +72,10 @@ export function Mush() {
 export function InputBar() {
   const env = useLayoutEnv();
   const s = useSession();
-  const spot = useGfxInput();
   useLayoutEffect(() => env.register('input'), [env]);
   if (!s) return null;
   if (s.state === 'ended') return <EndedBanner session={s} />;
-  const line = (
+  return (
     <InputLine
       sessionId={env.sessionId}
       remoteEcho={s.remoteEcho}
@@ -80,13 +86,6 @@ export function InputBar() {
           : 'TinyFugue has the keyboard. Use the control in the status bar to type from here.'
       }
     />
-  );
-  // a graphics scene may reserve a spot for the real input line (the console's "game input" strip)
-  if (!spot) return line;
-  return (
-    <div className="lay-input ported" style={{ left: spot.x, top: spot.y, width: spot.w, height: spot.h }}>
-      {line}
-    </div>
   );
 }
 

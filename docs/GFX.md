@@ -187,29 +187,42 @@ Frontend to host: `GfxEvent(scene, id, event, x, y)`.
 ## Where the graphics sit: around the text, never over it
 
 **Invariant, enforced by the host (`planScene` in `frontend/src/gfx/port.ts`, used by `GfxHost`):** every session keeps its
-real scrolling text output and its real input line. They belong to the app, not to a scene; scenes are laid out around
-them (the way gtf's panels surround its main region) and cannot cover, remove or capture them.
+real scrolling text output, and the app's real input bar (with History and Multi-line) stays exactly where it always was,
+below the output area. A scene lives inside the output area only: it can never move, restyle, cover or hide the input bar,
+and it cannot cover the text.
 
-* A scene with a **text port** (`port=x,y,w,h` in scene units) and optionally an **input spot** (`inputPort=x,y,w,h`) may
-  fill the output area (`dock=full`): the canvas has holes (CSS clip-path, so the pointer goes through them) exactly
-  where the real output and the real input line are placed. The console's "GAME INPUT" strip is the real input line
-  (same history, keys and paste), the middle of the frame is the real text.
+* A scene with a **text port** may fill the output area (`dock=full`). The port is either a static `port=x,y,w,h` (scene
+  units) or, better, an object named by `portNode=ID` whose `x y w h` the renderer animates. The canvas has a hole where
+  the real output is placed; the output follows the rectangle every frame by direct style writes (no jumping, scroll
+  position preserved).
+* **The canvas never takes pointer events** (`pointer-events: none`). The scene gets only events that fall outside the text
+  port and hit one of its interactive objects (hit-testing is done in JavaScript at window level), so wheel, trackpad,
+  keyboard, selection, links and copy in the text pane belong to the DOM text, independent of how a webview treats
+  clip-path hit-testing.
 * Any other scene (no port, or `dock=top|bottom`) becomes a strip above or below the text, `size=45%` or px, always
-  leaving the text at least 140 px. `left`, `right`, `float` and margins are not honoured (they could cover text).
-* If the pane is too small for the scene plus a usable port (text 240x100, input 200 wide) the graphics hide, never the
-  text. A port or input spot that leaves the pane is refused.
+  leaving the text at least 140 px. `left`, `right`, `float` and margins are not honoured.
+* If the pane is too small for the scene plus a usable port (text 240x100) the graphics hide, never the text. A port that
+  leaves the pane is refused (each frame, while it animates).
 * Safety: a renderer or shader error, a WebGL failure or three frames over a second closes the graphics (one message)
   and leaves text and input working. `/gfx reset`, `/lcars stop`, Escape (no input focused, no dialog open) and the close
   button always remove them; the window tells the script (`close` on `#scene`), so `/lcars` can reopen cleanly.
-  A frozen JS thread cannot be rescued from JS; the work per frame is bounded and the watchdog covers slow frames.
+* Objects with `key="alt+l"` are clicked by that shortcut (keyboard access to buttons).
 
-This is a host-level design inside the layout system's `<Mush />` and `<InputBar />` (the same two parts every layout
-must contain), rather than a new panel type: layouts arrange panels around the output, whereas a scene must also sit
-inside the output area and place the input line inside its frame, which a dock cannot express. Layout docks keep working
-around it (they are siblings of the output area); tested at the geometry level only (see the report).
+This is a host-level design inside the layout system's `<Mush />` (the output area; `<InputBar />` is untouched). Layout
+docks are siblings of the output area, so they keep working around it.
 
-The LCARS console: `/lcars` (frame + text port + in-frame input), `/lcars size 45` (a 45% strip, no port), `/lcars full`
-(frame again), `/lcars stop`. `/lcars` reopens a closed console, every time.
+### The LOG toggle (LCARS console)
+
+`/lcars` shows the frame with a compact text port (about 182 of 710 scene units). The **LOG - EXPAND** pill (or Alt+L,
+or `/lcars log`) tweens the port object to about 80% of the content height and back: the renderer animates the port,
+the frame round it and the other widgets with the same eased tween, and the real text follows. The state survives switching
+consoles, closing and reopening (the end state is mirrored with a `set`). Policy for the widgets around the port:
+* **sensors:** the viewscreen and radar scale to 30%, the contact list slides up beside the port, their labels fade out;
+* **engineering, tactical, ship:** the full widgets fade out and a one-line summary strip of the key readouts (bound to the
+  same variables) fades in above the port; pressing LOG again restores them. Nothing overlaps or is clipped.
+
+`/lcars size 45` gives a 45% strip above the text instead (no port, no toggle), `/lcars full` the framed console,
+`/lcars stop` closes it, and `/lcars` reopens a closed console every time.
 
 ## Rendering
 

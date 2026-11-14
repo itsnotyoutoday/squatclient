@@ -190,7 +190,7 @@
 /def -i squatters    = /_ui squatters
 
 ;;; ----------------------------------------------------------------------------- graphics
-/load -q gfx.tf
+/require -q gfx.tf
 
 ;;; /gfxdemo: a short TF script driving /gfx (loaded on first use).  The LCARS console, /lcars, is the Lua plugin squat-gfx.
 /def -i gfxdemo = /load -q gfxdemo.tf%; /gfxdemo %*
