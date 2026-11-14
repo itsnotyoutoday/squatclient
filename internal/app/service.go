@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"log/slog"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -152,6 +153,10 @@ func (s *Service) Start() {
 		}
 	}()
 }
+
+// StopScripts interrupts a runaway TinyFugue script (the engine's Ctrl-C). The
+// typed equivalent is /stop.
+func (s *Service) StopScripts() { s.eng.StopScripts() }
 
 // Shutdown gracefully closes all sessions and stops event delivery.
 func (s *Service) Shutdown() {
@@ -327,6 +332,14 @@ func (s *Service) deliver(batch []engine.Event) {
 				s.emit("data", ev.Data)
 			}
 		case engine.EvWindow:
+			if text, ok := strings.CutPrefix(ev.Text, "input:"); ok {
+				s.emit("input", map[string]string{"text": text}) // a script's /input fills the input line
+				break
+			}
+			if topic, ok := strings.CutPrefix(ev.Text, "help:"); ok {
+				s.emit("help", map[string]string{"topic": topic}) // a script's /help opens the help browser
+				break
+			}
 			if s.win != nil {
 				s.win(ev.Text)
 			}

@@ -9,6 +9,7 @@ require (
 
 require (
 	github.com/coder/websocket v1.8.15 // indirect
+	github.com/itsnotyoutoday/gtfparser v0.0.1 // indirect
 	github.com/yuin/gopher-lua v1.1.2 // indirect
 )
 
@@ -45,4 +46,9 @@ require (
 	golang.org/x/text v0.22.0 // indirect
 )
 
-replace github.com/itsnotyoutoday/squatClientDaemon => ../squatClientDaemon
+replace github.com/itsnotyoutoday/squatClientDaemon => ../squatClientDaemon-gtf
+
+// LOCAL DEVELOPMENT ONLY: the daemon branch needs unreleased engine changes
+// ("core:" commits, see squatClientDaemon docs/TF-ENGINE.md). Delete this line
+// when they are released; `require ... gtfparser` below is then the pin.
+replace github.com/itsnotyoutoday/gtfparser => /Users/rock/mush/squat/gtfparser-squat

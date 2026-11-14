@@ -27,6 +27,7 @@ import { AwayDialog } from './components/dialogs/AwayDialog';
 import HistoryBrowser from './components/history/HistoryBrowser';
 import { UploadHost } from './components/upload/UploadDialog';
 import { useGlobalKeys } from './global-keys';
+import { insertIntoInput, openHelp } from './help/command';
 import './styles/app.css';
 
 // The help browser and its content load on first use, keeping the main bundle small.
@@ -144,10 +145,14 @@ export function App({ engine }: { engine: EngineAPI }) {
       })
       .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)));
     const off = engine.on('quit', () => window.close());
+    const offHelp = engine.on('help', (p) => openHelp(p.topic));
+    const offInput = engine.on('input', (p) => insertIntoInput(p.text));
     const tick = setInterval(() => useUi.getState().tick(), 1000);
     return () => {
       dead = true;
       off();
+      offHelp();
+      offInput();
       clearInterval(tick);
       c?.dispose();
     };

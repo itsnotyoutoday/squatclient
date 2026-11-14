@@ -252,6 +252,10 @@ export interface EngineEvents {
   bell: { session: string };
   gmcp: { session: string; package: string; data: unknown };
   quit: Record<string, never>;
+  /** A script ran /help: open the help browser on this topic. */
+  help: { topic: string };
+  /** A script ran /input: insert this text into the input line (it is never sent). */
+  input: { text: string };
   /** A session was dismissed (by this or another client). */
   'session-removed': { id: string };
   /** The engine changed the foreground session (e.g. a script ran /fg). */

@@ -153,3 +153,13 @@ func (a *App) RenameTFSession(sessionID, newName string) error {
 	}
 	return s.RenameTFSession(sessionID, newName)
 }
+
+// StopScript interrupts a runaway TinyFugue script (same as typing /stop).
+func (a *App) StopScript() error {
+	s, err := a.service()
+	if err != nil {
+		return err
+	}
+	s.StopScripts()
+	return nil
+}
