@@ -1,4 +1,5 @@
-import { useLayoutEffect, useMemo, useState } from 'react';
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import type { PointerEvent as ReactPointerEvent } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import { OutputPane } from '../../components/output/OutputPane';
 import { InputLine } from '../../components/input/InputLine';
@@ -148,15 +149,101 @@ export function Dock(
     height?: number | string;
     x?: number;
     y?: number;
+    /** Let the user drag the inner edge to change the size (double-click the edge to reset). */
+    resizable?: boolean;
+    /** Limits for a resizable dock, in px. */
+    min?: number;
+    max?: number;
+    /** Names the dock so its size is remembered (default: its side). */
+    id?: string;
   },
 ) {
   const side = p.side ?? 'right';
-  const style: CSSProperties = { width: px(p.width), height: px(p.height) };
+  const vertical = side === 'left' || side === 'right'; // these are sized by width
+  const canResize = Boolean(p.resizable) && side !== 'float';
+  const key = `squat.dock.${p.id ?? side}`;
+  const initial = vertical ? p.width : p.height;
+  const [size, setSize] = useState<number | undefined>(() => {
+    if (!canResize) return undefined;
+    try {
+      const v = Number(localStorage.getItem(key));
+      if (Number.isFinite(v) && v > 0) return v;
+    } catch {
+      /* storage unavailable */
+    }
+    return typeof initial === 'number' ? initial : undefined;
+  });
+  const ref = useRef<HTMLElement>(null);
+  const min = p.min ?? 120;
+  const max = p.max ?? 800;
+  const clamp = useCallback((v: number) => Math.min(max, Math.max(min, Math.round(v))), [min, max]);
+  const save = (v: number | undefined): void => {
+    try {
+      if (v === undefined) localStorage.removeItem(key);
+      else localStorage.setItem(key, String(v));
+    } catch {
+      /* storage unavailable */
+    }
+  };
+  const drag = (e: ReactPointerEvent<HTMLDivElement>): void => {
+    const el = ref.current;
+    if (!el) return;
+    e.preventDefault();
+    const handle = e.currentTarget;
+    handle.setPointerCapture(e.pointerId);
+    const start = vertical ? e.clientX : e.clientY;
+    const from = vertical ? el.offsetWidth : el.offsetHeight;
+    // right/bottom docks grow when the edge moves left/up
+    const dir = side === 'right' || side === 'bottom' ? -1 : 1;
+    let last = from;
+    const move = (m: PointerEvent): void => {
+      last = clamp(from + dir * ((vertical ? m.clientX : m.clientY) - start));
+      setSize(last);
+    };
+    const up = (): void => {
+      handle.removeEventListener('pointermove', move);
+      handle.removeEventListener('pointerup', up);
+      handle.removeEventListener('pointercancel', up);
+      save(last);
+    };
+    handle.addEventListener('pointermove', move);
+    handle.addEventListener('pointerup', up);
+    handle.addEventListener('pointercancel', up);
+  };
+  const reset = (): void => {
+    setSize(typeof initial === 'number' ? initial : undefined);
+    save(undefined);
+  };
+
+  const style: CSSProperties = canResize
+    ? vertical
+      ? { width: size !== undefined ? `${size}px` : px(p.width), height: px(p.height) }
+      : { height: size !== undefined ? `${size}px` : px(p.height), width: px(p.width) }
+    : { width: px(p.width), height: px(p.height) };
   if (side === 'float')
     Object.assign(style, { position: 'absolute', left: p.x ?? 12, top: p.y ?? 12, zIndex: 20 });
+  if (!canResize)
+    return (
+      <aside className={`lay-dock lay-dock-${side}`} style={style}>
+        {p.children}
+      </aside>
+    );
   return (
-    <aside className={`lay-dock lay-dock-${side}`} style={style}>
-      {p.children}
+    <aside
+      ref={ref}
+      className={`lay-dock lay-dock-${side} lay-dock-resizable`}
+      style={{ ...style, padding: 0, overflow: 'hidden' }}
+    >
+      <div
+        className={`lay-grip lay-grip-${side}`}
+        role="separator"
+        aria-orientation={vertical ? 'vertical' : 'horizontal'}
+        aria-label="Resize"
+        title="Drag to resize, double-click to reset"
+        onPointerDown={drag}
+        onDoubleClick={reset}
+      />
+      <div className="lay-dock-inner">{p.children}</div>
     </aside>
   );
 }

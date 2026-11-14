@@ -49,7 +49,7 @@ describe('layouts', () => {
     // nothing reported yet: the dock is empty and hidden by CSS (:empty)
     const dock = document.querySelector('.lay-dock-right') as HTMLElement;
     expect(dock).not.toBeNull();
-    expect(dock.childElementCount).toBe(0);
+    expect((dock.querySelector('.lay-dock-inner') ?? dock).childElementCount).toBe(0);
     push(e, 'gmcp', {
       session: sid,
       package: 'Char.Vitals',

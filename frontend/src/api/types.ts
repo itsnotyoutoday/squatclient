@@ -276,6 +276,16 @@ export interface EngineEvents {
   data: SessionData;
   /** The layouts folder or the list of allowed layouts changed: reload the layout in use. */
   'layouts-changed': Record<string, never>;
+  /** The themes folder changed: reload the theme list. */
+  'themes-changed': Record<string, never>;
+}
+
+/** A file in the user's themes folder; `json` is its contents, validated by the window. */
+export interface ThemeFile {
+  id: string;
+  file: string;
+  json: string;
+  modified: number;
 }
 
 /** A layout file in the user's layouts folder (docs/LAYOUTS.md). */
@@ -619,6 +629,11 @@ export interface EngineAPI {
   deleteLayout(id: string): Promise<void>;
   layoutStarters(): Promise<LayoutStarter[]>;
   layoutsDir(): Promise<string>;
+  /** The themes folder: `<id>.json` or `<id>/theme.json` per theme. */
+  listThemes(): Promise<ThemeFile[]>;
+  themesDir(): Promise<string>;
+  saveTheme(id: string, json: string): Promise<void>;
+  deleteTheme(id: string): Promise<void>;
   /** Link a session to a saved world (after saving a quick connect as a world). */
   setSessionWorld(sessionId: string, worldId: string): Promise<void>;
   /** /suspend: detach squatter sessions (they keep running) and minimise; returns how many were detached. */

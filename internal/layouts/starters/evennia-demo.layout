@@ -4,7 +4,7 @@
 <App>
   <Row>
     <Mush />
-    <Dock side="right" width={250}>
+    <Dock side="right" width={250} resizable>
       <When gmcp="Char.Status">
         <Panel title="Character">
           <Text label="Name" value="gmcp:Char.Status.name" />

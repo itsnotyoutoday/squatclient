@@ -1,10 +1,12 @@
 package app
 
 import (
+	"fmt"
 	"path/filepath"
 	"time"
 
 	"github.com/itsnotyoutoday/squatclient/internal/layouts"
+	"github.com/itsnotyoutoday/squatclient/internal/themes"
 )
 
 // Layouts (docs/LAYOUTS.md): user files that arrange the window's built-in components. They are compiled
@@ -81,6 +83,64 @@ func (s *Service) watchLayouts() {
 				}
 				if last != "" && sig != last {
 					s.emit("layouts-changed", struct{}{})
+				}
+				last = sig
+			}
+		}
+	}()
+}
+
+// Themes: a folder of "<id>.json" files (or "<id>/theme.json"). The window validates them.
+
+func (s *Service) themeMgr() *themes.Manager {
+	return themes.New(filepath.Join(s.cfg.Dir(), "themes"))
+}
+
+// ListThemes lists the theme files in the user's folder.
+func (s *Service) ListThemes() ([]themes.File, error) { return s.themeMgr().List() }
+
+// ThemesDir is the folder the user's themes live in.
+func (s *Service) ThemesDir() string { return s.themeMgr().Dir() }
+
+// SaveTheme writes a theme (an import from the settings dialog) into the folder.
+func (s *Service) SaveTheme(id, json string) error {
+	err := s.themeMgr().Save(id, json)
+	if err == nil {
+		s.emit("themes-changed", struct{}{})
+	}
+	return err
+}
+
+// DeleteTheme removes a theme from the folder.
+func (s *Service) DeleteTheme(id string) error {
+	err := s.themeMgr().Delete(id)
+	if err == nil {
+		s.emit("themes-changed", struct{}{})
+	}
+	return err
+}
+
+// watchThemes tells the window when the themes folder changes (so an edited theme shows at once).
+func (s *Service) watchThemes() {
+	go func() {
+		t := time.NewTicker(time.Second)
+		defer t.Stop()
+		last := ""
+		for {
+			select {
+			case <-s.ctx.Done():
+				return
+			case <-t.C:
+				l, err := s.themeMgr().List()
+				if err != nil {
+					continue
+				}
+				sig := ""
+				for _, x := range l {
+					sig += fmt.Sprintf("%s:%s:%d|", x.ID, x.File, x.Modified)
+				}
+				if last != "" && sig != last {
+					s.emit("themes-changed", struct{}{})
 				}
 				last = sig
 			}

@@ -1165,8 +1165,57 @@ body.resizing {
   flex-direction: column;
   gap: 6px;
 }
-.lay-dock:empty {
+.lay-dock:empty,
+.lay-dock:has(> .lay-dock-inner:empty) {
   display: none;
+}
+.lay-dock-resizable {
+  position: relative;
+}
+.lay-dock-inner {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.lay-grip {
+  position: absolute;
+  z-index: 2;
+  background: transparent;
+}
+.lay-grip:hover,
+.lay-grip:active {
+  background: var(--ui-accent);
+  opacity: 0.6;
+}
+.lay-grip-right,
+.lay-grip-left {
+  top: 0;
+  bottom: 0;
+  width: 5px;
+  cursor: col-resize;
+}
+.lay-grip-right {
+  left: 0;
+}
+.lay-grip-left {
+  right: 0;
+}
+.lay-grip-top,
+.lay-grip-bottom {
+  left: 0;
+  right: 0;
+  height: 5px;
+  cursor: row-resize;
+}
+.lay-grip-top {
+  bottom: 0;
+}
+.lay-grip-bottom {
+  top: 0;
 }
 .lay-dock-right {
   border-left-width: 1px;

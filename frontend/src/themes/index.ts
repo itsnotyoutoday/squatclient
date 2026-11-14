@@ -4,36 +4,43 @@ import type { Theme } from './schema';
 export * from './schema';
 export { BUILTIN_THEMES, dark, light, highContrast } from './builtin';
 
-const custom = new Map<string, Theme>();
-const STORE_KEY = 'squat.customThemes';
+import { create } from 'zustand';
+import type { ThemeFile } from '../api/types';
+import { parseThemeJson } from './schema';
 
-export function registerTheme(t: Theme): void {
-  custom.set(t.id, t);
-  try {
-    localStorage.setItem(STORE_KEY, JSON.stringify([...custom.values()]));
-  } catch {
-    /* storage unavailable: theme lasts for this session only */
-  }
+// Custom themes live in the themes folder (a "<id>.json" file, or "<id>/theme.json"); the app reads them
+// through the engine and keeps the valid ones here.
+let custom: Theme[] = [];
+
+/** Bumped when the set of folder themes changes, so views showing the current theme re-read it. */
+export const useThemeVersion = create<{ version: number }>(() => ({ version: 0 }));
+
+export interface ThemeProblem {
+  file: string;
+  error: string;
 }
 
-export function loadStoredThemes(parse: (v: unknown) => Theme): void {
-  try {
-    const raw = localStorage.getItem(STORE_KEY);
-    if (!raw) return;
-    for (const v of JSON.parse(raw) as unknown[]) {
-      try {
-        const t = parse(v);
-        custom.set(t.id, t);
-      } catch {
-        /* skip invalid stored theme */
-      }
+/** Replace the folder themes with what the folder holds now. Themes that don't validate are reported, not used. */
+export function setFolderThemes(files: ThemeFile[]): ThemeProblem[] {
+  const next: Theme[] = [];
+  const problems: ThemeProblem[] = [];
+  const taken = new Set(BUILTIN_THEMES.map((t) => t.id));
+  for (const f of files) {
+    try {
+      const t = parseThemeJson(f.json);
+      if (taken.has(t.id)) throw new Error(`theme: id "${t.id}" is already used`);
+      taken.add(t.id);
+      next.push(t);
+    } catch (e) {
+      problems.push({ file: f.file, error: e instanceof Error ? e.message : String(e) });
     }
-  } catch {
-    /* ignore */
   }
+  custom = next;
+  useThemeVersion.setState((s) => ({ version: s.version + 1 }));
+  return problems;
 }
 
-export const allThemes = (): Theme[] => [...BUILTIN_THEMES, ...custom.values()];
+export const allThemes = (): Theme[] => [...BUILTIN_THEMES, ...custom];
 export const findTheme = (id: string): Theme => allThemes().find((t) => t.id === id) ?? dark;
 
 /** Apply a theme through CSS variables on `el` (default: <html>). Instant, no re-render needed for chrome. */

@@ -3,6 +3,7 @@ import type {
   LayoutBundle,
   LayoutInfo,
   LayoutStarter,
+  ThemeFile,
   EditAttrFlagResult,
   EditAttrLockResult,
   EditAttrOwnerResult,
@@ -182,6 +183,10 @@ export class WailsEngine implements EngineAPI {
   deleteLayout = (id: string) => call<void>('DeleteLayout', id);
   layoutStarters = () => list(call<LayoutStarter[] | null>('LayoutStarters'));
   layoutsDir = () => call<string>('LayoutsDir');
+  listThemes = () => list(call<ThemeFile[] | null>('ListThemes'));
+  themesDir = () => call<string>('ThemesDir');
+  saveTheme = (id: string, json: string) => call<void>('SaveTheme', id, json);
+  deleteTheme = (id: string) => call<void>('DeleteTheme', id);
   setSessionWorld = (id: string, w: string) => call<void>('SetSessionWorld', id, w);
   suspend = () => call<number>('Suspend');
   resume = () => call<void>('Resume');

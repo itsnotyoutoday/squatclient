@@ -121,6 +121,7 @@ func (s *Service) Engine() *engine.Engine { return s.eng }
 // connects autoConnect worlds.
 func (s *Service) Start() {
 	s.watchLayouts()
+	s.watchThemes()
 	ch, unsub := s.eng.Subscribe()
 	s.unsub = unsub
 	go s.pump(ch)

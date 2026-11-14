@@ -1,6 +1,9 @@
 package main
 
-import "github.com/itsnotyoutoday/squatclient/internal/layouts"
+import (
+	"github.com/itsnotyoutoday/squatclient/internal/layouts"
+	"github.com/itsnotyoutoday/squatclient/internal/themes"
+)
 
 // Layouts (see internal/app/layouts.go).
 
@@ -66,4 +69,38 @@ func (a *App) LayoutsDir() (string, error) {
 		return "", err
 	}
 	return s.LayoutsDir(), nil
+}
+
+// Themes (see internal/app/layouts.go).
+
+func (a *App) ListThemes() ([]themes.File, error) {
+	s, err := a.service()
+	if err != nil {
+		return nil, err
+	}
+	return s.ListThemes()
+}
+
+func (a *App) ThemesDir() (string, error) {
+	s, err := a.service()
+	if err != nil {
+		return "", err
+	}
+	return s.ThemesDir(), nil
+}
+
+func (a *App) SaveTheme(id, json string) error {
+	s, err := a.service()
+	if err != nil {
+		return err
+	}
+	return s.SaveTheme(id, json)
+}
+
+func (a *App) DeleteTheme(id string) error {
+	s, err := a.service()
+	if err != nil {
+		return err
+	}
+	return s.DeleteTheme(id)
 }

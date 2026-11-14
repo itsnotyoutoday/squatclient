@@ -4,7 +4,7 @@
 <App>
   <Row>
     <Mush />
-    <Dock side="right" width={230}>
+    <Dock side="right" width={230} resizable>
       <Vitals />
       <RoomInfo />
       <List title="Inventory" value="items:inv" send="look {name}" />

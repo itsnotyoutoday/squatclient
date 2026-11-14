@@ -4,18 +4,26 @@ import { useSessions, useSettings, useUi, setBufferCap } from '../../state/store
 import { seedHistory } from '../../state/history';
 import type { Settings } from '../../api/types';
 import { DEFAULT_FONT } from '../../api/types';
-import { allThemes, parseThemeJson, registerTheme } from '../../themes';
+import { allThemes, parseThemeJson, useThemeVersion } from '../../themes';
 import { Dialog, Field } from './Dialog';
 
 export function SettingsDialog() {
   const engine = useUi((s) => s.engine);
   const settings = useSettings((s) => s.settings);
   const [err, setErr] = useState('');
-  const [, force] = useState(0);
+  useThemeVersion((s) => s.version); // re-render when the themes folder changes
+  const [themesDir, setThemesDir] = useState('');
   const file = useRef<HTMLInputElement>(null);
   const fg = useSessions((s) => s.fg);
   const [stored, setStored] = useState<number | null>(null);
   const [confirmClear, setConfirmClear] = useState(false);
+
+  useEffect(() => {
+    void engine
+      ?.themesDir()
+      .then(setThemesDir)
+      .catch(() => undefined);
+  }, [engine]);
 
   // how many commands the foreground world has stored (refreshed when the size setting changes)
   useEffect(() => {
@@ -69,10 +77,10 @@ export function SettingsDialog() {
     if (!f) return;
     try {
       const t = parseThemeJson(await f.text());
-      registerTheme(t);
+      if (!engine) throw new Error('not connected to the engine');
+      await engine.saveTheme(t.id, JSON.stringify(JSON.parse(await f.text()), null, 2));
       update({ theme: t.id });
       setErr('');
-      force((n) => n + 1);
     } catch (x) {
       setErr(x instanceof Error ? x.message : String(x));
     }
@@ -103,7 +111,13 @@ export function SettingsDialog() {
             ))}
           </select>
         </Field>
-        <Field label="Import theme (JSON)">
+        <Field
+          label="Themes folder"
+          hint="Put a theme here as name.json (or name/theme.json); it appears in the list at once"
+        >
+          <code>{themesDir}</code>
+        </Field>
+        <Field label="Add a theme file">
           <input
             ref={file}
             type="file"

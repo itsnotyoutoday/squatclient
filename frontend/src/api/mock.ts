@@ -5,6 +5,7 @@ import type {
   LayoutBundle,
   LayoutInfo,
   LayoutStarter,
+  ThemeFile,
   EditAttrFlagResult,
   EditAttrLockResult,
   EditAttrOwnerResult,
@@ -577,6 +578,27 @@ export class MockEngine implements EngineAPI {
     if (!sd) throw new Error(`no such session: ${id}`);
     sd.info = { ...sd.info, ...(worldId ? { worldId } : {}) };
     this.emit('session', sd.info);
+  }
+  // ---- themes folder (the real one is a directory on disk)
+  private themeFiles = new Map<string, string>();
+  async listThemes(): Promise<ThemeFile[]> {
+    return [...this.themeFiles.entries()].map(([id, json]) => ({
+      id,
+      file: `${id}.json`,
+      json,
+      modified: 0,
+    }));
+  }
+  async themesDir(): Promise<string> {
+    return '~/.squatclient/themes';
+  }
+  async saveTheme(id: string, json: string): Promise<void> {
+    this.themeFiles.set(id, json);
+    this.emit('themes-changed', {});
+  }
+  async deleteTheme(id: string): Promise<void> {
+    this.themeFiles.delete(id);
+    this.emit('themes-changed', {});
   }
   // ---- layouts (the real compiler is in Go; the mock keeps sources and lets tests supply compiled code)
   private layoutFiles = new Map<

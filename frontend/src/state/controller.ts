@@ -3,6 +3,7 @@ import { getBuffer, dropBuffer, setBufferCap, useSessions, useSettings, useUi } 
 import { closeActiveEditorTab, toggleEditorView } from '../lib/editor/view';
 import { runUndoRedo } from '../lib/editcommands';
 import { useLayoutData } from '../layout/store';
+import { setFolderThemes } from '../themes';
 
 /** Sessions that need attention when the UI attaches: unread output or ended. */
 export function awaySessions(list: readonly SessionInfo[]): SessionInfo[] {
@@ -155,6 +156,18 @@ export async function startController(
       }
     }),
   );
+
+  // the themes folder: loaded now and whenever it changes
+  const loadThemes = (): void => {
+    void engine
+      .listThemes()
+      .then((files) => {
+        for (const p of setFolderThemes(files)) ui.toast('warn', `${p.file}: ${p.error}`);
+      })
+      .catch(() => undefined);
+  };
+  offs.push(engine.on('themes-changed', loadThemes));
+  loadThemes();
 
   const [settings, worlds, squatters, sessions] = await Promise.all([
     engine.getSettings(),

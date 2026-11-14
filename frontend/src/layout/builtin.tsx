@@ -39,7 +39,7 @@ export function SidebarRight() {
     <App>
       <Row>
         <Mush />
-        <Dock side="right" width={230}>
+        <Dock side="right" width={230} resizable>
           <Vitals />
           <RoomInfo />
           <List title="Inventory" value="items:inv" send="look {name}" />
@@ -72,7 +72,7 @@ export function EvenniaDemo() {
     <App>
       <Row>
         <Mush />
-        <Dock side="right" width={250}>
+        <Dock side="right" width={250} resizable>
           <When gmcp="Char.Status">
             <Panel title="Character">
               <Text label="Name" value="gmcp:Char.Status.name" />

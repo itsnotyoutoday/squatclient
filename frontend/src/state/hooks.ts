@@ -1,12 +1,14 @@
 import { useMemo } from 'react';
-import { findTheme } from '../themes';
+import { findTheme, useThemeVersion } from '../themes';
 import type { Theme } from '../themes';
 import type { RenderOptions, RenderTheme } from '../lib/runs';
 import { useSettings } from './stores';
 
 export function useTheme(): Theme {
   const id = useSettings((s) => s.settings.theme);
-  return useMemo(() => findTheme(id), [id]);
+  const version = useThemeVersion((s) => s.version);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  return useMemo(() => findTheme(id), [id, version]);
 }
 
 export function useRenderTheme(): RenderTheme {

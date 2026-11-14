@@ -52,3 +52,20 @@ describe('themes', () => {
     expect(() => parseTheme(null)).toThrow();
   });
 });
+
+describe('themes folder', () => {
+  it('uses valid files, reports bad ones, and refuses ids that shadow built-ins', async () => {
+    const { setFolderThemes, allThemes } = await import('../src/themes');
+    const ok = JSON.stringify({ ...dark, id: 'night', name: 'Night' });
+    const dup = JSON.stringify({ ...dark, id: 'dark', name: 'Again' });
+    const problems = setFolderThemes([
+      { id: 'night', file: 'night.json', json: ok, modified: 0 },
+      { id: 'bad', file: 'bad/theme.json', json: '{nope', modified: 0 },
+      { id: 'dup', file: 'dup.json', json: dup, modified: 0 },
+    ]);
+    expect(allThemes().map((t) => t.id)).toContain('night');
+    expect(problems.map((p) => p.file)).toEqual(['bad/theme.json', 'dup.json']);
+    setFolderThemes([]);
+    expect(allThemes().map((t) => t.id)).not.toContain('night');
+  });
+});
