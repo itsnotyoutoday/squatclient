@@ -12,7 +12,7 @@
 
 /def -i gfxdemo_run = \
     /if ({1} =~ "off") /gfx close demo%; /break%; /endif%; \
-    /gfx open demo w=800 h=450 bg=#05070d bloom=0.9%; \
+    /gfx open demo w=800 h=450 bg=#05070d bloom=0.9 dock=top size=45%%; \
     /gfx clear demo%; \
     /gfx stars sky 0 0 800 450 300 seed=3 speed=0.03%; \
     /gfx rrect bar 40 40 300 48 r=24 fill="lin(90;#ff9900,#cc6600)" glow=0.4 shadow.blur=10 shadow.dy=5%; \

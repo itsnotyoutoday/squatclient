@@ -364,6 +364,7 @@ export class Scene {
 
   // ------------------------------------------------------------------ interaction states
   private setEvents(id: string, events: string[]): void {
+    if (id === '#scene') return; // scene-level handlers (close) live in the host; the renderer reports the event itself
     const n = this.nodes.get(id);
     if (!n) throw new Error(`no object "${id}"`);
     n.events = new Set(events);

@@ -28,6 +28,13 @@ local current = "sens"
 local alert = "off"
 local timerId
 local sim
+local closed = true      -- the window is closed (stop, close button, Escape): the simulation tick must not run
+-- The console fills the output area and leaves a "text port" in it (PORT, scene units): the real game output shows through
+-- there, so people keep talking to each other. /lcars size 50 instead docks a graphics strip above the text; /lcars full
+-- goes back to the port layout.
+local PORT = {240, 640, 860, 182}
+local INPUT_PORT = {492, 826, 762, 60}   -- where the real input line sits
+local dock, size, port = "full", nil, PORT
 
 local function lighten(hex)
   local r, g, b = hex:match("#(%x%x)(%x%x)(%x%x)")
@@ -78,6 +85,10 @@ local function push()
 end
 
 local function tick()
+  if closed or not sc then -- nobody is watching: stop our own timer instead of poking a closed scene
+    if timerId then squat.cancel(timerId) timerId = nil end
+    return
+  end
   sim.sd = sim.sd + 0.1
   for _, c in ipairs(sim.c) do c.b = (c.b + c.d + 360) % 360 end
   sim.core = math.max(40, math.min(95, sim.core + math.random(-3, 3)))
@@ -101,18 +112,22 @@ local function frame()
     local o = sc:rect{id = "tb" .. i, x = s[1], y = 20, w = s[2], h = 48, fill = P[s[3]], r = i == 5 and {0, 24, 24, 0} or 0, glow = 0.06}
     T(s[3], o)
   end
-  local bot = {{354, 300, "t"}, {660, 170, "p"}, {836, 430, "q"}, {1272, 112, "s"}, {1390, 190, "x"}}
-  for i, s in ipairs(bot) do
-    T(s[3], sc:rect{id = "bb" .. i, x = s[1], y = 832, w = s[2], h = 48, fill = P[s[3]], r = i == 5 and {0, 24, 24, 0} or 0, glow = 0.06})
+  local bot = {{354, 120, "t"}, {1272, 112, "s"}, {1390, 190, "x"}}
+  for i, sg in ipairs(bot) do
+    T(sg[3], sc:rect{id = "bb" .. i, x = sg[1], y = 832, w = sg[2], h = 48, fill = P[sg[3]], r = i == 3 and {0, 24, 24, 0} or 0, glow = 0.06})
   end
   text(nil, "h1", 368, 45, "U.S.S. ENDEAVOUR", 34, "#000000", "left", {glow = 0})
   text(nil, "h2", 674, 45, "NCC-1701-F", 34, "#000000")
   text(nil, "h3", 850, 45, "DEEP SPACE FRONTIER", 34, "#000000")
   text(nil, "h4", 1404, 45, "SD {lc_sd|%.1f}", 32, "#000000")
-  text(nil, "b1", 368, 857, "{lc_mode|upper} CONSOLE", 32, "#000000")
-  text(nil, "b2", 674, 857, "ALERT {lc_alert|upper}", 32, "#000000")
-  text(nil, "b3", 850, 857, "CORE {lc_core|%d}%   HULL {lc_hull|%d}%   LOCK {lc_lock}", 30, "#000000")
+  text(nil, "h5", 1284, 45, "{lc_mode|upper}", 28, "#000000")
+  text(nil, "b1", 366, 857, "INPUT", 30, "#000000")
   text(nil, "b4", 1404, 857, "SQUATCLIENT", 32, "#000000")
+  -- the strip between the footer segments is the REAL input line (INPUT_PORT): a frame round the hole
+  T("p", sc:rect{id = "inputframe", x = INPUT_PORT[1] - 8, y = INPUT_PORT[2] - 4, w = INPUT_PORT[3] + 16, h = INPUT_PORT[4] + 8, r = 12, stroke = P.p, strokeWidth = 4, fill = "none", glow = 0.2}, false, "stroke")
+  if port then -- a frame round the text port (the hole itself shows the game output)
+    T("p", sc:rect{id = "portframe", x = port[1] - 8, y = port[2] - 8, w = port[3] + 16, h = port[4] + 16, r = 14, stroke = P.p, strokeWidth = 4, fill = "none", glow = 0.2}, false, "stroke")
+  end
   sc:rect{id = "alert_edge", x = 6, y = 6, w = W - 12, h = H - 12, r = 22, stroke = "#ff2a1f", strokeWidth = 8, fill = "none", opacity = 0, glow = 0.9, z = 50}
 end
 
@@ -130,6 +145,10 @@ local function nav()
   end
   sc:rect{id = "marker", x = 216, y = 206, w = 12, h = 60, fill = "#ffffff", glow = 0.8}
   T("t", sc:rect{id = "navfill", x = 20, y = 552, w = 190, h = 172, fill = PAL.normal.t, r = 0})
+  text(nil, "st1", 34, 580, "ALERT {lc_alert|upper}", 24, "#000000")
+  text(nil, "st2", 34, 620, "CORE {lc_core|%d}%", 24, "#000000")
+  text(nil, "st3", 34, 660, "HULL {lc_hull|%d}%", 24, "#000000")
+  text(nil, "st4", 34, 700, "LOCK {lc_lock}", 24, "#000000")
 end
 
 -- ------------------------------------------------------------------ joystick
@@ -204,7 +223,7 @@ local function sensors(parent)
   text(parent, "rdlabel", 1370, 572, "TACTICAL SENSOR ARRAY", 22, P.x, "center")
   -- contact list
   for i = 1, 6 do
-    local y = 646 + (i - 1) * 28
+    local y = 640 + (i - 1) * 28
     local row = text(parent, "ct" .. i, 1130, y, "{lc_n" .. i .. "|pad:-13} {lc_t" .. i .. "}  {lc_b" .. i .. "|%03d}  {lc_r" .. i .. "|%3d}", 24, P.k, "left",
       {hit = true, font = "Antonio"})
     row:state("hover", {fill = "#ffffff"}, {dur = 0.08})
@@ -218,11 +237,8 @@ local function sensors(parent)
     T(color, sc:rect{parent = parent, id = id .. "f", x = 360, y = y - 12, w = 10, h = 24, r = 12, fill = PAL.normal[color], glow = 0.35}):bind("w", "max(10, " .. var .. " * 3.3)", 0.9)
     text(parent, id .. "v", 710, y, "{" .. var .. "|%3d}%", 26, P.s)
   end
-  bar("hull", 592, "HULL", "lc_hull", "x")
-  bar("shd", 632, "SHIELDS", "lc_pw_shields", "q")
-  text(parent, "gl", 240, 678, "WARP FIELD STABILITY", 24, P.x)
-  sc:graph{parent = parent, id = "trend", x = 240, y = 692, w = 520, h = 118, source = "lc_trend", samples = 60, interval = 1, min = 0, max = 100,
-    stroke = P.k, strokeWidth = 3, fill = {type = "linear", angle = 180, stops = {{0, "#99ccff55"}, {1, "#99ccff00"}}}, glow = 0.3}
+  bar("hull", 576, "HULL", "lc_hull", "x")
+  bar("shd", 610, "SHIELDS", "lc_pw_shields", "q")
 end
 
 -- ------------------------------------------------------------------ engineering
@@ -314,11 +330,11 @@ local function shipconsole(parent)
   local P = PAL.normal
   text(parent, "pt", 240, 130, "POWER OVERVIEW", 34, P.x)
   for i, g in ipairs(GROUPS) do
-    local y = 176 + (i - 1) * 56
+    local y = 170 + (i - 1) * 46
     text(parent, "pg" .. i, 240, y, g[2] .. " ({sh_pg_" .. g[1] .. "|%d}%)", 24, P.k)
-    local tr = sc:rect{parent = parent, id = "pgt" .. i, x = 240, y = y + 14, w = 430, h = 22, r = 11, fill = "#0e151d", hit = true}
-    T(g[3], sc:rect{parent = parent, id = "pgf" .. i, x = 240, y = y + 14, w = 10, h = 22, r = 11, fill = P[g[3]], glow = 0.3}):bind("w", "max(10, sh_pg_" .. g[1] .. " * 4.3)", 0.8)
-    text(parent, "pgm" .. i, 680, y + 25, "{sh_pg_" .. g[1] .. " * sh_total / 100 / 1000|%.2f} GW", 22, P.s, "left")
+    local tr = sc:rect{parent = parent, id = "pgt" .. i, x = 240, y = y + 12, w = 430, h = 20, r = 10, fill = "#0e151d", hit = true}
+    T(g[3], sc:rect{parent = parent, id = "pgf" .. i, x = 240, y = y + 12, w = 10, h = 20, r = 10, fill = P[g[3]], glow = 0.3}):bind("w", "max(10, sh_pg_" .. g[1] .. " * 4.3)", 0.8)
+    text(parent, "pgm" .. i, 680, y + 22, "{sh_pg_" .. g[1] .. " * sh_total / 100 / 1000|%.2f} GW", 22, P.s, "left")
     tr:on("click", function(_, e)   -- click a bar: ask the ship for that share (the game answers by changing the data)
       local pct = math.max(0, math.min(100, math.floor((e.x - 240) / 4.3 + 0.5)))
       squat.tf(string.format("/input power %s %d", g[1], pct))
@@ -350,10 +366,10 @@ local function shipconsole(parent)
     f:bind("fill", "color(\"#ff4444\", \"#66cc88\", " .. d[2] .. " / " .. d[3] .. ")")
     text(parent, "dmv" .. i, 1560, y, "{" .. d[2] .. "|%.1f}", 20, P.s, "right")
   end
-  text(parent, "ft", 900, 580, "FUEL STATUS", 28, P.x)
+  text(parent, "ft", 1130, 580, "FUEL STATUS", 28, P.x)
   local tanks = {{"DEUTERIUM", "sh_deut", 500000, "#66aaff"}, {"ANTIMATTER", "sh_anti", 300000, "#ff77cc"}}
   for i, t in ipairs(tanks) do
-    local x = 900 + (i - 1) * 330
+    local x = 1130 + (i - 1) * 230
     sc:rect{parent = parent, id = "tk" .. i, x = x, y = 610, w = 56, h = 190, r = 22, stroke = P.p, strokeWidth = 3, fill = "#0a0e12"}
     local lvl = sc:rect{parent = parent, id = "tkl" .. i, x = x + 5, y = 790, w = 46, h = 4, r = 17, fill = t[4], glow = 0.5}
     lvl:bind("h", "max(4, " .. t[2] .. " / " .. t[3] .. " * 176)", 0.8)
@@ -362,13 +378,12 @@ local function shipconsole(parent)
     text(parent, "tkv" .. i, x + 70, 676, "{" .. t[2] .. "|%.0f}", 22, P.s)
     text(parent, "tkm" .. i, x + 70, 704, "OF " .. t[3], 20, P.x)
   end
-  text(parent, "wt", 240, 590, "WEAPONS", 28, P.x)
-  text(parent, "wl", 240, 632, "1  FORE PHASER", 24, P.k)
-  sc:rect{parent = parent, id = "wch", x = 240, y = 650, w = 430, h = 22, r = 11, fill = "#0e151d"}
-  sc:rect{parent = parent, id = "wchf", x = 240, y = 650, w = 10, h = 22, r = 11, fill = "#ffcc66", glow = 0.4}:bind("w", "max(10, sh_charge / 35000 * 430)", 0.8)
-  text(parent, "wcv", 680, 661, "{sh_charge|%d} / 35000", 22, P.s)
-  text(parent, "dct", 240, 712, "DAMAGE CONTROL", 28, P.x)
-  for i = 1, 3 do text(parent, "dc" .. i, 240, 730 + i * 28, "TEAM " .. i .. "   10   HULL", 22, P.k) end
+  text(parent, "wt", 240, 512, "WEAPONS", 26, P.x)
+  text(parent, "wl", 240, 546, "1  FORE PHASER", 22, P.k)
+  sc:rect{parent = parent, id = "wch", x = 240, y = 562, w = 430, h = 22, r = 11, fill = "#0e151d"}
+  sc:rect{parent = parent, id = "wchf", x = 240, y = 562, w = 10, h = 22, r = 11, fill = "#ffcc66", glow = 0.4}:bind("w", "max(10, sh_charge / 35000 * 430)", 0.8)
+  text(parent, "wcv", 680, 573, "{sh_charge|%d} / 35000", 22, P.s)
+  text(parent, "dct", 240, 606, "DAMAGE CONTROL  TEAMS 1-5: 10 CREW EACH, ASSIGNED HULL", 20, P.k)
 end
 
 function L.shipsim()
@@ -435,12 +450,13 @@ function L.show(name)
 end
 
 function L.start(console, alertState)
-  if not gfx.ensure() then return end
+  closed = false
   if timerId then squat.cancel(timerId) end
   sim = sim or newSim()
   themed, consoles = {}, {}
-  sc = gfx.scene("lcars", {w = W, h = H, bg = PAL.normal.bg, dock = "full", margin = {0, 0, 0, 0}, bloom = 0.55, fit = "contain"})
+  sc = gfx.scene("lcars", {w = W, h = H, bg = PAL.normal.bg, dock = dock, size = size, port = port or "none", inputPort = port and INPUT_PORT or "none", margin = {0, 0, 0, 0}, bloom = 0.55, fit = "contain"})
   sc:clear()
+  sc:on_close(function() L.stop(true) end)
   gfx.font("Antonio", "fonts/Antonio-VF.ttf")
   sc:open{open = true}
   gfx.vars{lc_alert = alert}
@@ -458,20 +474,36 @@ function L.start(console, alertState)
   timerId = squat.timer{every = 1, fn = tick}
 end
 
-function L.stop()
+function L.stop(fromWindow)
+  closed = true
   if timerId then squat.cancel(timerId) timerId = nil end
-  if sc then sc:close() end
+  if sc and not fromWindow then sc:close() end   -- the window already closed it when fromWindow
 end
 
 function L.command(m)
+  if (m[1] or ""):match("^%s*stop") == nil and (m[1] or ""):match("^%s*off") == nil then
+    if not gfx.ensure() then return end   -- an explicit command starts fresh: clears any earlier give-up
+  end
   local arg = (m[1] or ""):gsub("^%s+", ""):gsub("%s+$", "")
   local first, rest = arg:match("^(%S*)%s*(.*)$")
   if first == "stop" or first == "off" then L.stop()
   elseif first == "alert" then if sc then L.alert(rest == "red" and "red" or "off") end
+  elseif first == "full" then
+    dock, size, port = "full", nil, PORT
+    L.start(current or "sens")
+  elseif first == "size" then
+    local n = tonumber(rest)
+    if not n or n < 15 or n > 100 then squat.echo("usage: /lcars size 15-100 (percent of the output area)") return end
+    dock, size, port = "top", n .. "%", nil
+    L.start(current or "sens")
   elseif first == "eng" or first == "tac" or first == "sens" or first == "ship" or first == "" then
-    if sc and consoles[first == "" and "sens" or first] then L.show(first == "" and "sens" or first)
+    if sc and consoles[first == "" and "sens" or first] then
+      closed = false
+      sc:open{dock = dock, size = size, port = port or "none", inputPort = port and INPUT_PORT or "none", open = true}   -- reopens after the close button / Escape / /lcars stop
+      if not timerId then timerId = squat.timer{every = 1, fn = tick} end
+      L.show(first == "" and "sens" or first)
     else L.start(first ~= "" and first or "sens") end
-  else squat.echo("usage: /lcars [sens|eng|tac|alert red|off|stop]") end
+  else squat.echo("usage: /lcars [sens|eng|tac|ship|full|size N|alert red|off|stop]") end
 end
 
 -- A game's GMCP feeds the same display: Ship.Status {Power = {Warp = 55, ...}, Fuel = {...}} becomes sh_* variables.

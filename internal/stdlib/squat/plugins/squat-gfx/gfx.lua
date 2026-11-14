@@ -91,12 +91,16 @@ local function props(t, skip)
   return table.concat(out, " ")
 end
 
-local failures, disabled = 0, false
+local failures, disabled, gaveUp = 0, false, false
+
+-- The failure limit only exists to stop a flood from a broken setup. An explicit user command (/lcars, /gfxdemo) starts
+-- fresh: reset() clears it.
+function M.reset() failures, disabled, gaveUp = 0, false, false end
 
 -- Makes sure the TF side (gfx.tf: the /gfx and /canvas wrappers) is loaded. It is part of SquatClient's standard
--- library, but SQUATCLIENT_TFLIB (another library) or a startup file may have replaced that.
+-- library, but SQUATCLIENT_TFLIB (another library) or a startup file may have replaced that. Call it from user commands.
 function M.ensure()
-  if disabled then return false end
+  M.reset()
   local ok = squat.tf("/require gfx.tf")
   if not ok then
     disabled = true
@@ -117,7 +121,10 @@ local function run(line)
   squat.log("gfx: " .. tostring(err) .. " (" .. line .. ")", "warn")
   if failures >= 5 then -- a broken setup must not flood the log and the window with hundreds of errors
     disabled = true
-    squat.echo("gfx: too many failed graphics commands, giving up (see the log). /reload re-enables.")
+    if not gaveUp then
+      gaveUp = true
+      squat.echo("gfx: too many failed graphics commands, giving up until the next /lcars or /gfxdemo (see the log).")
+    end
   end
   return false
 end
@@ -234,6 +241,13 @@ end
 function Scene:get(id) return self.objects[id] end
 function Scene:open(t) run("/gfx open " .. self.id .. " " .. props(t or {})); return self end
 function Scene:close() run("/gfx close " .. self.id) end
+
+-- scene:on_close(fn): the window closed the scene (close button, Escape); fn() runs
+function Scene:on_close(fn)
+  select(self)
+  handlers[self.id .. "\0#scene\0close"] = {obj = self, fn = function() fn() end}
+  run("/gfx on #scene close /_gfxev " .. self.id .. " #scene close $x $y")
+end
 function Scene:clear() select(self); run("/gfx clear " .. self.id); self.objects = {} end
 function Scene:bloom(strength, radius) select(self); run("/gfx bloom " .. strength .. " " .. (radius or 1)) end
 

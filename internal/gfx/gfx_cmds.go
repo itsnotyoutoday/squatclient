@@ -41,13 +41,16 @@ func init() {
 	typeSpec["emit"] = typeSpec["emitter"]
 }
 
-var eventNames = map[string]bool{"click": true, "down": true, "up": true, "enter": true, "leave": true, "move": true, "wheel": true, "drag": true, "settle": true}
+var eventNames = map[string]bool{"click": true, "down": true, "up": true, "enter": true, "leave": true, "move": true, "wheel": true, "drag": true, "settle": true, "close": true}
 
 func (h *Hub) cur(create bool) *scene { return h.st.get("", create) }
 
 func (h *Hub) needNode(s *scene, id string) error {
 	if id == "" {
 		return fmt.Errorf("gfx: an object id is required")
+	}
+	if id == "#scene" { // scene-level events (close)
+		return nil
 	}
 	if _, ok := s.nodes[id]; ok {
 		return nil

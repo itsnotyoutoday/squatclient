@@ -22,7 +22,7 @@ export const NODE_TYPES: ReadonlySet<string> = new Set([
 ]);
 
 /** drag: throttled while a draggable object moves (x, y are its offset, scaled); settle: the pointer stopped moving for a moment or was released. */
-export type PointerEventName = 'click' | 'down' | 'up' | 'enter' | 'leave' | 'move' | 'wheel' | 'drag' | 'settle';
+export type PointerEventName = 'click' | 'down' | 'up' | 'enter' | 'leave' | 'move' | 'wheel' | 'drag' | 'settle' | 'close';
 
 /** What the scene reports to its host (the Go side runs the command the script attached). */
 export interface GfxEventOut { scene: string; id: string; event: PointerEventName; x: number; y: number }
@@ -40,4 +40,8 @@ export interface SceneConfig {
   passthrough: boolean;
   stats: boolean;
   font: string;
+  /** a rectangle in scene units where the game's text output shows through */
+  port?: [number, number, number, number];
+  /** a rectangle in scene units where the real input line sits */
+  inputPort?: [number, number, number, number];
 }

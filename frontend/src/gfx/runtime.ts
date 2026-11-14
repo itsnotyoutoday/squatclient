@@ -34,6 +34,7 @@ export interface Slot {
   drag?: { node: GfxNode; home: [number, number]; r: number; scale: number; vx: string; vy: string; lastMove: number; lastEmit: number; settled: boolean };
   lastFrame: number;
   frameTimes: number[];
+  slowFrames: number;
   fps: number;
   logical: { w: number; h: number };
   error?: string;
@@ -59,7 +60,7 @@ export class GfxRuntime {
     let s = this.slots.get(id);
     if (!s) {
       const scene = new Scene(id, { vars: this.vars });
-      s = { scene, canvases: new Map(), hover: null, pressed: null, lastFrame: 0, frameTimes: [], fps: 0, logical: { w: 0, h: 0 }, alpha: false };
+      s = { scene, canvases: new Map(), hover: null, pressed: null, lastFrame: 0, frameTimes: [], slowFrames: 0, fps: 0, logical: { w: 0, h: 0 }, alpha: false };
       const slot = s;
       scene.onDelete = (n): void => {
         slot.renderer?.forget(n);
@@ -93,7 +94,7 @@ export class GfxRuntime {
     const id = String(op.scene ?? 'main');
     const slot = this.slot(id);
     const wasOpen = slot.scene.cfg.open;
-    const place = JSON.stringify([slot.scene.cfg.dock, slot.scene.cfg.size, slot.scene.cfg.margin, slot.scene.cfg.w, slot.scene.cfg.h, slot.scene.cfg.bg === 'none']);
+    const place = JSON.stringify([slot.scene.cfg.dock, slot.scene.cfg.size, slot.scene.cfg.margin, slot.scene.cfg.w, slot.scene.cfg.h, slot.scene.cfg.bg === 'none', slot.scene.cfg.port, slot.scene.cfg.inputPort]);
     if (op.op === 'create' && op.type === 'pixelcanvas') {
       const p = (op.props ?? {}) as Record<string, unknown>;
       slot.canvases.set(String(op.id), new PixelCanvas(Number(p.w) || 1, Number(p.h) || 1, typeof p.bg === 'string' ? p.bg : undefined));
@@ -103,7 +104,7 @@ export class GfxRuntime {
     if (op.op === 'scene') {
       const c = slot.scene.cfg;
       if (op.pixel === true && op.w === undefined) { c.w = 0; c.h = 0; }
-      const placed = JSON.stringify([c.dock, c.size, c.margin, c.w, c.h, c.bg === 'none']);
+      const placed = JSON.stringify([c.dock, c.size, c.margin, c.w, c.h, c.bg === 'none', c.port, c.inputPort]);
       if (wasOpen !== c.open || place !== placed) this.onLayout?.();
     }
     for (const w of slot.scene.warnings.splice(0)) this.onMessage?.('warn', `gfx ${id}: ${w}`);
@@ -261,14 +262,22 @@ export class GfxRuntime {
       r.render(sc, slot.built, sc.time, logical);
     } catch (e) {
       slot.error = (e as Error).message;
-      this.onMessage?.('error', `gfx ${sc.id}: ${slot.error}`);
+      this.onMessage?.('error', `gfx ${sc.id}: ${slot.error}; the graphics were closed (the text and input are unaffected)`);
       slot.renderer = undefined;
+      this.closeScene(sc.id);
       return false;
     }
     sc.dirty = false;
     const ft = performance.now() - t0;
     slot.frameTimes.push(ft);
     if (slot.frameTimes.length > 60) slot.frameTimes.shift();
+    // watchdog: a scene whose frames keep taking over a second is dropped, so the text and input stay usable
+    slot.slowFrames = ft > 1000 ? slot.slowFrames + 1 : 0;
+    if (slot.slowFrames >= 3) {
+      this.onMessage?.('error', `gfx ${sc.id}: frames take over a second; the graphics were closed (/lcars or /gfxdemo reopens them)`);
+      this.closeScene(sc.id);
+      return false;
+    }
     if (slot.lastFrame) slot.fps = slot.fps * 0.9 + (1000 / Math.max(1, now - slot.lastFrame)) * 0.1;
     slot.lastFrame = now;
     return true;
@@ -280,6 +289,14 @@ export class GfxRuntime {
     if (!s) return { fps: 0, cpuMs: 0, items: 0 };
     const ft = s.frameTimes;
     return { fps: s.fps, cpuMs: ft.length ? ft.reduce((a, b) => a + b, 0) / ft.length : 0, items: s.built?.items.length ?? 0 };
+  }
+
+  /** The user closed a scene (close button, Escape): hide it and tell the host/script ("close" on "#scene"). */
+  closeScene(id: string): void {
+    const s = this.slots.get(id);
+    if (!s?.scene.cfg.open) return;
+    this.apply([{ op: 'scene', scene: id, open: false }]);
+    this.onEvent?.({ scene: id, id: '#scene', event: 'close', x: 0, y: 0 });
   }
 
   // ------------------------------------------------------------------ pointer

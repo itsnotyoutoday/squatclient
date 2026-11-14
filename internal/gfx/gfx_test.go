@@ -348,3 +348,20 @@ func TestApplyRawOpsLikeARemoteClient(t *testing.T) {
 		t.Fatalf("apply %v", r.ops)
 	}
 }
+
+func TestWindowCloseEventUpdatesTheMirrorAndRunsTheHandler(t *testing.T) {
+	h, r := newHub(t)
+	mustExec(t, h, "gfx", "open s")
+	mustExec(t, h, "gfx", "on #scene close /echo closed $scene")
+	if err := h.Event("s", "#scene", "close", 0, 0); err != nil {
+		t.Fatal(err)
+	}
+	if len(r.ran) != 1 || r.ran[0] != "/echo closed s" {
+		t.Fatalf("ran %v", r.ran)
+	}
+	for _, o := range h.Snapshot() {
+		if o["op"] == "scene" && o["open"] == true {
+			t.Fatalf("a scene the window closed would reopen from the snapshot: %v", o)
+		}
+	}
+}

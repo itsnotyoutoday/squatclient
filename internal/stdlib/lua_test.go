@@ -30,6 +30,7 @@ type luaHost struct {
 	logs    []string
 	rt      *lua.Runtime
 	tfLines []string
+	echoes  []string
 	failTF  bool
 }
 
@@ -258,7 +259,7 @@ func TestLcarsDemoInLua(t *testing.T) {
 		t.Fatal("/lcars alias did not run")
 	}
 	f.errors(t)
-	need := []string{"joyknob", "joyhdg", "pgf1", "tkl1", "dmf3", "wchf", "el_top", "nav1", "nav2", "nav3", "radar", "planet", "stars", "core", "gauge", "phasers", "ralert", "trend", "sh1"}
+	need := []string{"joyknob", "joyhdg", "pgf1", "tkl1", "dmf3", "wchf", "portframe", "el_top", "nav1", "nav2", "nav3", "radar", "planet", "stars", "core", "gauge", "phasers", "ralert", "sh1"}
 	for _, id := range need {
 		if f.find("create", id) == nil {
 			t.Errorf("object %s not created", id)
@@ -423,4 +424,134 @@ func TestLcarsGivesUpQuietlyWhenGfxCommandsAreMissing(t *testing.T) {
 	if len(f.ops) != 0 {
 		t.Fatalf("ops emitted without a working /gfx: %d", len(f.ops))
 	}
+}
+
+// The console can be closed (/lcars stop, the close button, Escape) and opened again; by default it shares the
+// output area (top 60%), /lcars full and /lcars size N change that.
+func TestLcarsReopensAndDocksInTheOutputArea(t *testing.T) {
+	f := startLua(t)
+	f.rt.OnInput("w", "/lcars")
+	sc := f.find("scene", "")
+	if sc["dock"] != "full" || fmt.Sprint(sc["port"]) != "[240 640 860 182]" {
+		t.Fatalf("default placement %v", sc)
+	}
+	f.rt.OnInput("w", "/lcars stop")
+	n := len(f.ops)
+	f.rt.OnInput("w", "/lcars")
+	reopened := false
+	for _, o := range f.ops[n:] {
+		if o["op"] == "scene" && o["open"] == true {
+			reopened = true
+		}
+	}
+	if !reopened {
+		t.Fatal("/lcars after stop did not reopen the scene")
+	}
+	before := len(f.ops)
+	f.h.advance(2 * time.Second)
+	if len(f.ops) == before {
+		t.Fatal("the simulation did not restart after reopening")
+	}
+	f.rt.OnInput("w", "/lcars size 45")
+	var last gfx.Op
+	for _, o := range f.ops {
+		if o["op"] == "scene" && o["size"] == "45%" {
+			last = o
+		}
+	}
+	if last == nil || last["dock"] != "top" || last["port"] != "none" {
+		t.Fatalf("size command: %v", last)
+	}
+	f.rt.OnInput("w", "/lcars full")
+	if got := f.find("scene", ""); got == nil {
+		t.Fatal("no scene op")
+	}
+	f.errors(t)
+}
+
+// Closing the window (close button, Escape) tells the script; the console stops ticking, and /lcars brings it back
+// cleanly every time.
+func TestLcarsCloseEventStopsTheTickAndReopensCleanly(t *testing.T) {
+	f := startLua(t)
+	f.rt.OnInput("w", "/lcars")
+	for round := 0; round < 3; round++ {
+		if err := f.hub.Event("lcars", "#scene", "close", 0, 0); err != nil {
+			t.Fatal(err)
+		}
+		n := len(f.ops)
+		f.h.advance(8 * time.Second) // several ticks while closed: nothing may be sent, nothing may fail
+		if len(f.ops) != n {
+			t.Fatalf("round %d: %d ops were sent while the console was closed", round, len(f.ops)-n)
+		}
+		if !f.rt.OnInput("w", "/lcars") {
+			t.Fatal("/lcars alias missing")
+		}
+		reopened := false
+		for _, o := range f.ops[n:] {
+			if o["op"] == "scene" && o["open"] == true {
+				reopened = true
+			}
+		}
+		if !reopened || f.find("create", "radar") == nil {
+			t.Fatalf("round %d: scene not reopened", round)
+		}
+		m := len(f.ops)
+		f.h.advance(2 * time.Second)
+		if len(f.ops) == m {
+			t.Fatalf("round %d: the simulation did not restart", round)
+		}
+	}
+	f.errors(t)
+}
+
+// The failure limit protects against a flood, it never locks the user out: an explicit /lcars starts fresh.
+func TestLcarsRecoversAfterTheGiveUpLimit(t *testing.T) {
+	f := startLua(t)
+	f.rt.OnInput("w", "/lcars")
+	f.h.failTF = true
+	f.h.advance(8 * time.Second) // more than five failing ticks
+	f.h.failTF = false
+	n := len(f.ops)
+	f.rt.OnInput("w", "/lcars")
+	f.h.advance(2 * time.Second)
+	sawVars, sawOpen := false, false
+	for _, o := range f.ops[n:] {
+		if o["op"] == "vars" {
+			sawVars = true
+		}
+		if o["op"] == "scene" && o["open"] == true {
+			sawOpen = true
+		}
+	}
+	if !sawOpen || !sawVars {
+		t.Fatalf("no recovery: open=%v vars=%v", sawOpen, sawVars)
+	}
+	// and from a cold start: six commands fail (the TF side is missing), then the cause is fixed
+	g := startLua(t)
+	g.h.failTF = true
+	g.rt.OnInput("w", "/lcars")
+	g.rt.OnInput("w", "/lcars")
+	g.h.failTF = false
+	g.rt.OnInput("w", "/lcars")
+	if g.find("create", "radar") == nil {
+		t.Fatal("a fresh /lcars did not build the console once the cause was gone")
+	}
+	// the give-up message is printed once per run
+	h := startLua(t)
+	h.rt.OnInput("w", "/lcars")
+	h.h.failTF = true
+	h.h.advance(20 * time.Second)
+	if c := countEchoes(h.h, "giving up"); c > 1 {
+		t.Fatalf("give-up message %d times", c)
+	}
+}
+
+func countEchoes(h *luaHost, sub string) int {
+	n := 0
+	for _, e := range h.echoes {
+		if strings.Contains(e, sub) {
+			n++
+		}
+	}
+	return n
 }

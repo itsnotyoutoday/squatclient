@@ -30,7 +30,7 @@ import { UploadHost } from './components/upload/UploadDialog';
 import { useGlobalKeys } from './global-keys';
 import { insertIntoInput, openHelp } from './help/command';
 import { applyTfVar } from './lib/tfvars';
-import { GfxHost } from './gfx/GfxHost';
+import { GfxProvider } from './gfx/GfxHost';
 import { setTfBindings } from './lib/tfkeys';
 import './styles/app.css';
 
@@ -187,6 +187,7 @@ export function App({ engine }: { engine: EngineAPI }) {
 
   return (
     <ControllerContext.Provider value={controller}>
+      <GfxProvider engine={engine}>
       <div
         className="app"
         style={{ '--font': fontFamily, '--font-size': `${fontSize}px` } as React.CSSProperties}
@@ -221,11 +222,11 @@ export function App({ engine }: { engine: EngineAPI }) {
         )}
         <StatusBar />
         <LiveRegion />
-        <GfxHost engine={engine} />
         <Toasts />
         <Dialogs />
         <UploadHost />
       </div>
+      </GfxProvider>
     </ControllerContext.Provider>
   );
 }

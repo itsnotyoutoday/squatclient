@@ -184,6 +184,33 @@ Operations are JSON objects with `"op"` and (mostly) `"scene"`; the Go hub emits
 
 Frontend to host: `GfxEvent(scene, id, event, x, y)`.
 
+## Where the graphics sit: around the text, never over it
+
+**Invariant, enforced by the host (`planScene` in `frontend/src/gfx/port.ts`, used by `GfxHost`):** every session keeps its
+real scrolling text output and its real input line. They belong to the app, not to a scene; scenes are laid out around
+them (the way gtf's panels surround its main region) and cannot cover, remove or capture them.
+
+* A scene with a **text port** (`port=x,y,w,h` in scene units) and optionally an **input spot** (`inputPort=x,y,w,h`) may
+  fill the output area (`dock=full`): the canvas has holes (CSS clip-path, so the pointer goes through them) exactly
+  where the real output and the real input line are placed. The console's "GAME INPUT" strip is the real input line
+  (same history, keys and paste), the middle of the frame is the real text.
+* Any other scene (no port, or `dock=top|bottom`) becomes a strip above or below the text, `size=45%` or px, always
+  leaving the text at least 140 px. `left`, `right`, `float` and margins are not honoured (they could cover text).
+* If the pane is too small for the scene plus a usable port (text 240x100, input 200 wide) the graphics hide, never the
+  text. A port or input spot that leaves the pane is refused.
+* Safety: a renderer or shader error, a WebGL failure or three frames over a second closes the graphics (one message)
+  and leaves text and input working. `/gfx reset`, `/lcars stop`, Escape (no input focused, no dialog open) and the close
+  button always remove them; the window tells the script (`close` on `#scene`), so `/lcars` can reopen cleanly.
+  A frozen JS thread cannot be rescued from JS; the work per frame is bounded and the watchdog covers slow frames.
+
+This is a host-level design inside the layout system's `<Mush />` and `<InputBar />` (the same two parts every layout
+must contain), rather than a new panel type: layouts arrange panels around the output, whereas a scene must also sit
+inside the output area and place the input line inside its frame, which a dock cannot express. Layout docks keep working
+around it (they are siblings of the output area); tested at the geometry level only (see the report).
+
+The LCARS console: `/lcars` (frame + text port + in-frame input), `/lcars size 45` (a 45% strip, no port), `/lcars full`
+(frame again), `/lcars stop`. `/lcars` reopens a closed console, every time.
+
 ## Rendering
 
 Own small WebGL2 renderer, no dependency (so nothing to pin; the only new package is the dev-only

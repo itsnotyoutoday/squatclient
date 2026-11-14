@@ -126,6 +126,9 @@ func (h *Hub) Event(sceneID, id, ev string, x, y float64) error {
 	var cmd string
 	if s := h.st.scenes[sceneID]; s != nil {
 		cmd = s.handlers[id][ev]
+		if id == "#scene" && ev == "close" { // the window closed the scene (close button, Escape): keep the mirror in step
+			s.cfg["open"] = false
+		}
 	}
 	run := h.Run
 	h.mu.Unlock()

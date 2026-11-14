@@ -7,6 +7,7 @@
     <style>
       html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color: #ccc; font: 13px system-ui, sans-serif; }
       #stage { position: fixed; inset: 0; }
+      body.pane #stage { position: relative; inset: auto; }
       #stage canvas { width: 100%; height: 100%; display: block; }
       #msg { position: fixed; left: 12px; top: 12px; max-width: 70ch; white-space: pre-wrap; z-index: 5; }
       #input { position: fixed; left: 12px; bottom: 6px; right: 200px; height: 30px; line-height: 30px; padding: 0 10px; background: #0b0b0b; border: 1px solid #333; border-radius: 4px; color: #9c9; font: 14px ui-monospace, monospace; z-index: 6; opacity: 0; }

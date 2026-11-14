@@ -2,6 +2,7 @@ import { GfxRuntime } from '../runtime';
 import { GfxRenderer } from '../renderer';
 import type { GfxOp } from '../types';
 import { SMOKE } from './smoke';
+import { holeClip, planScene } from '../port';
 
 /**
  * Standalone page: runs a recorded or generated scene stream in any browser, no Wails needed.
@@ -12,6 +13,26 @@ import { SMOKE } from './smoke';
 const q = new URLSearchParams(location.search);
 const SCENE = q.get('smoke') ? 'main' : 'lcars';
 const stage = document.getElementById('stage')!;
+// ?pane=WxH shows the console the way the app does: the graphics take the top share of the output area (?size=60), the
+// text output keeps the rest, and the input line sits underneath.
+const pane = /^(\d+)x(\d+)$/.exec(q.get('pane') ?? '');
+let paneOut: HTMLElement | null = null;
+if (pane) {
+  document.body.classList.add('pane');
+  const [pw, ph] = [Number(pane[1]), Number(pane[2])];
+  const share = Number(q.get('size') ?? 60);
+  document.body.style.cssText += `;display:flex;flex-direction:column;width:${pw}px;height:${ph + 36}px;`;
+  stage.style.cssText = `position:relative;flex:0 0 ${share}%;`;
+  const out = document.createElement('div');
+  out.style.cssText = 'flex:1;min-height:0;overflow:hidden;background:#101418;color:#cfd8dc;font:13px ui-monospace,monospace;padding:6px 10px;box-sizing:border-box;';
+  out.innerHTML = ['Ann says, "Shields to full, helm."', 'Bo pages: heading change in two minutes', 'The Endeavour hums as the warp field stabilises.', 'Chen says, "Contact bearing 335, hostile."', 'You say, "Red alert."'].map((l) => `<div>${l}</div>`).join('');
+  const inp = document.createElement('div');
+  inp.id = 'input';
+  inp.style.cssText = 'position:static;opacity:1;flex:0 0 36px;height:36px;line-height:36px;border:0;border-top:1px solid #333;border-radius:0;right:auto;';
+  inp.textContent = '> ';
+  document.body.append(out, inp);
+  paneOut = out;
+}
 const msg = document.getElementById('msg')!;
 const hud = document.getElementById('hud')!;
 
@@ -67,8 +88,8 @@ rt.onEvent = (e) => {
     const power = Math.round(Math.min(100, Math.hypot(e.x, e.y)));
     if (power >= 3) {
       const box = document.getElementById('input')!;
-      box.textContent = `/echo JoyStick to ${heading} power ${power}`;
-      box.style.opacity = '1';
+      box.textContent = `> /echo JoyStick to ${heading} power ${power}`;
+      box.style.opacity = "1";
     }
   }
   const cmd = handlers[`${e.id}:${e.event}`];
@@ -107,3 +128,27 @@ setInterval(() => {
   const st = rt.stats(SCENE);
   hud.textContent = `${st.fps.toFixed(0)} fps  cpu ${st.cpuMs.toFixed(2)} ms  ${st.items} items`;
 }, 500);
+
+/** The text port: the output moves into the scene's reserved rectangle and the canvas gets a hole there (as in the app). */
+function layoutPane(): void {
+  if (!paneOut) return;
+  const slot = rt.slot(SCENE);
+  const box = { w: stage.clientWidth, h: stage.clientHeight };
+  const plan = planScene(slot.scene.cfg, box);
+  if (plan.mode === 'frame') {
+    const r = plan.out;
+    paneOut.style.cssText += `;position:absolute;left:${r.x}px;top:${r.y}px;width:${r.w}px;height:${r.h}px;flex:none;z-index:1;`;
+    stage.appendChild(paneOut);
+    const holes = [r];
+    const inp = document.getElementById('input');
+    if (plan.input && inp) {
+      const i = plan.input;
+      inp.style.cssText += `;position:absolute;left:${i.x}px;top:${i.y}px;width:${i.w}px;height:${i.h}px;flex:none;z-index:6;right:auto;bottom:auto;`;
+      stage.appendChild(inp);
+      holes.push(i);
+    }
+    canvas.style.clipPath = holeClip(box, holes);
+    canvas.style.visibility = 'visible';
+  } else if (plan.mode === 'hidden') canvas.style.visibility = 'hidden';
+}
+setInterval(layoutPane, 400);
