@@ -56,3 +56,8 @@ export const PRESETS: { id: TFPreset; label: string; hint: string }[] = [
   { id: 'takeover', label: 'Take the keyboard', hint: 'Only this client types; TinyFugue still runs triggers' },
   { id: 'full', label: 'Take over fully', hint: 'Only this client types and runs triggers' },
 ];
+
+/** How a squatter is named in a "Connect via" list: its kind first, so the two kinds are never confused. */
+export function squatterLabel(s: { name: string; kind?: string }): string {
+  return s.kind === 'tf-squatterd' ? `TinyFugue: ${s.name}` : `Squatter: ${s.name}`;
+}

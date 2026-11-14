@@ -5,6 +5,7 @@ import type { LayoutInfo } from '../../api/types';
 import type { FormEvent } from 'react';
 import type { WorldConfig } from '../../api/types';
 import { useUi } from '../../state/stores';
+import { squatterLabel } from '../../lib/tfcontrol';
 import { Dialog, Field } from './Dialog';
 
 const blank = (): WorldConfig => ({
@@ -181,7 +182,7 @@ export function WorldManager() {
                   <option value="direct">Direct</option>
                   {squatters.map((s) => (
                     <option key={s.id} value={s.id}>
-                      Squatter: {s.name}
+                      {squatterLabel(s)}
                     </option>
                   ))}
                 </select>
@@ -201,6 +202,12 @@ export function WorldManager() {
                   ))}
                 </select>
               </Field>
+              {!squatters.some((s) => s.kind === 'tf-squatterd') && (
+                <p className="hint wide">
+                  To route through TinyFugue, pair it first: Squatters (cloud button), Add a squatter, Type:
+                  TinyFugue.
+                </p>
+              )}
               <Field
                 label="Game type"
                 hint="Decides which modules apply (the Object Editor is for MU* games; other kinds get their own tools)"

@@ -14,6 +14,7 @@ export function TFWorldsDialog() {
   const [worlds, setWorlds] = useState<TFWorld[]>([]);
   const [draft, setDraft] = useState<TFWorldPut | null>(null);
   const [isNew, setIsNew] = useState(false);
+  const [origName, setOrigName] = useState('');
   const [err, setErr] = useState('');
   const canEdit = squatter?.role !== 'viewer';
   const fail = (e: unknown): void => setErr(e instanceof Error ? e.message : String(e));
@@ -44,6 +45,10 @@ export function TFWorldsDialog() {
     e.preventDefault();
     if (!engine || !sqId || !draft) return;
     try {
+      if (!isNew && origName && draft.name !== origName) {
+        await engine.renameTFWorld(sqId, origName, draft.name); // TinyFugue renames the record; sessions and local worlds follow
+        setOrigName(draft.name);
+      }
       await engine.putTFWorld(sqId, draft);
       setDraft(null);
       await reload();
@@ -68,12 +73,7 @@ export function TFWorldsDialog() {
       {draft ? (
         <form className="form grid" onSubmit={(e) => void save(e)}>
           <Field label="Name">
-            <input
-              required
-              readOnly={!isNew}
-              value={draft.name}
-              onChange={(e) => set('name', e.target.value)}
-            />
+            <input required aria-label="Name" value={draft.name} onChange={(e) => set('name', e.target.value)} />
           </Field>
           <Field label="Host">
             <input required value={draft.host} onChange={(e) => set('host', e.target.value)} />
@@ -147,6 +147,7 @@ export function TFWorldsDialog() {
                         aria-label={`Edit ${w.name}`}
                         onClick={() => {
                           setIsNew(false);
+                          setOrigName(w.name);
                           setDraft({ ...w, password: '', save: true });
                         }}
                       >

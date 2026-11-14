@@ -3,9 +3,20 @@ import { toggleEditorView } from '../../lib/editor/view';
 import { useState } from 'react';
 import { useSessions, useUi } from '../../state/stores';
 import { TabMenu } from './TabMenu';
+import type { SessionInfo, SquatterConfig } from '../../api/types';
 import { OBJECT_EDITOR, fgHasModule } from '../../lib/modules';
 import { useControllerRef } from '../../state/controller-context';
 import { clientActive, describeControl, inputShort } from '../../lib/tfcontrol';
+
+/** The hover text of a tab: the world, its address and which squatter holds the connection. */
+function tabTitle(s: SessionInfo, i: number, squatters: SquatterConfig[]): string {
+  let route = '';
+  if (s.via && s.via !== 'direct') {
+    const q = squatters.find((x) => x.id === s.via);
+    route = q ? ` \u2022 ${q.kind === 'tf-squatterd' ? 'TinyFugue' : 'squatter'}: ${q.name} (${q.host}:${q.port})` : ` \u2022 via ${s.via}`;
+  }
+  return `${s.name} (${s.host}:${s.port})${route} - Alt-${i + 1}`;
+}
 
 export function TabBar() {
   const order = useSessions((s) => s.order);
@@ -15,6 +26,7 @@ export function TabBar() {
   const canEdit = useSessions(fgHasModule(OBJECT_EDITOR));
   const view = useUi((s) => s.view);
   const controller = useControllerRef();
+  const squatters = useUi((s) => s.squatters);
   const [menu, setMenu] = useState<{ id: string; x: number; y: number } | null>(null);
 
   const close = (id: string): void => {
@@ -45,7 +57,7 @@ export function TabBar() {
               role="tab"
               aria-selected={active}
               className="tabmain"
-              title={`${s.name} (${s.host}:${s.port}) - Alt-${i + 1}`}
+              title={tabTitle(s, i, squatters)}
               onClick={() => controller?.switchTo(id)}
               onKeyDown={(e) => {
                 if (e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10')) {
@@ -57,6 +69,11 @@ export function TabBar() {
             >
               {s.state === 'connecting' && <span className="spinner" aria-label="connecting" role="img" />}
               <span className="tabname">{s.name}</span>
+              {s.tf && (
+                <span className="tfmark" aria-label="through TinyFugue">
+                  (tf)
+                </span>
+              )}
               {unread > 0 && (
                 <span className="badge unread" aria-label={`${unread} unread`}>
                   {unread > 999 ? '999+' : unread}

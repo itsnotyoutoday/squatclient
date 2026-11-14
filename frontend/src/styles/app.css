@@ -1592,3 +1592,11 @@ h3.lay-panel-title {
   border: 1px solid var(--ui-border);
   border-radius: 4px;
 }
+
+/* a connection that runs through TinyFugue: (tf) in orange after the name */
+.tfmark {
+  color: #e8890c;
+  font-size: 0.85em;
+  font-weight: 600;
+  margin-left: 0.25em;
+}

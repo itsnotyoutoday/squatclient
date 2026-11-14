@@ -22,6 +22,7 @@ import { LayoutsDialog } from './components/dialogs/LayoutsDialog';
 import { SquattersDialog } from './components/dialogs/SquattersDialog';
 import { TFWorldsDialog } from './components/dialogs/TFWorldsDialog';
 import { TFScriptsDialog } from './components/dialogs/TFScriptsDialog';
+import { RenameDialog } from './components/dialogs/RenameDialog';
 import { AwayDialog } from './components/dialogs/AwayDialog';
 import HistoryBrowser from './components/history/HistoryBrowser';
 import { UploadHost } from './components/upload/UploadDialog';
@@ -48,6 +49,8 @@ function Dialogs() {
       return <TFWorldsDialog />;
     case 'tfscripts':
       return <TFScriptsDialog />;
+    case 'rename':
+      return <RenameDialog />;
     case 'help':
       return (
         <Suspense fallback={null}>

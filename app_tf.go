@@ -135,3 +135,21 @@ func (a *App) DeleteTFScript(squatterID, name string) error {
 	}
 	return s.DeleteTFScript(squatterID, name)
 }
+
+// RenameTFWorld renames a world record in TinyFugue.
+func (a *App) RenameTFWorld(squatterID, name, newName string) error {
+	s, err := a.service()
+	if err != nil {
+		return err
+	}
+	return s.RenameTFWorld(squatterID, name, newName)
+}
+
+// RenameTFSession renames the world behind a TinyFugue connection (its tab) in TinyFugue.
+func (a *App) RenameTFSession(sessionID, newName string) error {
+	s, err := a.service()
+	if err != nil {
+		return err
+	}
+	return s.RenameTFSession(sessionID, newName)
+}

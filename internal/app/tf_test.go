@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/itsnotyoutoday/squatClientDaemon/pkg/engine"
 	"github.com/itsnotyoutoday/squatClientDaemon/pkg/msdp"
@@ -286,4 +287,149 @@ func TestTFScriptsThroughTheService(t *testing.T) {
 	if _, err := f.svc.PutTFScript(pv, "op.tf", "x", false); err == nil {
 		t.Fatal("an operator uploaded a script")
 	}
+}
+
+func tfWorldNames(f *fixture, sq string) map[string]proto.TFWorld {
+	ws, _ := f.svc.ListTFWorlds(sq)
+	m := map[string]proto.TFWorld{}
+	for _, w := range ws {
+		m[w.Name] = w
+	}
+	return m
+}
+
+func TestWorldsRoutedThroughTinyFugueAreMirroredBothWays(t *testing.T) {
+	sim := tftest.Start(t)
+	f := newFixtureAt(t, t.TempDir(), secrets.NewMemory())
+	sq := pairTF(t, f, sim, "admin")
+
+	// saving here puts the record into TinyFugue, without credentials
+	w, err := f.svc.SaveWorld(config.World{Name: "trek", Host: "trek.example", Port: 1701, Via: sq,
+		Login: &config.Login{Template: "connect {name} {password}", CharName: "kirk"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.until("the record appears in TinyFugue", func() bool { return tfWorldNames(f, sq)["trek"].Host == "trek.example" })
+	if r := tfWorldNames(f, sq)["trek"]; r.Port != "1701" || r.Char != "" || r.PassSet {
+		t.Fatalf("record %+v (credentials must not be copied)", r)
+	}
+
+	// renaming here renames the record (not a second one)
+	w.Name = "trek2"
+	if _, err := f.svc.SaveWorld(w); err != nil {
+		t.Fatal(err)
+	}
+	f.until("the record was renamed in TinyFugue", func() bool {
+		m := tfWorldNames(f, sq)
+		return m["trek2"].Name == "trek2" && m["trek"].Name == ""
+	})
+
+	// changing host or port here updates the record and keeps what TinyFugue has
+	if err := f.svc.PutTFWorld(sq, TFWorldPut{TFWorld: proto.TFWorld{Name: "trek2", Host: "trek.example", Port: "1701", Type: "tiny", Char: "tfchar"}, Save: true}); err != nil {
+		t.Fatal(err)
+	}
+	w.Port = 1702
+	if _, err := f.svc.SaveWorld(w); err != nil {
+		t.Fatal(err)
+	}
+	f.until("the port changed and TinyFugue's own character was kept", func() bool {
+		r := tfWorldNames(f, sq)["trek2"]
+		return r.Port == "1702" && r.Char == "tfchar" && r.Type == "tiny"
+	})
+
+	// renamed on TinyFugue's side: the world here follows
+	if err := f.svc.eng.RenameTFWorld(sq, "trek2", "trek3", true); err != nil {
+		t.Fatal(err)
+	}
+	f.until("the local world followed the rename", func() bool {
+		ws, _ := f.svc.ListWorlds()
+		return len(ws) == 1 && ws[0].Name == "trek3"
+	})
+	f.until("the UI is told the world list changed", func() bool { return len(f.events("worlds")) > 0 })
+
+	// deleting here deletes the record
+	if err := f.svc.DeleteWorld(w.ID); err != nil {
+		t.Fatal(err)
+	}
+	f.until("the record was deleted in TinyFugue", func() bool { return tfWorldNames(f, sq)["trek3"].Name == "" })
+}
+
+func TestConnectingAMirroredWorldIsByRecordWithTheClientsLogin(t *testing.T) {
+	sim := tftest.Start(t)
+	f := newFixtureAt(t, t.TempDir(), secrets.NewMemory())
+	sq := pairTF(t, f, sim, "admin")
+	w, err := f.svc.SaveWorld(config.World{Name: "login-test", Host: "h.example", Port: 4000, Via: sq,
+		Login: &config.Login{Template: "connect {name} {password}", CharName: "bob"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := f.svc.SetWorldPassword(w.ID, "hunter2"); err != nil {
+		t.Fatal(err)
+	}
+	si, err := f.svc.Connect(ConnectTarget{WorldID: w.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if si.TF == nil || si.TF.World != "login-test" || si.Name != "login-test" {
+		t.Fatalf("session %+v: the tab, the world and TinyFugue must carry one name", si)
+	}
+	f.liveUntil("the login line is sent by this app", 5*time.Second, func() bool {
+		for _, s := range sim.Fake.SendTexts() {
+			if s == "connect bob hunter2" {
+				return true
+			}
+		}
+		return false
+	})
+}
+
+func TestRenamingATabRenamesTheWorldInTinyFugueAndHere(t *testing.T) {
+	sim := tftest.Start(t)
+	f := newFixtureAt(t, t.TempDir(), secrets.NewMemory())
+	sq := pairTF(t, f, sim, "admin")
+	if _, err := f.svc.SaveWorld(config.World{Name: "tabworld", Host: "h.example", Port: 4000, Via: sq}); err != nil {
+		t.Fatal(err)
+	}
+	f.until("mirrored", func() bool { return tfWorldNames(f, sq)["tabworld"].Name != "" })
+	si, err := f.svc.ConnectTFWorld(sq, "tabworld")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := f.svc.RenameTFSession(si.ID, "renamed-tab"); err != nil {
+		t.Fatal(err)
+	}
+	f.until("the tab, TinyFugue's record and the local world all agree", func() bool {
+		cur, _ := f.svc.eng.Session(si.ID)
+		ws, _ := f.svc.ListWorlds()
+		return cur.Name == "renamed-tab" && tfWorldNames(f, sq)["renamed-tab"].Name != "" && len(ws) == 1 && ws[0].Name == "renamed-tab"
+	})
+	if err := f.svc.RenameTFSession(si.ID, ""); err == nil {
+		t.Fatal("an empty name was accepted")
+	}
+}
+
+func TestRenamingAnAddressConnectionTurnsItIntoAWorldOnBothSides(t *testing.T) {
+	sim := tftest.Start(t)
+	f := newFixtureAt(t, t.TempDir(), secrets.NewMemory())
+	sq := pairTF(t, f, sim, "admin")
+	si, err := f.svc.Connect(ConnectTarget{Host: "mud.example", Port: 4000, Via: sq})
+	if err != nil || si.TF == nil || !strings.HasPrefix(si.TF.World, "(") {
+		t.Fatalf("connect by address: %v %+v", err, si.TF)
+	}
+	if ws, _ := f.svc.ListWorlds(); len(ws) != 0 {
+		t.Fatalf("worlds before: %+v", ws)
+	}
+	if err := f.svc.RenameTFSession(si.ID, "adopted"); err != nil {
+		t.Fatal(err)
+	}
+	f.until("TinyFugue keeps it as a named world", func() bool {
+		r := tfWorldNames(f, sq)["adopted"]
+		return r.Name == "adopted" && !r.Temp && r.Host == "mud.example"
+	})
+	f.until("this app has the world too and the tab is linked to it", func() bool {
+		ws, _ := f.svc.ListWorlds()
+		cur, _ := f.svc.eng.Session(si.ID)
+		return len(ws) == 1 && ws[0].Name == "adopted" && ws[0].Via == sq && ws[0].Host == "mud.example" && ws[0].Port == 4000 &&
+			cur.Name == "adopted" && cur.WorldID == ws[0].ID
+	})
 }

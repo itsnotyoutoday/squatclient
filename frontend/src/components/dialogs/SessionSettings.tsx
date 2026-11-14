@@ -3,6 +3,7 @@ import type { FormEvent } from 'react';
 import { Dialog } from './Dialog';
 import { useSessions, useUi } from '../../state/stores';
 import { GAME_TYPES } from '../../lib/modules';
+import { squatterLabel } from '../../lib/tfcontrol';
 import type { LayoutInfo, WorldConfig } from '../../api/types';
 import { BUILTIN_LAYOUTS } from '../../layout/builtin';
 
@@ -46,8 +47,11 @@ export function SessionSettings() {
     );
   }
   const live = s.state !== 'ended';
-  const routeName = (via: string): string =>
-    via === 'direct' ? 'Direct' : `Squatter: ${squatters.find((q) => q.id === via)?.name ?? via}`;
+  const routeName = (via: string): string => {
+    if (via === 'direct') return 'Direct';
+    const q = squatters.find((x) => x.id === via);
+    return q ? squatterLabel(q) : `Squatter: ${via}`;
+  };
   const world = s.worldId ? worlds.find((w) => w.id === s.worldId) : undefined;
   const fail = (e: unknown): void => setMsg(e instanceof Error ? e.message : String(e));
 
@@ -126,7 +130,7 @@ export function SessionSettings() {
                 <option value="direct">Direct</option>
                 {squatters.map((q) => (
                   <option key={q.id} value={q.id}>
-                    Squatter: {q.name}
+                    {squatterLabel(q)}
                   </option>
                 ))}
               </select>

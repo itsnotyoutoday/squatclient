@@ -1,4 +1,4 @@
-import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { App } from '../src/App';
@@ -129,6 +129,89 @@ describe('TinyFugue squatter UI', () => {
     expect(await within(w).findByText('alpha')).toBeInTheDocument();
     expect(within(w).queryByRole('button', { name: 'Add world' })).toBeNull();
     expect(within(w).queryByRole('button', { name: 'Delete alpha' })).toBeNull();
+  });
+});
+
+describe('Connect via lists both kinds of squatter, named by kind', () => {
+  it('a world can be routed through the TinyFugue squatter', async () => {
+    await boot();
+    act(() => useUi.getState().openDialog('worlds'));
+    const d = await screen.findByRole('dialog', { name: 'Worlds' });
+    await userEvent.click(within(d).getByText('Hogwarts MUSH'));
+    const via = await within(d).findByLabelText(/Connect via/);
+    const opts = within(via).getAllByRole('option').map((o) => o.textContent);
+    expect(opts).toEqual(['Direct', 'Squatter: Home server', 'TinyFugue: Home TinyFugue']);
+    await userEvent.selectOptions(via, 'sq-tf');
+    expect((via as HTMLSelectElement).value).toBe('sq-tf');
+  });
+});
+
+describe('TinyFugue tabs: marker, tooltip, rename', () => {
+  it('marks a TinyFugue tab with (tf) and says in the tooltip which squatter holds it', async () => {
+    await boot();
+    const id = useSessions.getState().order[0];
+    const tab = screen.getByRole('tab', { name: /alpha/ });
+    expect(within(tab).getByLabelText('through TinyFugue')).toHaveTextContent('(tf)');
+    expect(tab.getAttribute('title')).toContain('TinyFugue: Home TinyFugue (tf.example.com:10328)');
+    expect(id).toBeTruthy();
+  });
+
+  it('renaming a tab renames the world in TinyFugue, here, and the tab', async () => {
+    const e = await boot();
+    const tab = screen.getByRole('tab', { name: /alpha/ });
+    fireEvent.contextMenu(tab);
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Rename (in TinyFugue)...' }));
+    const d = await screen.findByRole('dialog', { name: 'Rename in TinyFugue' });
+    const input = within(d).getByLabelText('Name');
+    await userEvent.clear(input);
+    await userEvent.type(input, 'has space');
+    expect(within(d).getByRole('button', { name: 'Rename' })).toBeDisabled();
+    await userEvent.clear(input);
+    await userEvent.type(input, 'alpha-prime');
+    await userEvent.click(within(d).getByRole('button', { name: 'Rename' }));
+    await waitFor(() => expect(screen.getByRole('tab', { name: /alpha-prime/ })).toBeInTheDocument());
+    expect((await e.listTFWorlds('sq-tf')).map((w) => w.name).sort()).toEqual(['alpha-prime', 'beta']);
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('a connection opened by address offers to become a world, and becomes one', async () => {
+    const e = await boot();
+    const si = await e.connect({ host: 'mud.example', port: 4000, tls: false, via: 'sq-tf' });
+    expect(si.tf?.world).toMatch(/^\(unnamed/);
+    const tab = await screen.findByRole('tab', { name: /unnamed/ });
+    fireEvent.contextMenu(tab);
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Save as a world in TinyFugue...' }));
+    const d = await screen.findByRole('dialog', { name: 'Save as a world in TinyFugue' });
+    const name = within(d).getByLabelText('Name');
+    expect(name).toHaveValue('');
+    expect(within(d).getByRole('button', { name: 'Save world' })).toBeDisabled();
+    await userEvent.type(name, 'mud-kept');
+    await userEvent.click(within(d).getByRole('button', { name: 'Save world' }));
+    await waitFor(() => expect(screen.getByRole('tab', { name: /mud-kept/ })).toBeInTheDocument());
+    const kept = (await e.listTFWorlds('sq-tf')).find((w) => w.name === 'mud-kept');
+    expect(kept).toMatchObject({ host: 'mud.example', port: '4000' });
+    expect(kept?.temp).toBeUndefined();
+  });
+
+  it('a rename made on the other side shows up here: the tab and the world list follow', async () => {
+    const e = await boot();
+    const sid = useSessions.getState().order[0];
+    await e.renameTFWorld('sq-tf', 'alpha', 'alpha-elsewhere'); // TinyFugue's side
+    await waitFor(() => expect(useSessions.getState().sessions[sid].name).toBe('alpha-elsewhere'));
+    expect(screen.getByRole('tab', { name: /alpha-elsewhere/ })).toBeInTheDocument();
+  });
+
+  it('the TinyFugue worlds dialog renames a record by editing its name', async () => {
+    const e = await boot();
+    act(() => useUi.getState().openTFWorlds('sq-tf'));
+    const d = await screen.findByRole('dialog', { name: /TinyFugue worlds/ });
+    await userEvent.click(await within(d).findByRole('button', { name: 'Edit beta' }));
+    const name = within(d).getByLabelText('Name');
+    await userEvent.clear(name);
+    await userEvent.type(name, 'beta2');
+    await userEvent.click(within(d).getByRole('button', { name: 'Save' }));
+    await waitFor(async () => expect((await e.listTFWorlds('sq-tf')).map((w) => w.name)).toContain('beta2'));
+    expect((await e.listTFWorlds('sq-tf')).map((w) => w.name)).not.toContain('beta');
   });
 });
 

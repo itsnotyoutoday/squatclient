@@ -314,7 +314,10 @@ func (s *Service) deliver(batch []engine.Event) {
 				s.emit("control-pending", ev.Pending)
 			}
 		case engine.EvTFWorlds:
-			s.emit("tf-worlds", map[string]string{"squatter": ev.Text})
+			if ev.OldName != "" && ev.NewName != "" {
+				s.reconcileRename(ev.Text, ev.OldName, ev.NewName)
+			}
+			s.emit("tf-worlds", map[string]string{"squatter": ev.Text, "oldName": ev.OldName, "newName": ev.NewName})
 		case engine.EvMsdp:
 			if ev.Msdp != nil {
 				s.emit("msdp", msdpPayload{Session: ev.Session, Vars: ev.Msdp.Vars})
