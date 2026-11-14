@@ -28,7 +28,7 @@ concurrency:
 
 env:
   DAEMON_REPO: itsnotyoutoday/squatClientDaemon
-    DAEMON_REF: ${{ inputs.daemon_ref || 'main' }}
+  DAEMON_REF: ${{ inputs.daemon_ref || 'main' }}
   WAILS_VERSION: v2.10.2
 
 permissions:
