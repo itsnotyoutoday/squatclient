@@ -42,6 +42,7 @@ import type {
   TFWorld,
   TFWorldPut,
   WorldConfig,
+  GfxOp,
 } from './types';
 
 interface WailsApp {
@@ -179,6 +180,8 @@ export class WailsEngine implements EngineAPI {
     call<TFScriptResult>('PutTFScript', id, name, content, load).then((r) => ({ ...r, out: r.out ?? [] }));
   listTFScripts = (id: string) => list(call<TFScript[] | null>('ListTFScripts', id));
   deleteTFScript = (id: string, name: string) => call<void>('DeleteTFScript', id, name);
+  gfxSnapshot = () => list(call<GfxOp[] | null>('GfxSnapshot'));
+  gfxEvent = (scene: string, id: string, event: string, x: number, y: number) => call<void>('GfxEvent', scene, id, event, x, y);
   tfKeyBindings = () => list(call<string[] | null>('TFKeyBindings'));
   tfKey = (id: string, seq: string, text: string, cursor: number) =>
     call<TFKeyResult>('TFKey', id, seq, text, cursor);

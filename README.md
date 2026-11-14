@@ -144,6 +144,16 @@ squat.on("gmcp", function(e) --[[ ... ]] end)
 
 See [`docs/LAYOUTS.md`](docs/LAYOUTS.md).
 
+## Graphics and consoles (WebGL)
+
+SquatClient has a scriptable retained-mode graphics layer: `/gfx` objects, tweens, data bindings, shaders, particles,
+a planet and a parallax starfield, bloom, pointer events and a draggable-stick control, drawn with WebGL2. It is driven
+from Lua (`require "gfx"`) or TinyFugue (`/gfx`, plus gtf's `/canvas` family), with the same JSON scene operations
+underneath. Try it in a session: `/lcars` (the full LCARS console, Lua), `/gfxdemo` (a short TF script).
+No Wails needed to look: `cd frontend && npm run dev`, then open
+`http://localhost:5173/gfx-demo.html?stream=/gfx/lcars-sens.json`. See `docs/GFX.md` (language, protocol, performance,
+screenshots in `docs/gfx-shots/`) and `docs/LIB.md` (the standard library SquatClient now ships).
+
 ## Build from source
 
 You need **Go 1.24+**, **Node 20+** and the **Wails CLI**. On Linux also GTK 3 and WebKitGTK (`libgtk-3-dev`

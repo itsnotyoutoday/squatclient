@@ -260,8 +260,10 @@ export interface EngineEvents {
   help: { topic: string };
   /** A script ran /input: insert this text into the input line (it is never sent). */
   input: { text: string };
-  /** A world command typed alone asks for its window ("worlds"). */
+  /** A world command or script asks for a window ("worlds", "settings", "layouts", ...; "gfx" shows the graphics layer). */
   dialog: { name: string };
+  /** Scene operations of the graphics language (docs/GFX.md). */
+  gfx: GfxOp[];
   /** A TinyFugue variable that shapes the output window changed (wrap, wrapsize, wrapspace, wrappunct, visual, more). */
   tfvar: { name: string; value: string };
   /** The key sequences TinyFugue scripts have bound (/bind notation). */
@@ -594,7 +596,14 @@ export interface EditExamineResult extends EditResult {
   lines: Span[][];
 }
 
+/** One operation of the graphics scene protocol. */
+export type GfxOp = { op: string; scene?: string } & Record<string, unknown>;
+
 export interface EngineAPI {
+  /** Every open graphics scene as operations (for a window that mounts after a script ran). */
+  gfxSnapshot(): Promise<GfxOp[]>;
+  /** A pointer event on a graphics object; the script's handler runs. */
+  gfxEvent(scene: string, id: string, event: string, x: number, y: number): Promise<void>;
   listWorlds(): Promise<WorldConfig[]>;
   saveWorld(w: WorldConfig): Promise<WorldConfig>;
   deleteWorld(id: string): Promise<void>;

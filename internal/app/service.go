@@ -19,6 +19,7 @@ import (
 	"github.com/itsnotyoutoday/squatClientDaemon/pkg/proto"
 
 	"github.com/itsnotyoutoday/squatclient/internal/config"
+	"github.com/itsnotyoutoday/squatclient/internal/gfx"
 	"github.com/itsnotyoutoday/squatclient/internal/layouts"
 	"github.com/itsnotyoutoday/squatclient/internal/secrets"
 )
@@ -60,6 +61,7 @@ type Service struct {
 	pair       pairing
 	hist       *historyStore
 	lay        *layouts.Manager
+	gfx        *gfx.Hub
 	varMu      sync.Mutex
 	varPending map[string]any
 	layOnce    sync.Once
@@ -110,6 +112,14 @@ func New(o Options) (*Service, error) {
 		return pw
 	}
 	eo.OnLuaVar = s.luaVarChanged
+	var gfxDirs []string
+	if eo.ConfigDir != "" {
+		gfxDirs = []string{filepath.Join(eo.ConfigDir, "lib", "squat"), eo.ConfigDir}
+	}
+	s.gfx = s.newGfx(gfxDirs...)
+	if eo.Notify == nil {
+		eo.Notify = s.notify // /gfx, /canvas and the window commands of lib/squat arrive here
+	}
 	s.eng = engine.New(eo)
 	s.eng.SetAutoReconnectSquatters(o.Config.Settings().AutoReconnectSquatters)
 	s.eng.SetShowGagged(o.Config.Settings().ShowGagged)
