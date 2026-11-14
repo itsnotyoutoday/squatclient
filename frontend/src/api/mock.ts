@@ -527,6 +527,27 @@ export class MockEngine implements EngineAPI {
     this.emit('tf-worlds', { squatter: squatterId, oldName: name, newName });
     this.emit('worlds', { reason: 'renamed in TinyFugue' });
   }
+  async renameSession(sessionId: string, newName: string): Promise<void> {
+    const name = newName.trim();
+    if (!name) throw new Error('a name is required');
+    const sd = this.must(sessionId);
+    if (sd.info.tf) return this.renameTFSession(sessionId, name);
+    const w = sd.info.worldId ? this.worlds.find((x) => x.id === sd.info.worldId) : undefined;
+    if (w) {
+      if (this.worlds.some((x) => x.id !== w.id && x.name === name)) throw new Error(`you already have a world called "${name}"`);
+      w.name = name;
+      for (const o of this.sessions.values()) {
+        if (o.info.worldId === w.id) {
+          o.info.name = name;
+          this.emit('session', this.snapshot(o));
+        }
+      }
+      this.emit('worlds', { reason: 'renamed' });
+      return;
+    }
+    sd.info.name = name; // a quick connect: only the tab
+    this.emit('session', this.snapshot(sd));
+  }
   async renameTFSession(sessionId: string, newName: string): Promise<void> {
     const sd = this.tfSession(sessionId);
     await this.renameTFWorld(sd.info.via, sd.info.tf!.world, newName);

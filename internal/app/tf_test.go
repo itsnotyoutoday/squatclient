@@ -433,3 +433,73 @@ func TestRenamingAnAddressConnectionTurnsItIntoAWorldOnBothSides(t *testing.T) {
 			cur.Name == "adopted" && cur.WorldID == ws[0].ID
 	})
 }
+
+func helperLoaded(sim *tftest.Sim) bool {
+	for _, p := range sim.Fake.LoadedScripts() {
+		if strings.HasSuffix(p, "/scripts/squatclient-hide.tf") {
+			return true
+		}
+	}
+	return false
+}
+
+func TestHelperScriptIsSentToTinyFugueByItselfWhenAnAdminConnects(t *testing.T) {
+	sim := tftest.StartWith(t, tftest.DefaultFeatures+",scripts")
+	f := newFixtureAt(t, t.TempDir(), secrets.NewMemory())
+	sq := pairTF(t, f, sim, "admin")
+	f.liveUntil("the helper script is loaded in TinyFugue", 5*time.Second, func() bool { return helperLoaded(sim) })
+	ls, err := f.svc.ListTFScripts(sq)
+	if err != nil || len(ls) != 1 || ls[0].Name != "squatclient-hide.tf" {
+		t.Fatalf("stored scripts: %v %+v", err, ls)
+	}
+	// what was sent is the gag script: it hides the query markers and refusals only while a query runs
+	for _, want := range []string{"SQUATCAP-", "-ag", "sqcap_active"} {
+		if !strings.Contains(hideScript, want) {
+			t.Fatalf("the embedded script lacks %q", want)
+		}
+	}
+}
+
+func TestHelperScriptIsNotSentWhenItShouldNot(t *testing.T) {
+	cases := []struct {
+		name, features, role string
+		setting              bool
+	}{
+		{"an operator device may not send scripts", tftest.DefaultFeatures + ",scripts", "operator", true},
+		{"TinyFugue has script upload off", tftest.DefaultFeatures, "admin", true},
+		{"the user turned it off", tftest.DefaultFeatures + ",scripts", "admin", false},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			sim := tftest.StartWith(t, c.features)
+			f := newFixtureAt(t, t.TempDir(), secrets.NewMemory())
+			st := f.cfg.Settings()
+			st.TFHideQueries = c.setting
+			if err := f.svc.SaveSettings(st); err != nil {
+				t.Fatal(err)
+			}
+			pairTF(t, f, sim, c.role)
+			time.Sleep(1200 * time.Millisecond)
+			if helperLoaded(sim) {
+				t.Fatal("the helper script was sent")
+			}
+			for _, e := range f.events("notice") {
+				if strings.Contains(e.JSON, "script") {
+					t.Fatalf("a refusal must be silent, got %s", e.JSON)
+				}
+			}
+		})
+	}
+}
+
+func TestHelperScriptIsSentAgainOnEveryNewConnection(t *testing.T) {
+	sim := tftest.StartWith(t, tftest.DefaultFeatures+",scripts")
+	f := newFixtureAt(t, t.TempDir(), secrets.NewMemory())
+	sq := pairTF(t, f, sim, "admin")
+	f.liveUntil("first send", 5*time.Second, func() bool { return len(sim.Fake.LoadedScripts()) >= 1 })
+	// TinyFugue restarted (its macros are gone) and the app reconnected
+	if err := f.svc.eng.ReconnectSquatter(f.svc.ctx, sq); err != nil {
+		t.Fatal(err)
+	}
+	f.liveUntil("sent again after the reconnect", 8*time.Second, func() bool { return len(sim.Fake.LoadedScripts()) >= 2 })
+}

@@ -183,6 +183,8 @@ export interface Settings {
   autoReconnectSquatters: boolean;
   /** TinyFugue squatters: show lines TinyFugue's /gag hid (they are marked, not removed). */
   showGagged: boolean;
+  /** Send TinyFugue (admin devices, squat_scripts on) a script that keeps SquatClient's own queries off its screen. */
+  tfHideQueries: boolean;
 }
 
 /** Result of `readTextFile` (the /upload command). Failures are reported inside the result. */
@@ -607,6 +609,11 @@ export interface EngineAPI {
   renameTFWorld(squatterId: string, name: string, newName: string): Promise<void>;
   /** Rename the world behind a TinyFugue connection (its tab) in TinyFugue; the tab and the local world follow. */
   renameTFSession(sessionId: string, newName: string): Promise<void>;
+  /**
+   * Rename any connection. A saved world is renamed with it, a connection through TinyFugue renames
+   * TinyFugue's world record, a quick connect only changes the tab.
+   */
+  renameSession(sessionId: string, newName: string): Promise<void>;
   /** Open a connection from one of TinyFugue's own world records. */
   connectTFWorld(squatterId: string, name: string): Promise<SessionInfo>;
   /** Run a TinyFugue command (admin devices only). */
@@ -765,4 +772,5 @@ export const DEFAULT_SETTINGS: Settings = {
   warnUnbalanced: true,
   autoReconnectSquatters: true,
   showGagged: false,
+  tfHideQueries: true,
 };

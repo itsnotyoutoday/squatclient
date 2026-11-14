@@ -160,8 +160,8 @@ describe('TinyFugue tabs: marker, tooltip, rename', () => {
     const e = await boot();
     const tab = screen.getByRole('tab', { name: /alpha/ });
     fireEvent.contextMenu(tab);
-    await userEvent.click(await screen.findByRole('menuitem', { name: 'Rename (in TinyFugue)...' }));
-    const d = await screen.findByRole('dialog', { name: 'Rename in TinyFugue' });
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Rename...' }));
+    const d = await screen.findByRole('dialog', { name: 'Rename' });
     const input = within(d).getByLabelText('Name');
     await userEvent.clear(input);
     await userEvent.type(input, 'has space');

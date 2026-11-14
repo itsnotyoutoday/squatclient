@@ -100,6 +100,9 @@ type Settings struct {
 
 	// ShowGagged shows lines TinyFugue gagged (tf-squatterd sessions) instead of hiding them.
 	ShowGagged bool `json:"showGagged"`
+	// TFHideQueries sends TinyFugue (admin devices, squat_scripts on) a small script that keeps SquatClient's own
+	// queries (Object Editor, game type detection) off TinyFugue's screen. On by default.
+	TFHideQueries bool `json:"tfHideQueries"`
 }
 
 // Limits of the command-window settings (SaveSettings clamps into them).
@@ -136,7 +139,7 @@ func DefaultSettings() Settings {
 		Theme: "dark", FontFamily: "JetBrains Mono, SF Mono, Menlo, Consolas, monospace", FontSize: 14,
 		ScrollbackLines: 20000, Notifications: true, Linkify: true, PauseOnScroll: true,
 		DefaultEncoding: "utf-8", Truecolor: true,
-		EditorHeight: DefaultEditorH, SoftcodeJoin: true, StripBlankLines: true, HistoryMax: DefaultHistoryMax, WarnUnbalanced: true, AutoReconnectSquatters: true,
+		EditorHeight: DefaultEditorH, SoftcodeJoin: true, StripBlankLines: true, HistoryMax: DefaultHistoryMax, WarnUnbalanced: true, AutoReconnectSquatters: true, TFHideQueries: true,
 	}
 }
 

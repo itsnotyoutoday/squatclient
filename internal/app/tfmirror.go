@@ -199,3 +199,41 @@ func (s *Service) adoptConnection(sessionID, sq, name string, si engine.SessionI
 	_ = s.eng.SetSessionWorld(sessionID, w.ID)
 	s.emit("worlds", map[string]string{"reason": "saved as a world"})
 }
+
+// RenameSession renames a connection, whatever kind it is, and keeps everything that goes by that
+// name in agreement:
+//
+//   - a connection through TinyFugue: TinyFugue's world record is renamed (the tab and this app's
+//     world follow, see RenameTFSession);
+//   - a connection from a saved world: the saved world is renamed, and so is every open
+//     connection of it;
+//   - a connection that is not a saved world: only the tab changes (use Save as world to keep it).
+func (s *Service) RenameSession(sessionID, newName string) error {
+	newName = strings.TrimSpace(newName)
+	if newName == "" {
+		return errors.New("a name is required")
+	}
+	si, err := s.eng.Session(sessionID)
+	if err != nil {
+		return err
+	}
+	if si.TF != nil {
+		if _, ok := s.tfSquatterID(si.Via); ok {
+			return s.RenameTFSession(sessionID, newName)
+		}
+	}
+	if si.WorldID != "" {
+		w, err := s.cfg.World(si.WorldID)
+		if err == nil {
+			for _, o := range s.cfg.Worlds() {
+				if o.ID != w.ID && o.Name == newName {
+					return fmt.Errorf("you already have a world called %q", newName)
+				}
+			}
+			w.Name = newName
+			_, err := s.SaveWorld(w) // also follows into TinyFugue for a world routed through it
+			return err
+		}
+	}
+	return s.eng.RenameSession(sessionID, newName)
+}

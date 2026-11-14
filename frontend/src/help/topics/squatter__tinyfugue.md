@@ -40,7 +40,7 @@ A world whose **Connect via** is a TinyFugue squatter *is* a world record in Tin
 - **Save, rename or delete it here** and TinyFugue's record is created, renamed or deleted (and saved with `/saveworld`, so it survives a restart). Credentials are never copied: this app logs in with its own saved password, unless the record in TinyFugue has its own login.
 - **Rename it in TinyFugue** (or add, delete or change one at its keyboard) and the tab, this app's world and the world lists here follow.
 - **Connecting** goes by that record, so the tab, the world and TinyFugue all carry the same name.
-- **Rename a tab** (right-click the tab, **Rename (in TinyFugue)…**) and the world is renamed in TinyFugue, here, and on the tab.
+- **Rename a tab** (right-click the tab, **Rename…**; it works on every kind of connection) and the world is renamed in TinyFugue, here, and on the tab. For a connection that does not go through TinyFugue the saved world is renamed with it; a quick connect that is not a saved world only changes the tab.
 
 A connection you opened by address (not from a world) is only a temporary world in TinyFugue, `(unnamed1)` and the like. Right-click its tab and choose **Save as a world in TinyFugue…**: it becomes a named world in TinyFugue (kept after the connection closes) and in your list, and the tab follows. In TinyFugue itself the same is `/renameworld <name>`.
 
@@ -63,6 +63,10 @@ What the script may do is decided in TinyFugue, by `squat_scripts`:
 | `on` | the script runs with TinyFugue's own rights, like a file you loaded yourself |
 
 Use `safe` unless you wrote the script. Deleting a script removes only the file: triggers it already defined stay until you undefine them or TinyFugue restarts.
+
+## Keeping SquatClient's queries off TinyFugue's screen
+
+The Object Editor and game type detection ask the game questions through TinyFugue, and TinyFugue shows the answers on its own screen too. SquatClient spares that screen by itself: when an **admin** device connects to a TinyFugue that allows scripts (`squat_scripts` is `safe` or `on`), it sends TinyFugue a small script of gag macros. They hide the query's marker lines always, and the game's "I can't see that here" style refusals only while a query is running, so your own commands and any chat still show. SquatClient still receives every line, and `/recall` in TinyFugue still has them. The script is sent again each time SquatClient connects, because macros are lost when TinyFugue restarts, and it runs fine in `safe` mode. If TinyFugue does not allow scripts, nothing is sent and the queries simply also show there. Turn it off in **Settings** (Keep SquatClient's own queries off TinyFugue's screen).
 
 ## Gagged lines
 

@@ -278,6 +278,24 @@ describe('dialogs', () => {
     await waitFor(() => expect(document.querySelector('.ts')).not.toBeNull());
   });
 
+  it('a tab of an ordinary (non-TinyFugue) connection can be renamed too, and its saved world follows', async () => {
+    const e = await boot();
+    await userEvent.keyboard('{Escape}');
+    const id = useSessions.getState().order[0];
+    const before = useSessions.getState().sessions[id];
+    expect(before.worldId).toBeTruthy();
+    fireEvent.contextMenu(screen.getAllByRole('tab')[0]);
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Rename...' }));
+    const d = await screen.findByRole('dialog', { name: 'Rename' });
+    expect(within(d).getByText(/Renames the saved world and this connection/)).toBeInTheDocument();
+    const input = within(d).getByLabelText('Name');
+    await userEvent.clear(input);
+    await userEvent.type(input, 'Renamed Hall'); // spaces are fine outside TinyFugue
+    await userEvent.click(within(d).getByRole('button', { name: 'Rename' }));
+    await waitFor(() => expect(useSessions.getState().sessions[id].name).toBe('Renamed Hall'));
+    expect((await e.listWorlds()).find((w) => w.id === before.worldId)?.name).toBe('Renamed Hall');
+  });
+
   it('squatters: pair shows fingerprint for TOFU confirmation, then confirms', async () => {
     const e = await boot();
     await userEvent.keyboard('{Escape}');

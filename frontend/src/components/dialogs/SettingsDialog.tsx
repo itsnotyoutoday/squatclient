@@ -230,6 +230,11 @@ export function SettingsDialog() {
             'Show lines TinyFugue gagged',
             '(TinyFugue squatters; the lines are marked, not removed)',
           )}
+          {check(
+            'tfHideQueries',
+            'Keep SquatClient\'s own queries off TinyFugue\'s screen',
+            '(sends TinyFugue a small script when an admin device connects; needs squat_scripts)',
+          )}
           {check('timestamps', 'Show timestamps')}
           {check('boldAsBright', 'Bold text uses bright colours')}
           {check('linkify', 'Make bare URLs clickable')}

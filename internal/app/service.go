@@ -63,6 +63,9 @@ type Service struct {
 	varPending map[string]any
 	layOnce    sync.Once
 
+	helperMu   sync.Mutex
+	helperSeen map[string]bool // squatter id -> connected at the last event (see tfhelper.go)
+
 	fgMu     sync.Mutex
 	uiFg     string // foreground the UI last chose or was told about
 	unsub    func()
@@ -304,6 +307,7 @@ func (s *Service) deliver(batch []engine.Event) {
 		case engine.EvSquatter:
 			if ev.Squatter != nil {
 				s.emit("squatter", ev.Squatter)
+				s.noteSquatterState(ev.Squatter)
 			}
 		case engine.EvSuspend:
 			s.emit("suspend", map[string]bool{"suspended": ev.Suspended})

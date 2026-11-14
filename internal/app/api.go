@@ -62,6 +62,13 @@ func (s *Service) SaveWorld(w config.World) (config.World, error) {
 	}
 	s.syncWorlds()
 	s.afterSaveWorld(old, out) // a world routed through TinyFugue is a TinyFugue world record too
+	if old != nil && old.Name != out.Name {
+		for _, si := range s.eng.Sessions() { // open connections of this world carry its name
+			if si.WorldID == out.ID && si.Name != out.Name {
+				_ = s.eng.RenameSession(si.ID, out.Name)
+			}
+		}
+	}
 	return out, nil
 }
 

@@ -355,3 +355,57 @@ func itoa(i int) string {
 	b, _ := json.Marshal(i)
 	return string(b)
 }
+
+func TestRenamingAnyConnectionKeepsWorldAndTabInAgreement(t *testing.T) {
+	f := newFixture(t)
+	srv := fakemush.New(t, fakemush.WithGreeting("hi\r\n"))
+	w, _ := f.svc.SaveWorld(config.World{Name: "Old", Host: srv.Host(), Port: srv.Port()})
+	si, err := f.svc.Connect(ConnectTarget{WorldID: w.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.waitConnected(si.ID)
+
+	// a saved world: the world and the open connection are renamed together
+	if err := f.svc.RenameSession(si.ID, "New"); err != nil {
+		t.Fatal(err)
+	}
+	ws, _ := f.svc.ListWorlds()
+	cur, _ := f.svc.eng.Session(si.ID)
+	if len(ws) != 1 || ws[0].Name != "New" || cur.Name != "New" {
+		t.Fatalf("world %+v session %q", ws, cur.Name)
+	}
+	// editing the world's name (Worlds dialog) renames its open connection too
+	ws[0].Name = "Newer"
+	if _, err := f.svc.SaveWorld(ws[0]); err != nil {
+		t.Fatal(err)
+	}
+	if cur, _ = f.svc.eng.Session(si.ID); cur.Name != "Newer" {
+		t.Fatalf("the open connection kept the old name %q", cur.Name)
+	}
+	// a name another world has is refused
+	if _, err := f.svc.SaveWorld(config.World{Name: "Other", Host: srv.Host(), Port: srv.Port()}); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.svc.RenameSession(si.ID, "Other"); err == nil {
+		t.Fatal("renamed onto an existing world")
+	}
+	if err := f.svc.RenameSession(si.ID, "  "); err == nil {
+		t.Fatal("an empty name was accepted")
+	}
+
+	// a quick connect that is not a saved world: only the tab changes
+	qi, err := f.svc.Connect(ConnectTarget{Host: srv.Host(), Port: srv.Port()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.waitConnected(qi.ID)
+	if err := f.svc.RenameSession(qi.ID, "just-a-tab"); err != nil {
+		t.Fatal(err)
+	}
+	cur, _ = f.svc.eng.Session(qi.ID)
+	ws, _ = f.svc.ListWorlds()
+	if cur.Name != "just-a-tab" || len(ws) != 2 {
+		t.Fatalf("tab %q, worlds %+v (a quick connect must not create a world)", cur.Name, ws)
+	}
+}

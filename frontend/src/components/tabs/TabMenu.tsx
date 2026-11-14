@@ -23,15 +23,11 @@ export function TabMenu({ session: s, x, y, onClose, onCloseSession }: TabMenuPr
   const ended = s.state === 'ended';
   const items: (Item | 'sep')[] = [
     { label: 'Connection settings...', run: () => ui.openSessionSettings(s.id) },
-    ...(s.tf && !ended
-      ? [
-          {
-            // a connection opened by address is a temporary "(unnamedN)" world in TinyFugue: naming it keeps it
-            label: s.tf.world.startsWith('(') ? 'Save as a world in TinyFugue...' : 'Rename (in TinyFugue)...',
-            run: () => ui.openRename(s.id),
-          },
-        ]
-      : []),
+    {
+      // a connection opened by address through TinyFugue is a temporary "(unnamedN)" world there: naming it keeps it
+      label: s.tf?.world.startsWith('(') ? 'Save as a world in TinyFugue...' : 'Rename...',
+      run: () => ui.openRename(s.id),
+    },
     ...(s.worldId
       ? [
           {

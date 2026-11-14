@@ -153,3 +153,13 @@ func (a *App) RenameTFSession(sessionID, newName string) error {
 	}
 	return s.RenameTFSession(sessionID, newName)
 }
+
+// RenameSession renames a connection (any kind): its saved world and, for a connection through
+// TinyFugue, TinyFugue's world record follow.
+func (a *App) RenameSession(sessionID, newName string) error {
+	s, err := a.service()
+	if err != nil {
+		return err
+	}
+	return s.RenameSession(sessionID, newName)
+}
