@@ -149,6 +149,9 @@ function layoutPane(): void {
     }
     canvas.style.clipPath = holeClip(box, holes);
     canvas.style.visibility = 'visible';
-  } else if (plan.mode === 'hidden') canvas.style.visibility = 'hidden';
+  } else if (plan.mode === 'hidden') {
+    canvas.style.visibility = 'hidden';
+    stage.style.display = 'none'; // as in the app: too small for the scene plus a usable text port, so the text gets the whole area
+  }
 }
 setInterval(layoutPane, 400);
