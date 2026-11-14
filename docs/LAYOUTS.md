@@ -52,6 +52,52 @@ export default function Layout() {
 +-------------------------------------+
 ```
 
+## Single-file layouts: markup on top, code blocks below
+
+Besides plain `.tsx` / `.jsx` / `.ts` / `.js` (a component written directly in React), a layout may be one
+`.layout` file in the style of Blazor's `@code` block or a Vue/Svelte single-file component: the markup first,
+then code blocks.
+
+```
+<App>
+  <Row>
+    <Mush />
+    <Dock side="right" width={220}>
+      <When gmcp="Char.Vitals">
+        <Gauge label="HP" value={hp} max={maxhp} color={low ? 'red' : 'green'} />
+        <Button send="cast heal">Heal</Button>
+      </When>
+    </Dock>
+  </Row>
+  <InputBar />
+</App>
+
+<script>
+  // runs in the window: UI logic and small computations
+  const vitals = useGmcp('Char.Vitals');
+  const hp = vitals?.hp, maxhp = vitals?.maxhp;
+  const low = hp / maxhp < 0.25;
+</script>
+
+<lua>
+  -- runs in the engine: game logic, keeps working without the window
+  squat.on("line", function(l)
+    local hp = l.text:match("^HP: (%d+)")
+    if hp then squat.var.set("hp", tonumber(hp)) end
+  end)
+</lua>
+```
+
+- The markup is JSX-like. `<script>` (JavaScript or TypeScript) is placed inside the layout component before
+  its `return`, so the names it defines are usable in the markup and hooks work, as `@code` members do in Blazor.
+- `<lua>` is loaded into the Lua engine as a plugin tied to the layout: loaded while the layout is active,
+  unloaded when another is chosen. A game's adapter (GMCP to normalised variables) therefore lives in the same
+  file as the layout that uses it, and one file is a complete, shareable UI for a game.
+- Compilation: Go splits the file at its top-level `<script>`, `<lua>` and (optionally) `<style>` blocks,
+  wraps markup + script into an ordinary component and compiles it with esbuild, mapping line numbers back to
+  the original file for error messages; the Lua block goes to the Lua engine, with its own line mapping.
+- This is sugar: a plain `.tsx` layout does the same thing and stays supported.
+
 ## The shell (not replaceable)
 
 The tab bar, the status bar, the dialogs, the Object Editor view and the menus stay part of the app. A layout
@@ -172,5 +218,6 @@ and cannot call the engine) is a possible later option and is also the route for
 
 - Which widgets first (suggested: Gauge, Text, List, Chat).
 - Whether variables read by layouts are per world (suggested) or global.
+- Whether the single-file format requires markup first (suggested: recommended, not enforced) and whether a layout may carry more than one `<lua>` block.
 - Whether the consent prompt is wanted for the user's own files.
 - Whether the first shipped layout targets CobraMUSH or a common standard such as IRE-style `Char.Vitals`.
