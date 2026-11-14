@@ -22,6 +22,9 @@ import { WorldManager } from './components/dialogs/WorldManager';
 import { SessionSettings } from './components/dialogs/SessionSettings';
 import { AboutDialog } from './components/dialogs/AboutDialog';
 import { SquattersDialog } from './components/dialogs/SquattersDialog';
+import { TFWorldsDialog } from './components/dialogs/TFWorldsDialog';
+import { TFScriptsDialog } from './components/dialogs/TFScriptsDialog';
+import { canType } from './lib/tfcontrol';
 import { AwayDialog } from './components/dialogs/AwayDialog';
 import HistoryBrowser from './components/history/HistoryBrowser';
 import { UploadHost } from './components/upload/UploadDialog';
@@ -44,6 +47,10 @@ function Dialogs() {
       return <SettingsDialog />;
     case 'squatters':
       return <SquattersDialog />;
+    case 'tfworlds':
+      return <TFWorldsDialog />;
+    case 'tfscripts':
+      return <TFScriptsDialog />;
     case 'help':
       return (
         <Suspense fallback={null}>
@@ -116,7 +123,9 @@ function Workspace() {
       {session.state === 'ended' ? (
         <EndedBanner session={session} />
       ) : (
-        <InputLine sessionId={fg} remoteEcho={session.remoteEcho} disabled={session.state === 'connecting'} />
+        <InputLine sessionId={fg} remoteEcho={session.remoteEcho} disabled={session.state === 'connecting' || !canType(session)}
+          disabledReason={canType(session) ? undefined : 'TinyFugue has the keyboard. Use the control in the status bar to type from here.'}
+        />
       )}
     </main>
   );

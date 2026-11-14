@@ -6,9 +6,10 @@ export * from './types';
 export { MockEngine } from './mock';
 export { WailsEngine, hasWails, openExternal } from './wails';
 
-/** Wails runtime present -> WailsEngine; otherwise (or ?mock=1) MockEngine. */
+/** Wails runtime present -> WailsEngine; otherwise (or ?mock=1) MockEngine. ?scenario=tf seeds a TinyFugue squatter. */
 export function createEngine(search: string = window.location.search): EngineAPI {
   const forceMock = new URLSearchParams(search).get('mock') === '1';
   if (!forceMock && hasWails()) return new WailsEngine();
-  return new MockEngine({ stream: true, streamIntervalMs: 1100, connectDelayMs: 500 });
+  const scenario = new URLSearchParams(search).get('scenario') === 'tf' ? 'tf' : 'demo';
+  return new MockEngine({ stream: true, streamIntervalMs: 1100, connectDelayMs: 500, scenario });
 }

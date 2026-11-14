@@ -130,7 +130,7 @@ func TestSquatterPairViaRealDaemonAndReattach(t *testing.T) {
 
 	code := d.pairCode()
 	// trust on first use: the first step must not use up the code
-	pr, err := f.svc.PairSquatter("127.0.0.1", d.port, "Home", code)
+	pr, err := f.svc.PairSquatter("127.0.0.1", d.port, "Home", code, "")
 	if err != nil || pr.Fingerprint != d.fp || pr.ID == "" {
 		t.Fatalf("pair: %+v %v (want %s)", pr, err, d.fp)
 	}
@@ -143,7 +143,7 @@ func TestSquatterPairViaRealDaemonAndReattach(t *testing.T) {
 	if err := f.svc.ConfirmSquatter(pr.ID, true); err == nil {
 		t.Fatal("a rejected pairing must be gone")
 	}
-	pr, err = f.svc.PairSquatter("127.0.0.1", d.port, "Home", code) // same code still valid
+	pr, err = f.svc.PairSquatter("127.0.0.1", d.port, "Home", code, "") // same code still valid
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -166,7 +166,7 @@ func TestSquatterPairViaRealDaemonAndReattach(t *testing.T) {
 		t.Fatalf("pairing code written to disk: %v", h)
 	}
 	// the same code cannot pair twice (single use)
-	if _, err := f.svc.PairSquatter("127.0.0.1", d.port, "again", code); err != nil {
+	if _, err := f.svc.PairSquatter("127.0.0.1", d.port, "again", code, ""); err != nil {
 		t.Fatal(err) // the probe itself succeeds; confirming would fail at the daemon
 	}
 
@@ -274,7 +274,7 @@ func TestSquatterFingerprintMismatchRefusedOnStart(t *testing.T) {
 	dir := t.TempDir()
 	sec := secrets.NewMemory()
 	f := newFixtureAt(t, dir, sec)
-	pr, err := f.svc.PairSquatter("127.0.0.1", d.port, "Home", d.pairCode())
+	pr, err := f.svc.PairSquatter("127.0.0.1", d.port, "Home", d.pairCode(), "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -309,13 +309,13 @@ func TestSquatterUnreachableAtStartAndPairErrors(t *testing.T) {
 	ln, _ := net.Listen("tcp", "127.0.0.1:0")
 	port := ln.Addr().(*net.TCPAddr).Port
 	ln.Close()
-	if _, err := f.svc.PairSquatter("127.0.0.1", port, "x", "AAAA-BBBB"); err == nil || !strings.Contains(err.Error(), "cannot reach") {
+	if _, err := f.svc.PairSquatter("127.0.0.1", port, "x", "AAAA-BBBB", ""); err == nil || !strings.Contains(err.Error(), "cannot reach") {
 		t.Fatalf("pair to a closed port: %v", err)
 	}
-	if _, err := f.svc.PairSquatter("", 1, "x", "c"); err == nil {
+	if _, err := f.svc.PairSquatter("", 1, "x", "c", ""); err == nil {
 		t.Fatal("empty host accepted")
 	}
-	if _, err := f.svc.PairSquatter("h", 1, "x", " "); err == nil {
+	if _, err := f.svc.PairSquatter("h", 1, "x", " ", ""); err == nil {
 		t.Fatal("empty code accepted")
 	}
 	if err := f.svc.ConfirmSquatter("nope", true); err == nil {
@@ -323,7 +323,7 @@ func TestSquatterUnreachableAtStartAndPairErrors(t *testing.T) {
 	}
 	// keychain unavailable: no plaintext fallback, and the squatter is not stored
 	d := startSquatterd(t)
-	pr, err := f.svc.PairSquatter("127.0.0.1", d.port, "x", d.pairCode())
+	pr, err := f.svc.PairSquatter("127.0.0.1", d.port, "x", d.pairCode(), "")
 	if err != nil {
 		t.Fatal(err)
 	}

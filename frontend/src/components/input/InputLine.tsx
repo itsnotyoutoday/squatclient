@@ -35,6 +35,8 @@ export interface InputLineProps {
   sessionId: string;
   remoteEcho: boolean;
   disabled?: boolean;
+  /** Shown in the empty input while it is disabled (e.g. TinyFugue holds the keyboard). */
+  disabledReason?: string;
   keymap?: Keymap;
 }
 
@@ -102,7 +104,7 @@ function UnbalancedDialog({
   );
 }
 
-export function InputLine({ sessionId, remoteEcho, disabled, keymap = DEFAULT_KEYMAP }: InputLineProps) {
+export function InputLine({ sessionId, remoteEcho, disabled, disabledReason, keymap = DEFAULT_KEYMAP }: InputLineProps) {
   const engine = useUi((s) => s.engine);
   const settings = useSettings((s) => s.settings);
   const session = useSessions((s) => s.sessions[sessionId]);
@@ -493,6 +495,7 @@ export function InputLine({ sessionId, remoteEcho, disabled, keymap = DEFAULT_KE
         <textarea
           {...common}
           aria-label="Command input"
+          placeholder={disabled ? disabledReason : undefined}
           rows={rows}
           style={fixed ? { height: fixed } : undefined}
           onKeyDown={onKeyDown}

@@ -1,5 +1,7 @@
 import { useSessions, useUi } from '../../state/stores';
 import { formatClock } from '../../lib/humanize';
+import { PRESETS, automationLabel, clientActive, currentPreset, describeControl, inputLabel } from '../../lib/tfcontrol';
+import type { TFPreset } from '../../api/types';
 
 const STATE_LABEL = { connecting: 'Connecting', connected: 'Connected', ended: 'Ended' } as const;
 const LINK_LABEL = {
@@ -17,6 +19,10 @@ export function StatusBar() {
   const suspended = useUi((s) => s.suspended);
   const engine = useUi((s) => s.engine);
   const cur = fg ? sessions[fg] : undefined;
+  const preset = (p: TFPreset): void => {
+    if (!cur || !engine) return;
+    void engine.controlPreset(cur.id, p).catch((e: unknown) => useUi.getState().toast('error', String(e instanceof Error ? e.message : e)));
+  };
   const activity = Object.values(sessions).filter((s) => s.id !== fg && s.unread > 0).length;
 
   return (
@@ -26,6 +32,27 @@ export function StatusBar() {
       {cur?.link && cur.link !== 'attached' && (
         <span className={`seg link ${cur.link}`} title="State of the connection to the squatter">
           {LINK_LABEL[cur.link]}
+        </span>
+      )}
+      {cur?.tf && cur.state !== 'ended' && (
+        <span
+          className={`seg control ${clientActive(cur.tf) ? 'mine' : 'theirs'}`}
+          title={describeControl(cur.tf)}
+          data-testid="tf-control"
+        >
+          Keyboard: <strong>{inputLabel(cur.tf)}</strong> · Triggers: <strong>{automationLabel(cur.tf)}</strong>{' '}
+          <select
+            aria-label="Control of this TinyFugue connection"
+            value={currentPreset(cur.tf) ?? ''}
+            onChange={(e) => e.target.value && preset(e.target.value as TFPreset)}
+          >
+            {currentPreset(cur.tf) === undefined && <option value="">Custom</option>}
+            {PRESETS.map((p) => (
+              <option key={p.id} value={p.id} title={p.hint}>
+                {p.label}
+              </option>
+            ))}
+          </select>
         </span>
       )}
       {suspended && (

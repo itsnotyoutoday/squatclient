@@ -102,7 +102,7 @@ export const useSettings = create<SettingsState>((set) => ({
 // ---------------------------------------------------------------- ui
 
 export type DialogId =
-  'worlds' | 'quick' | 'settings' | 'squatters' | 'help' | 'away' | 'history' | 'session' | 'about' | null;
+  'worlds' | 'quick' | 'settings' | 'squatters' | 'help' | 'away' | 'history' | 'session' | 'about' | 'tfworlds' | 'tfscripts' | null;
 
 export interface Toast {
   id: number;
@@ -126,6 +126,8 @@ export interface UiState {
   sessionDialog: string | null;
   /** A world the Worlds dialog should select when it opens. */
   editWorldId: string | null;
+  /** The TinyFugue squatter the TinyFugue worlds dialog is about. */
+  tfWorldsFor: string | null;
   toasts: Toast[];
   now: number;
   setEngine(e: EngineAPI): void;
@@ -139,6 +141,8 @@ export interface UiState {
   setAway(ids: string[]): void;
   openSessionSettings(id: string): void;
   setEditWorld(id: string | null): void;
+  openTFWorlds(squatterId: string): void;
+  openTFScripts(squatterId: string): void;
   toast(level: Toast['level'], text: string): void;
   dismissToast(id: number): void;
   tick(): void;
@@ -156,6 +160,7 @@ export const useUi = create<UiState>((set) => ({
   awayIds: [],
   sessionDialog: null,
   editWorldId: null,
+  tfWorldsFor: null,
   toasts: [],
   now: Date.now(),
   setEngine: (engine) => set({ engine }),
@@ -170,6 +175,8 @@ export const useUi = create<UiState>((set) => ({
   setAway: (awayIds) => set({ awayIds }),
   openSessionSettings: (id) => set({ sessionDialog: id, dialog: 'session' }),
   setEditWorld: (editWorldId) => set({ editWorldId }),
+  openTFWorlds: (id) => set({ tfWorldsFor: id, dialog: 'tfworlds' }),
+  openTFScripts: (id) => set({ tfWorldsFor: id, dialog: 'tfscripts' }),
   toast: (level, text) => set((s) => ({ toasts: [...s.toasts.slice(-3), { id: ++toastId, level, text }] })),
   dismissToast: (id) => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
   tick: () => set({ now: Date.now() }),

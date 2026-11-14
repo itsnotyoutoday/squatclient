@@ -8,7 +8,7 @@ aliases: routing, connect via, via, direct, tunnel, tailscale
 
 ## The model
 
-- A **squatter** is a saved remote relay: a `squatterd` you run on a server. You can save **many** squatters, for example `home-vps` and `work-box`.
+- A **squatter** is a saved remote relay: a `squatterd` you run on a server, or a TinyFugue ([TinyFugue as a squatter](help:squatter/tinyfugue)). You can save **many** squatters, for example `home-vps` and `work-box`.
 - Each **world** chooses how it connects with its **Connect via** setting:
   - **Direct**: straight from this computer to the game. The connection ends when the app closes.
   - **A saved squatter**: the squatter holds the game connection. It survives closing the app, and when you come back everything you missed is replayed.

@@ -61,6 +61,26 @@ export interface SessionInfo {
   encoding?: string;
   tlsVerify?: string;
   gameTypeSource?: 'world' | 'user' | 'banner' | 'probe';
+  /** TinyFugue squatter sessions only: who may type and who runs triggers. */
+  tf?: TFInfo;
+}
+
+/** Who may type into a TinyFugue session. */
+export type TFInput = 'tf' | 'remote' | 'both';
+/** Who runs triggers/macros for a TinyFugue session. */
+export type TFAutomation = 'tf' | 'client';
+export type TFPreset = 'viewer' | 'copilot' | 'takeover' | 'full';
+
+/** Control state of one TinyFugue connection (engine proto.TFInfo). */
+export interface TFInfo {
+  /** TinyFugue's own name for the world this connection belongs to. */
+  world: string;
+  /** TinyFugue's keyboard is currently on this connection. */
+  fg: boolean;
+  input: TFInput;
+  automation: TFAutomation;
+  /** Device id holding automation (when automation is "client"). */
+  controllerDevice?: string;
 }
 
 export interface WorldLogin {
@@ -95,6 +115,14 @@ export interface SquatterConfig {
   port: number;
   fingerprint?: string;
   paired: boolean;
+  /** "squatterd" (default, absent in old records) or "tf-squatterd" (a TinyFugue bridge). */
+  kind?: SquatterKind;
+  /** tf-squatterd: "tf" (TinyFugue runs the triggers) or "client" (this client does while connected). */
+  automation?: TFAutomation;
+  /** tf-squatterd: this device's role, TinyFugue's instance id and offered features. */
+  role?: 'viewer' | 'operator' | 'admin';
+  instance?: string;
+  features?: string[];
   /** Live connection state (absent in older engines / mock). */
   state?: SquatterState;
   /** fingerprint_mismatch | auth_failed | unreachable | rate_limited | connection_lost */
@@ -102,6 +130,8 @@ export interface SquatterConfig {
   message?: string;
   sessions?: number;
 }
+
+export type SquatterKind = 'squatterd' | 'tf-squatterd';
 
 export type SquatterState = 'idle' | 'connecting' | 'connected' | 'disconnected' | 'unreachable' | 'refused';
 
@@ -147,6 +177,8 @@ export interface Settings {
   warnUnbalanced: boolean;
   /** Bring a lost link to a squatter back by itself (laptop sleep, network drop). */
   autoReconnectSquatters: boolean;
+  /** TinyFugue squatters: show lines TinyFugue's /gag hid (they are marked, not removed). */
+  showGagged: boolean;
 }
 
 /** Result of `readTextFile` (the /upload command). Failures are reported inside the result. */
@@ -230,6 +262,68 @@ export interface EngineEvents {
   suspend: { suspended: boolean };
   /** Sessions with unread output after (re)attaching to a squatter. */
   away: { sessions: AwayItem[] };
+  /** TinyFugue asks its user (squat_takeover=ask) whether this device may take control. */
+  'control-pending': { session: string; axis: 'input' | 'automation'; mode: string; deviceName?: string };
+  /** Another device changed TinyFugue's world records: reload the list. */
+  'tf-worlds': { squatter: string };
+  /** MSDP variables a game sent (changed variables only). */
+  msdp: { session: string; vars: Record<string, unknown> };
+  /** Snapshot of a session's GMCP/MSDP data (after attach or on request). */
+  data: SessionData;
+}
+
+/** Latest GMCP and MSDP values of a session. */
+export interface SessionData {
+  session: string;
+  asOf: number;
+  gmcp?: Record<string, unknown>;
+  msdp?: Record<string, unknown>;
+}
+
+/** A world record held by TinyFugue (never contains the password). */
+export interface TFWorld {
+  name: string;
+  host: string;
+  /** A number or a service name. */
+  port: string;
+  type?: string;
+  char?: string;
+  passSet: boolean;
+  tls?: boolean;
+  echo?: boolean;
+  charset?: string;
+  /** Admins only. */
+  mfile?: string;
+  temp?: boolean;
+}
+
+/** Argument of putTFWorld. password is write-only: empty keeps the stored one. */
+export interface TFWorldPut extends Omit<TFWorld, 'passSet'> {
+  passSet?: boolean;
+  password?: string;
+  clearPassword?: boolean;
+  setMfile?: boolean;
+  /** Also run /saveworld in TinyFugue so the record survives its restart. */
+  save?: boolean;
+}
+
+/** What uploading a script did: stored on TinyFugue, loaded without an error, and what TinyFugue printed. */
+export interface TFScriptResult {
+  stored: boolean;
+  loaded: boolean;
+  out: string[];
+}
+
+export interface TFScript {
+  name: string;
+  size: number;
+  /** unix milliseconds */
+  mtime: number;
+}
+
+export interface TFExecResult {
+  ok: boolean;
+  out: string[];
 }
 
 /** Payload of the `squatter` event (engine SquatterInfo). */
@@ -439,11 +533,39 @@ export interface EngineAPI {
     port: number,
     name: string,
     pairCode: string,
+    /** "squatterd" (default) or "tf-squatterd". */
+    kind?: SquatterKind,
   ): Promise<{ id: string; fingerprint: string }>;
   confirmSquatter(id: string, accept: boolean): Promise<void>;
   removeSquatter(id: string): Promise<void>;
   /** Reconnect a squatter right now (the app also does this by itself unless turned off in Settings). */
   reconnectSquatter(id: string): Promise<void>;
+  // ---- TinyFugue squatters (docs/TF-SQUATTER.md in the daemon repository)
+  /** Change one control axis of a TinyFugue session; resolves when TinyFugue applied it (may wait for its user). */
+  setControl(sessionId: string, axis: 'input' | 'automation', mode: string): Promise<void>;
+  /** Apply a preset: viewer (watch), copilot (type too), takeover (type + run triggers), full. */
+  controlPreset(sessionId: string, preset: TFPreset): Promise<void>;
+  /** Store and apply which side runs triggers for a TinyFugue squatter. */
+  setSquatterAutomation(squatterId: string, mode: TFAutomation): Promise<void>;
+  listTFWorlds(squatterId: string): Promise<TFWorld[]>;
+  putTFWorld(squatterId: string, w: TFWorldPut): Promise<void>;
+  deleteTFWorld(squatterId: string, name: string): Promise<void>;
+  /** Open a connection from one of TinyFugue's own world records. */
+  connectTFWorld(squatterId: string, name: string): Promise<SessionInfo>;
+  /** Run a TinyFugue command (admin devices only). */
+  tfExec(squatterId: string, line: string): Promise<TFExecResult>;
+  /**
+   * Upload a script (a TinyFugue macro file) to TinyFugue, and with `load` activate it. Admin devices
+   * only. TinyFugue's squat_scripts decides: off refuses, "safe" runs it sandboxed (no shell, files,
+   * new connections or Lua, also when its macros run later), "on" with TinyFugue's own rights.
+   * Names are letters, digits, . _ - and end in .tf; the same name replaces the old script.
+   */
+  putTFScript(squatterId: string, name: string, content: string, load: boolean): Promise<TFScriptResult>;
+  listTFScripts(squatterId: string): Promise<TFScript[]>;
+  deleteTFScript(squatterId: string, name: string): Promise<void>;
+  sendGmcp(sessionId: string, pkg: string, dataJson: string): Promise<void>;
+  sendMsdp(sessionId: string, varsJson: string): Promise<void>;
+  getSessionData(sessionId: string): Promise<SessionData>;
   /** Retry lost squatter links immediately (wake, window shown, network back); returns how many it is retrying. */
   nudgeSquatters(): Promise<number>;
   /** Set what kind of game a session is ("" or "auto" detects it again). */
@@ -565,4 +687,5 @@ export const DEFAULT_SETTINGS: Settings = {
   historyMax: 20000,
   warnUnbalanced: true,
   autoReconnectSquatters: true,
+  showGagged: false,
 };

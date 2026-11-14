@@ -116,6 +116,10 @@ export async function startController(
       });
       if (q.suspended !== undefined) useUi.getState().setSuspended(q.suspended);
     }),
+    engine.on('control-pending', (p) => {
+      const name = useSessions.getState().sessions[p.session]?.name ?? 'TinyFugue';
+      useUi.getState().toast('info', `Waiting for TinyFugue's user to allow ${p.axis} = ${p.mode} on ${name}…`);
+    }),
     engine.on('suspend', ({ suspended }) => useUi.getState().setSuspended(suspended)),
     engine.on('away', ({ sessions }) => {
       const ids = sessions.map((a) => a.session).filter((id) => !!useSessions.getState().sessions[id]);

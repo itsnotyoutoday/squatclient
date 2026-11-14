@@ -244,13 +244,14 @@ func (a *App) ListSquatters() ([]app.SquatterView, error) {
 	return s.ListSquatters()
 }
 
-// PairSquatter reads the squatter's TLS fingerprint (no pairing code is sent yet).
-func (a *App) PairSquatter(host string, port int, name, pairCode string) (app.PairResult, error) {
+// PairSquatter reads the squatter's TLS fingerprint (no pairing code is sent yet). kind is
+// "squatterd" (default) or "tf-squatterd".
+func (a *App) PairSquatter(host string, port int, name, pairCode, kind string) (app.PairResult, error) {
 	s, err := a.service()
 	if err != nil {
 		return app.PairResult{}, err
 	}
-	return s.PairSquatter(host, port, name, pairCode)
+	return s.PairSquatter(host, port, name, pairCode, kind)
 }
 
 // ConfirmSquatter trusts (accept) or drops the fingerprint and pairs.

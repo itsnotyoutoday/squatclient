@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { useUi } from '../../state/stores';
+import type { SquatterKind } from '../../api/types';
 import { Dialog, Field } from './Dialog';
 
 export function SquattersDialog() {
   const engine = useUi((s) => s.engine);
   const squatters = useUi((s) => s.squatters);
   const [host, setHost] = useState('');
+  const [kind, setKind] = useState<SquatterKind>('squatterd');
   const [port, setPort] = useState('10327');
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
@@ -17,12 +19,18 @@ export function SquattersDialog() {
     if (engine) useUi.getState().setSquatters(await engine.listSquatters());
   };
 
+  const pickKind = (k: SquatterKind): void => {
+    // keep a port the user typed; only swap the default of the other kind
+    if (port === (kind === 'tf-squatterd' ? '10328' : '10327')) setPort(k === 'tf-squatterd' ? '10328' : '10327');
+    setKind(k);
+  };
+
   const pair = async (e: FormEvent): Promise<void> => {
     e.preventDefault();
     if (!engine) return;
     try {
       setPending(
-        await engine.pairSquatter(host.trim(), Number(port), name.trim() || host.trim(), code.trim()),
+        await engine.pairSquatter(host.trim(), Number(port), name.trim() || host.trim(), code.trim(), kind),
       );
       setErr('');
     } catch (x) {
@@ -60,6 +68,11 @@ export function SquattersDialog() {
                 <span className="dim">
                   {s.host}:{s.port}
                 </span>
+                {s.kind === 'tf-squatterd' && (
+                  <span className="badge" data-testid={`sqkind-${s.id}`}>
+                    TinyFugue{s.role ? ` · ${s.role}` : ''}
+                  </span>
+                )}
                 {!s.paired && <em> (not paired)</em>}
                 {s.state && (
                   <span className={`badge sqstate ${s.state}`} data-testid={`sqstate-${s.id}`}>
@@ -67,8 +80,44 @@ export function SquattersDialog() {
                   </span>
                 )}
                 {s.message && s.state !== 'connected' && <div className="err">{s.message}</div>}
+                {s.kind === 'tf-squatterd' && s.paired && (
+                  <label className="dim">
+                    Triggers run in{' '}
+                    <select
+                      aria-label={`Automation for ${s.name}`}
+                      value={s.automation ?? 'tf'}
+                      onChange={(e) =>
+                        void engine
+                          ?.setSquatterAutomation(s.id, e.target.value as 'tf' | 'client')
+                          .then(refresh)
+                          .catch((x: unknown) => setErr(x instanceof Error ? x.message : String(x)))
+                      }
+                    >
+                      <option value="tf">TinyFugue (this app only shows)</option>
+                      <option value="client">this app (while connected)</option>
+                    </select>
+                  </label>
+                )}
                 {s.fingerprint && <code className="fp">{s.fingerprint}</code>}
               </span>
+              {s.kind === 'tf-squatterd' && s.paired && s.state === 'connected' && (
+                <button
+                  type="button"
+                  aria-label={`TinyFugue worlds of ${s.name}`}
+                  onClick={() => useUi.getState().openTFWorlds(s.id)}
+                >
+                  Worlds…
+                </button>
+              )}
+              {s.kind === 'tf-squatterd' && s.paired && s.state === 'connected' && s.role === 'admin' && (
+                <button
+                  type="button"
+                  aria-label={`TinyFugue scripts of ${s.name}`}
+                  onClick={() => useUi.getState().openTFScripts(s.id)}
+                >
+                  Scripts…
+                </button>
+              )}
               {s.paired && s.state !== 'connected' && s.state !== 'connecting' && s.state !== 'refused' && (
                 <button
                   type="button"
@@ -113,6 +162,17 @@ export function SquattersDialog() {
         </div>
       ) : (
         <form className="form grid" onSubmit={(e) => void pair(e)}>
+          <Field label="Type">
+            <select aria-label="Type" value={kind} onChange={(e) => pickKind(e.target.value as SquatterKind)}>
+              <option value="squatterd">squatterd (stand-alone daemon)</option>
+              <option value="tf-squatterd">TinyFugue (/squat pair)</option>
+            </select>
+          </Field>
+          <p className="hint wide">
+            {kind === 'tf-squatterd'
+              ? 'In TinyFugue run /squat pair and enter the code it shows. You then see and control all of its connections.'
+              : 'On the machine running squatterd, run squatterd pair and enter the code it shows.'}
+          </p>
           <Field label="Name">
             <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Home server" />
           </Field>

@@ -1107,3 +1107,18 @@ body.resizing {
 .menubar.linux .mb-drop {
   border-radius: 0 0 6px 6px;
 }
+/* TinyFugue connections: dim while TinyFugue is in charge, accent while this client is doing something */
+.badge.tf.theirs {
+  background: var(--ui-text-dim);
+  color: var(--ui-bg);
+}
+.badge.tf.mine {
+  background: var(--ui-accent);
+  color: var(--ui-accent-text);
+}
+.seg.control.mine strong {
+  color: var(--ui-accent);
+}
+.seg.control select {
+  font: inherit;
+}

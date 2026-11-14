@@ -42,7 +42,30 @@ type Squatter struct {
 	Port        int    `json:"port"`
 	Fingerprint string `json:"fingerprint,omitempty"`
 	Paired      bool   `json:"paired"`
+	// Kind is "squatterd" (the default; records from before kinds existed have none) or
+	// "tf-squatterd" (a TinyFugue bridge, docs/TF-SQUATTER.md in the daemon repository).
+	Kind string `json:"kind,omitempty"`
+	// Automation (tf-squatterd only): "tf" (default: TinyFugue runs the triggers, this client
+	// only displays) or "client" (this client runs them while it is connected).
+	Automation string `json:"automation,omitempty"`
 }
+
+// Squatter kinds.
+const (
+	KindSquatterd   = "squatterd"
+	KindTFSquatterd = "tf-squatterd"
+)
+
+// KindOrDefault is the record's kind, defaulting old records to squatterd.
+func (q Squatter) KindOrDefault() string {
+	if q.Kind == KindTFSquatterd {
+		return KindTFSquatterd
+	}
+	return KindSquatterd
+}
+
+// IsTF reports whether the squatter is a TinyFugue bridge.
+func (q Squatter) IsTF() bool { return q.KindOrDefault() == KindTFSquatterd }
 
 // Settings mirrors docs/UI-CONTRACT.md Settings.
 type Settings struct {
@@ -71,6 +94,9 @@ type Settings struct {
 
 	// AutoReconnectSquatters brings a lost link to a squatter back by itself (laptop sleep, network drop).
 	AutoReconnectSquatters bool `json:"autoReconnectSquatters"`
+
+	// ShowGagged shows lines TinyFugue gagged (tf-squatterd sessions) instead of hiding them.
+	ShowGagged bool `json:"showGagged"`
 }
 
 // Limits of the command-window settings (SaveSettings clamps into them).

@@ -26,12 +26,17 @@ type SquatterView struct {
 	Problem  string `json:"problem,omitempty"`
 	Message  string `json:"message,omitempty"`
 	Sessions int    `json:"sessions"`
+	// tf-squatterd: this device's role, TinyFugue's instance id and the features it offers.
+	Role     string   `json:"role,omitempty"`
+	Instance string   `json:"instance,omitempty"`
+	Features []string `json:"features,omitempty"`
 }
 
 // pendingPair is a squatter whose fingerprint the user has not confirmed yet.
 // The pairing code stays in memory only and is NOT sent until the user trusts
 // the fingerprint (trust on first use).
 type pendingPair struct {
+	kind string
 	host string
 	port int
 	name string
@@ -82,7 +87,8 @@ func deviceName() string {
 
 func (s *Service) engineSquatter(q config.Squatter, key ed25519.PrivateKey, code string) engine.SquatterConfig {
 	return engine.SquatterConfig{ID: q.ID, Name: q.Name, Host: q.Host, Port: q.Port, Key: key, DeviceName: deviceName(),
-		Fingerprint: q.Fingerprint, PairCode: code, MaxBacklog: s.cfg.Settings().SquatterBacklog()}
+		Fingerprint: q.Fingerprint, PairCode: code, MaxBacklog: s.cfg.Settings().SquatterBacklog(),
+		Kind: q.KindOrDefault(), Automation: q.Automation}
 }
 
 // ListSquatters returns the stored squatters with their live state.
@@ -92,6 +98,7 @@ func (s *Service) ListSquatters() ([]SquatterView, error) {
 		v := SquatterView{Squatter: q, State: engine.SqIdle}
 		if st, err := s.eng.SquatterStatus(q.ID); err == nil {
 			v.State, v.Problem, v.Message, v.Sessions = st.State, st.Problem, st.Message, st.Sessions
+			v.Role, v.Instance, v.Features = st.Role, st.Instance, st.Features
 		}
 		out = append(out, v)
 	}
@@ -100,15 +107,22 @@ func (s *Service) ListSquatters() ([]SquatterView, error) {
 
 // PairSquatter is step 1 of trust on first use: it performs only a TLS
 // handshake to read the server's certificate fingerprint. The pairing code is
-// NOT sent; it is kept in memory until ConfirmSquatter(id, true).
-func (s *Service) PairSquatter(host string, port int, name, pairCode string) (PairResult, error) {
+// NOT sent; it is kept in memory until ConfirmSquatter(id, true). kind is "squatterd"
+// (default) or "tf-squatterd".
+func (s *Service) PairSquatter(host string, port int, name, pairCode, kind string) (PairResult, error) {
 	host = strings.TrimSpace(host)
 	pairCode = strings.TrimSpace(pairCode)
 	if host == "" || port < 1 || port > 65535 {
 		return PairResult{}, errors.New("host and a port between 1 and 65535 are required")
 	}
 	if pairCode == "" {
+		if kind == config.KindTFSquatterd {
+			return PairResult{}, errors.New("the pairing code is required (in TinyFugue run /squat pair)")
+		}
 		return PairResult{}, errors.New("the pairing code is required (run `squatterd pair` on the server)")
+	}
+	if kind != config.KindTFSquatterd {
+		kind = config.KindSquatterd
 	}
 	if strings.TrimSpace(name) == "" {
 		name = host
@@ -117,7 +131,11 @@ func (s *Service) PairSquatter(host string, port int, name, pairCode string) (Pa
 	defer cancel()
 	fp, err := engine.ProbeSquatter(ctx, host, port)
 	if err != nil {
-		return PairResult{}, fmt.Errorf("cannot reach a squatter at %s:%d (is squatterd running and the port open?): %w", host, port, err)
+		running := "squatterd"
+		if kind == config.KindTFSquatterd {
+			running = "the TinyFugue bridge (/squat on)"
+		}
+		return PairResult{}, fmt.Errorf("cannot reach a squatter at %s:%d (is %s running and the port open?): %w", host, port, running, err)
 	}
 	id := "sq" + config.NewID()
 	s.pair.mu.Lock()
@@ -130,7 +148,7 @@ func (s *Service) PairSquatter(host string, port int, name, pairCode string) (Pa
 			delete(s.pair.pending, k)
 		}
 	}
-	s.pair.pending[id] = pendingPair{host: host, port: port, name: strings.TrimSpace(name), code: pairCode, fp: fp, at: time.Now()}
+	s.pair.pending[id] = pendingPair{kind: kind, host: host, port: port, name: strings.TrimSpace(name), code: pairCode, fp: fp, at: time.Now()}
 	return PairResult{ID: id, Fingerprint: fp}, nil
 }
 
@@ -155,7 +173,7 @@ func (s *Service) ConfirmSquatter(id string, accept bool) error {
 	if err != nil {
 		return err
 	}
-	q, err := s.cfg.SaveSquatter(config.Squatter{ID: id, Name: p.name, Host: p.host, Port: p.port, Fingerprint: p.fp, Paired: false})
+	q, err := s.cfg.SaveSquatter(config.Squatter{ID: id, Name: p.name, Host: p.host, Port: p.port, Fingerprint: p.fp, Paired: false, Kind: p.kind})
 	if err != nil {
 		return err
 	}

@@ -70,3 +70,15 @@ interface EngineEvents {
 Rules: lines arrive in `seq` order per session; the UI de-duplicates by `seq`; `scrollback()` returns the
 most recent `limit` lines before `beforeSeq`; `input()` is fire-and-forget text (the engine decides whether it is a
 command); the UI shows engine `notice`s in the output pane as system lines.
+
+## TinyFugue squatters (kind `tf-squatterd`)
+
+See ADR 0003 and the daemon repo's `docs/TF-SQUATTER.md`.
+
+Methods: `pairSquatter(host, port, name, code, kind?)`, `setControl(session, axis, mode)`, `controlPreset(session, preset)`, `setSquatterAutomation(squatter, mode)`, `listTFWorlds`, `putTFWorld`, `deleteTFWorld`, `connectTFWorld`, `tfExec`, `sendGmcp`, `sendMsdp`, `getSessionData`.
+
+Fields: `SquatterConfig.kind/automation/role/instance/features`, `SessionInfo.tf` (`world`, `fg`, `input`, `automation`, `controllerDevice`), `Settings.showGagged`.
+
+Events: `control-pending` (TinyFugue asks its user), `tf-worlds` (another device edited the world list), `msdp`, `data` (GMCP/MSDP snapshot).
+
+Errors: pairing/connecting with the wrong kind yields problem `wrong_kind`; nothing is sent to that server.

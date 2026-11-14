@@ -1,11 +1,13 @@
 ---
 title: Squatter
 order: 3
-keywords: squatterd, daemon, persistent, session, relay, pair, pairing, fingerprint, trust, suspend, detach, ended, reconnect, screen
+keywords: tinyfugue, squatterd, daemon, persistent, session, relay, pair, pairing, fingerprint, trust, suspend, detach, ended, reconnect, screen
 aliases: squatterd, daemon, persistent, pairing, suspend, detach, relay
 ---
 
 A **squatter** keeps your game connections running while SquatClient is closed. It is a small separate program, `squatterd`, that you run on a computer that stays on, such as a home server or a cheap virtual server. Think of `screen` or TinyFugue on a shell account.
+
+Already using TinyFugue on a server? It can be your squatter too: see [TinyFugue as a squatter](help:squatter/tinyfugue).
 
 ## Why use one
 

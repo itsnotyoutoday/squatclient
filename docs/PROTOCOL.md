@@ -1,5 +1,7 @@
 # SWP v1: Squatter Wire Protocol
 
+> TinyFugue's bridge (`tf-squatterd`) speaks SWP v1 plus extensions on path `/tfsp`; see ADR 0003 and the daemon repo's `docs/TF-SQUATTER.md`.
+
 Authoritative contract between **squatterd** (Go, repo `squatClientDaemon`) and
 **SquatClient** (Electron/TS, repo `squatclient`). The client keeps a copy at
 `docs/PROTOCOL.md`; if they differ, the daemon repo wins. The ANSI vectors in

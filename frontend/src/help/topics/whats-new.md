@@ -7,6 +7,10 @@ aliases: whats new, what's new, news, changes, changelog, new features
 
 Recent additions you can see and use.
 
+## TinyFugue
+
+- **TinyFugue as a squatter.** Pair with a TinyFugue running on a server, see all its connections and choose who types and who runs triggers. See [TinyFugue as a squatter](help:squatter/tinyfugue).
+
 ## Command window
 
 - **Resizable command window.** Drag the bar above the input to make it taller, up to about 70% of the window. Double-click the bar to reset it. See [Using the client](help:using#resizing-the-command-window).

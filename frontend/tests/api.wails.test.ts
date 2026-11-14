@@ -49,6 +49,12 @@ describe('WailsEngine adapter', () => {
     await e.clearHistory('s1');
     await e.dismiss('s1');
     await e.reconnectSquatter('sq1');
+    await e.pairSquatter('h', 10328, 'n', 'code', 'tf-squatterd');
+    await e.pairSquatter('h', 10327, 'n', 'code');
+    await e.setControl('s1', 'input', 'remote');
+    await e.controlPreset('s1', 'copilot');
+    await e.putTFWorld('sq1', { name: 'a', host: 'h', port: '1' });
+    await e.sendGmcp('s1', 'Core.Hello', '{}');
     await e.suspend();
     await e.resume();
     expect(calls).toEqual([
@@ -64,6 +70,12 @@ describe('WailsEngine adapter', () => {
       ['ClearHistory', ['s1']],
       ['Dismiss', ['s1']],
       ['ReconnectSquatter', ['sq1']],
+      ['PairSquatter', ['h', 10328, 'n', 'code', 'tf-squatterd']],
+      ['PairSquatter', ['h', 10327, 'n', 'code', '']], // "" = squatterd: the Go side defaults it
+      ['SetControl', ['s1', 'input', 'remote']],
+      ['ControlPreset', ['s1', 'copilot']],
+      ['PutTFWorld', ['sq1', { name: 'a', host: 'h', port: '1' }]],
+      ['SendGmcp', ['s1', 'Core.Hello', '{}']],
       ['Suspend', []],
       ['Resume', []],
     ]);

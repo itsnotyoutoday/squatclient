@@ -211,6 +211,11 @@ export function SettingsDialog() {
             'Reconnect to squatters automatically',
             '(after sleep or a network drop)',
           )}
+          {check(
+            'showGagged',
+            'Show lines TinyFugue gagged',
+            '(TinyFugue squatters; the lines are marked, not removed)',
+          )}
           {check('timestamps', 'Show timestamps')}
           {check('boldAsBright', 'Bold text uses bright colours')}
           {check('linkify', 'Make bare URLs clickable')}

@@ -102,6 +102,7 @@ func New(o Options) (*Service, error) {
 	}
 	s.eng = engine.New(eo)
 	s.eng.SetAutoReconnectSquatters(o.Config.Settings().AutoReconnectSquatters)
+	s.eng.SetShowGagged(o.Config.Settings().ShowGagged)
 	s.syncWorlds()
 	return s, nil
 }
@@ -200,6 +201,11 @@ type gmcpPayload struct {
 	Data    json.RawMessage `json:"data"`
 }
 
+type msdpPayload struct {
+	Session string         `json:"session"`
+	Vars    map[string]any `json:"vars"`
+}
+
 type statusPayload struct {
 	Session string               `json:"session"`
 	Fields  []engine.StatusField `json:"fields"`
@@ -295,6 +301,20 @@ func (s *Service) deliver(batch []engine.Event) {
 			s.emit("suspend", map[string]bool{"suspended": ev.Suspended})
 		case engine.EvAway:
 			s.emit("away", map[string]any{"sessions": ev.Away})
+		case engine.EvControlPending:
+			if ev.Pending != nil {
+				s.emit("control-pending", ev.Pending)
+			}
+		case engine.EvTFWorlds:
+			s.emit("tf-worlds", map[string]string{"squatter": ev.Text})
+		case engine.EvMsdp:
+			if ev.Msdp != nil {
+				s.emit("msdp", msdpPayload{Session: ev.Session, Vars: ev.Msdp.Vars})
+			}
+		case engine.EvData:
+			if ev.Data != nil {
+				s.emit("data", ev.Data)
+			}
 		case engine.EvWindow:
 			if s.win != nil {
 				s.win(ev.Text)

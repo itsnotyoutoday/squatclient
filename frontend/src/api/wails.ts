@@ -24,7 +24,17 @@ import type {
   FileResult,
   HistoryPage,
   HistoryQueryOpts,
+  SessionData,
+  SessionInfo,
   Settings,
+  SquatterKind,
+  TFAutomation,
+  TFExecResult,
+  TFScript,
+  TFScriptResult,
+  TFPreset,
+  TFWorld,
+  TFWorldPut,
   WorldConfig,
 } from './types';
 
@@ -130,8 +140,24 @@ export class WailsEngine implements EngineAPI {
   getSettings = () => call<Settings>('GetSettings');
   saveSettings = (s: Settings) => call<void>('SaveSettings', s);
   listSquatters = () => list(call<Awaited<ReturnType<EngineAPI['listSquatters']>> | null>('ListSquatters'));
-  pairSquatter = (host: string, port: number, name: string, code: string) =>
-    call<{ id: string; fingerprint: string }>('PairSquatter', host, port, name, code);
+  pairSquatter = (host: string, port: number, name: string, code: string, kind: SquatterKind = 'squatterd') =>
+    call<{ id: string; fingerprint: string }>('PairSquatter', host, port, name, code, kind === 'squatterd' ? '' : kind);
+  setControl = (id: string, axis: 'input' | 'automation', mode: string) => call<void>('SetControl', id, axis, mode);
+  controlPreset = (id: string, preset: TFPreset) => call<void>('ControlPreset', id, preset);
+  setSquatterAutomation = (id: string, mode: TFAutomation) => call<void>('SetSquatterAutomation', id, mode);
+  listTFWorlds = (id: string) => list(call<TFWorld[] | null>('ListTFWorlds', id));
+  putTFWorld = (id: string, w: TFWorldPut) => call<void>('PutTFWorld', id, w);
+  deleteTFWorld = (id: string, name: string) => call<void>('DeleteTFWorld', id, name);
+  connectTFWorld = (id: string, name: string) => call<SessionInfo>('ConnectTFWorld', id, name);
+  tfExec = (id: string, line: string) =>
+    call<TFExecResult>('TFExec', id, line).then((r) => ({ ...r, out: r.out ?? [] }));
+  putTFScript = (id: string, name: string, content: string, load: boolean) =>
+    call<TFScriptResult>('PutTFScript', id, name, content, load).then((r) => ({ ...r, out: r.out ?? [] }));
+  listTFScripts = (id: string) => list(call<TFScript[] | null>('ListTFScripts', id));
+  deleteTFScript = (id: string, name: string) => call<void>('DeleteTFScript', id, name);
+  sendGmcp = (id: string, pkg: string, json: string) => call<void>('SendGmcp', id, pkg, json);
+  sendMsdp = (id: string, json: string) => call<void>('SendMsdp', id, json);
+  getSessionData = (id: string) => call<SessionData>('GetSessionData', id);
   confirmSquatter = (id: string, accept: boolean) => call<void>('ConfirmSquatter', id, accept);
   removeSquatter = (id: string) => call<void>('RemoveSquatter', id);
   reconnectSquatter = (id: string) => call<void>('ReconnectSquatter', id);

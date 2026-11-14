@@ -31,7 +31,16 @@ import type {
   SearchHit,
   SessionInfo,
   Settings,
+  SessionData as TFSessionData,
   SquatterConfig,
+  SquatterKind,
+  TFAutomation,
+  TFExecResult,
+  TFScript,
+  TFScriptResult,
+  TFPreset,
+  TFWorld,
+  TFWorldPut,
   Span,
   WorldConfig,
 } from './types';
@@ -44,7 +53,7 @@ export interface MockOptions {
   streamIntervalMs?: number;
   connectDelayMs?: number;
   /** "demo": seeded sessions incl. an ended one and unread backlog. "empty": nothing. */
-  scenario?: 'demo' | 'empty';
+  scenario?: 'demo' | 'empty' | 'tf';
 }
 
 /** Canned text the mock returns for any path it has not been given (see MockEngine.setFile). */
@@ -78,6 +87,12 @@ export class MockEngine implements EngineAPI {
   private worlds: WorldConfig[] = [];
   private squatters: SquatterConfig[] = [];
   private pending = new Map<string, SquatterConfig>();
+  private tfWorlds = new Map<string, TFWorld[]>();
+  private tfScripts = new Map<string, Map<string, { content: string; mtime: number }>>();
+  /** Mock of TinyFugue's squat_scripts setting: 'off' refuses, 'safe' / 'on' accept. */
+  tfScriptsMode: 'off' | 'safe' | 'on' = 'safe';
+  private gmcpData = new Map<string, Record<string, unknown>>();
+  private msdpData = new Map<string, Record<string, unknown>>();
   private settings: Settings = { ...DEFAULT_SETTINGS };
   private sessions = new Map<string, SessionData>();
   private passwords = new Map<string, string>();
@@ -113,6 +128,34 @@ export class MockEngine implements EngineAPI {
       },
     ];
     if (this.opts.scenario === 'demo') this.seedDemo();
+    if (this.opts.scenario === 'tf') this.seedTF();
+  }
+
+  /** Scenario 'tf': a paired TinyFugue squatter with one session TinyFugue controls. */
+  private seedTF(): void {
+    this.squatters.push({
+      id: 'sq-tf',
+      name: 'Home TinyFugue',
+      host: 'tf.example.com',
+      port: 10328,
+      fingerprint: MOCK_FINGERPRINT,
+      paired: true,
+      kind: 'tf-squatterd',
+      role: 'admin',
+      instance: 'tf-1',
+      features: ['worldedit', 'tfexec', 'gmcp', 'msdp', 'control'],
+      state: 'connected',
+    });
+    this.tfWorlds.set('sq-tf', [
+      { name: 'alpha', host: 'alpha.example.org', port: '4201', type: 'tiny', char: 'bob', passSet: true },
+      { name: 'beta', host: 'beta.example.org', port: '6250', passSet: false },
+    ]);
+    const sd = this.makeSession('', 'alpha', 'alpha.example.org', 4201, false, 'connected');
+    sd.info.via = 'sq-tf';
+    sd.info.link = 'attached';
+    sd.info.tf = { world: 'alpha', fg: true, input: 'tf', automation: 'tf' };
+    this.preload(sd, 20);
+    this.fg = sd.info.id;
   }
 
   private world(
@@ -374,10 +417,19 @@ export class MockEngine implements EngineAPI {
     port: number,
     name: string,
     pairCode: string,
+    kind: SquatterKind = 'squatterd',
   ): Promise<{ id: string; fingerprint: string }> {
     if (!pairCode.trim()) throw new Error('pair code required');
     const id = `sq-${++this.counter}`;
-    this.pending.set(id, { id, name, host, port, fingerprint: MOCK_FINGERPRINT, paired: false });
+    this.pending.set(id, {
+      id,
+      name,
+      host,
+      port,
+      fingerprint: MOCK_FINGERPRINT,
+      paired: false,
+      ...(kind === 'tf-squatterd' ? { kind } : {}),
+    });
     return { id, fingerprint: MOCK_FINGERPRINT };
   }
   async confirmSquatter(id: string, accept: boolean): Promise<void> {
@@ -385,6 +437,122 @@ export class MockEngine implements EngineAPI {
     if (!p) throw new Error(`no pending squatter: ${id}`);
     this.pending.delete(id);
     if (accept) this.squatters.push({ ...p, paired: true });
+  }
+  // ---- TinyFugue squatters
+  private tfSession(id: string): SessionData {
+    const sd = this.must(id);
+    if (!sd.info.tf) throw new Error('not a TinyFugue session');
+    return sd;
+  }
+  async setControl(sessionId: string, axis: 'input' | 'automation', mode: string): Promise<void> {
+    const sd = this.tfSession(sessionId);
+    const tf = { ...sd.info.tf! };
+    if (axis === 'input') {
+      if (mode !== 'tf' && mode !== 'remote' && mode !== 'both') throw new Error(`bad input mode: ${mode}`);
+      tf.input = mode;
+    } else {
+      if (mode !== 'tf' && mode !== 'client') throw new Error(`bad automation mode: ${mode}`);
+      tf.automation = mode;
+      tf.controllerDevice = mode === 'client' ? 'mock-device' : undefined;
+    }
+    sd.info.tf = tf;
+    this.emit('session', this.snapshot(sd));
+  }
+  async controlPreset(sessionId: string, preset: TFPreset): Promise<void> {
+    const modes: Record<TFPreset, ['tf' | 'remote' | 'both', 'tf' | 'client']> = {
+      viewer: ['tf', 'tf'],
+      copilot: ['both', 'tf'],
+      takeover: ['remote', 'tf'],
+      full: ['remote', 'client'],
+    };
+    const m = modes[preset];
+    if (!m) throw new Error(`bad preset: ${preset}`);
+    await this.setControl(sessionId, 'input', m[0]);
+    await this.setControl(sessionId, 'automation', m[1]);
+  }
+  async setSquatterAutomation(squatterId: string, mode: TFAutomation): Promise<void> {
+    const q = this.squatters.find((x) => x.id === squatterId);
+    if (!q) throw new Error(`no such squatter: ${squatterId}`);
+    if (mode !== 'tf' && mode !== 'client') throw new Error(`bad automation mode: ${mode}`);
+    q.automation = mode;
+  }
+  async listTFWorlds(squatterId: string): Promise<TFWorld[]> {
+    return (this.tfWorlds.get(squatterId) ?? []).map((w) => ({ ...w }));
+  }
+  async putTFWorld(squatterId: string, w: TFWorldPut): Promise<void> {
+    if (!w.name.trim()) throw new Error('a world needs a name');
+    const list = this.tfWorlds.get(squatterId) ?? [];
+    const old = list.find((x) => x.name === w.name);
+    const rec: TFWorld = {
+      name: w.name,
+      host: w.host,
+      port: w.port,
+      passSet: w.clearPassword ? false : w.password ? true : (old?.passSet ?? false),
+      ...(w.type ? { type: w.type } : {}),
+      ...(w.char ? { char: w.char } : {}),
+      ...(w.tls ? { tls: true } : {}),
+    };
+    this.tfWorlds.set(squatterId, [...list.filter((x) => x.name !== w.name), rec]);
+  }
+  async deleteTFWorld(squatterId: string, name: string): Promise<void> {
+    this.tfWorlds.set(
+      squatterId,
+      (this.tfWorlds.get(squatterId) ?? []).filter((w) => w.name !== name),
+    );
+  }
+  async connectTFWorld(squatterId: string, name: string): Promise<SessionInfo> {
+    const w = (this.tfWorlds.get(squatterId) ?? []).find((x) => x.name === name);
+    if (!w) throw new Error(`no such world: ${name}`);
+    const sd = this.makeSession('', w.name, w.host, Number(w.port) || 0, !!w.tls, 'connected');
+    sd.info.via = squatterId;
+    sd.info.link = 'attached';
+    sd.info.tf = { world: w.name, fg: false, input: 'tf', automation: 'tf' };
+    this.emit('session', this.snapshot(sd));
+    return this.snapshot(sd);
+  }
+  async tfExec(squatterId: string, line: string): Promise<TFExecResult> {
+    const q = this.squatters.find((x) => x.id === squatterId);
+    if (q?.role !== 'admin') throw new Error('forbidden: admin role required');
+    return { ok: true, out: [`ran: ${line}`] };
+  }
+  async putTFScript(squatterId: string, name: string, content: string, load: boolean): Promise<TFScriptResult> {
+    const q = this.squatters.find((x) => x.id === squatterId);
+    if (q?.role !== 'admin') throw new Error('forbidden: admin role required');
+    if (this.tfScriptsMode === 'off') throw new Error('forbidden: script upload is off: /set squat_scripts=safe (or on) in TinyFugue');
+    if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,59}\.tf$/.test(name)) {
+      throw new Error('a script name is letters, digits, . _ - and ends in .tf');
+    }
+    const m = this.tfScripts.get(squatterId) ?? new Map();
+    m.set(name, { content, mtime: Date.now() });
+    this.tfScripts.set(squatterId, m);
+    return { stored: true, loaded: load, out: load ? [`% Loading commands from ${name}.`] : [] };
+  }
+  async listTFScripts(squatterId: string): Promise<TFScript[]> {
+    return [...(this.tfScripts.get(squatterId) ?? new Map()).entries()].map(([name, v]) => ({
+      name,
+      size: v.content.length,
+      mtime: v.mtime,
+    }));
+  }
+  async deleteTFScript(squatterId: string, name: string): Promise<void> {
+    if (!this.tfScripts.get(squatterId)?.delete(name)) throw new Error('no such script');
+  }
+  async sendGmcp(sessionId: string, pkg: string, dataJson: string): Promise<void> {
+    this.tfSession(sessionId);
+    JSON.parse(dataJson);
+    if (!pkg.trim()) throw new Error('a GMCP package name is required');
+  }
+  async sendMsdp(sessionId: string, varsJson: string): Promise<void> {
+    this.tfSession(sessionId);
+    if (Object.keys(JSON.parse(varsJson) as object).length === 0) throw new Error('nothing to send');
+  }
+  async getSessionData(sessionId: string): Promise<TFSessionData> {
+    return {
+      session: sessionId,
+      asOf: 0,
+      gmcp: this.gmcpData.get(sessionId) ?? {},
+      msdp: this.msdpData.get(sessionId) ?? {},
+    };
   }
   async removeSquatter(id: string): Promise<void> {
     this.squatters = this.squatters.filter((s) => s.id !== id);

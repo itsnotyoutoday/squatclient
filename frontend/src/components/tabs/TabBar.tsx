@@ -5,6 +5,7 @@ import { useSessions, useUi } from '../../state/stores';
 import { TabMenu } from './TabMenu';
 import { OBJECT_EDITOR, fgHasModule } from '../../lib/modules';
 import { useControllerRef } from '../../state/controller-context';
+import { clientActive, describeControl, inputShort } from '../../lib/tfcontrol';
 
 export function TabBar() {
   const order = useSessions((s) => s.order);
@@ -59,6 +60,17 @@ export function TabBar() {
               {unread > 0 && (
                 <span className="badge unread" aria-label={`${unread} unread`}>
                   {unread > 999 ? '999+' : unread}
+                </span>
+              )}
+              {s.tf && s.state !== 'ended' && (
+                <span
+                  className={`badge tf ${clientActive(s.tf) ? 'mine' : 'theirs'}`}
+                  title={describeControl(s.tf)}
+                  aria-label={`TinyFugue connection. ${describeControl(s.tf)}`}
+                  data-testid={`tfbadge-${id}`}
+                >
+                  {inputShort(s.tf)}
+                  {s.tf.automation === 'client' ? ' ⚙' : ''}
                 </span>
               )}
               {s.state === 'ended' && <span className="badge ended">ended</span>}
