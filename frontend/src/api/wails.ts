@@ -1,5 +1,8 @@
 import type {
   ConnectTarget,
+  LayoutBundle,
+  LayoutInfo,
+  LayoutStarter,
   EditAttrFlagResult,
   EditAttrLockResult,
   EditAttrOwnerResult,
@@ -141,8 +144,16 @@ export class WailsEngine implements EngineAPI {
   saveSettings = (s: Settings) => call<void>('SaveSettings', s);
   listSquatters = () => list(call<Awaited<ReturnType<EngineAPI['listSquatters']>> | null>('ListSquatters'));
   pairSquatter = (host: string, port: number, name: string, code: string, kind: SquatterKind = 'squatterd') =>
-    call<{ id: string; fingerprint: string }>('PairSquatter', host, port, name, code, kind === 'squatterd' ? '' : kind);
-  setControl = (id: string, axis: 'input' | 'automation', mode: string) => call<void>('SetControl', id, axis, mode);
+    call<{ id: string; fingerprint: string }>(
+      'PairSquatter',
+      host,
+      port,
+      name,
+      code,
+      kind === 'squatterd' ? '' : kind,
+    );
+  setControl = (id: string, axis: 'input' | 'automation', mode: string) =>
+    call<void>('SetControl', id, axis, mode);
   controlPreset = (id: string, preset: TFPreset) => call<void>('ControlPreset', id, preset);
   setSquatterAutomation = (id: string, mode: TFAutomation) => call<void>('SetSquatterAutomation', id, mode);
   listTFWorlds = (id: string) => list(call<TFWorld[] | null>('ListTFWorlds', id));
@@ -163,6 +174,14 @@ export class WailsEngine implements EngineAPI {
   reconnectSquatter = (id: string) => call<void>('ReconnectSquatter', id);
   nudgeSquatters = () => call<number>('NudgeSquatters');
   setGameType = (id: string, t: string) => call<void>('SetGameType', id, t);
+  listLayouts = () => list(call<LayoutInfo[] | null>('ListLayouts'));
+  loadLayout = (id: string) => call<LayoutBundle>('LoadLayout', id);
+  allowLayout = (id: string, hash: string, allow: boolean) => call<void>('AllowLayout', id, hash, allow);
+  readLayout = (id: string) => call<string>('ReadLayout', id);
+  saveLayout = (id: string, source: string) => call<LayoutInfo>('SaveLayout', id, source);
+  deleteLayout = (id: string) => call<void>('DeleteLayout', id);
+  layoutStarters = () => list(call<LayoutStarter[] | null>('LayoutStarters'));
+  layoutsDir = () => call<string>('LayoutsDir');
   setSessionWorld = (id: string, w: string) => call<void>('SetSessionWorld', id, w);
   suspend = () => call<number>('Suspend');
   resume = () => call<void>('Resume');

@@ -102,7 +102,19 @@ export const useSettings = create<SettingsState>((set) => ({
 // ---------------------------------------------------------------- ui
 
 export type DialogId =
-  'worlds' | 'quick' | 'settings' | 'squatters' | 'help' | 'away' | 'history' | 'session' | 'about' | 'tfworlds' | 'tfscripts' | null;
+  | 'worlds'
+  | 'quick'
+  | 'settings'
+  | 'squatters'
+  | 'help'
+  | 'away'
+  | 'history'
+  | 'session'
+  | 'about'
+  | 'layouts'
+  | 'tfworlds'
+  | 'tfscripts'
+  | null;
 
 export interface Toast {
   id: number;

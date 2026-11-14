@@ -3,7 +3,9 @@ import type { ComponentType, ErrorInfo, ReactNode } from 'react';
 import type { SessionInfo } from '../api/types';
 import { useSettings, useUi } from '../state/stores';
 import { Classic, findBuiltin } from './builtin';
+import { LayoutConsent } from './consent';
 import { LayoutContext } from './context';
+import { useUserLayout } from './loader';
 import type { LayoutEnv } from './context';
 
 class Guard extends Component<{ onError(e: Error): void; children: ReactNode }, { failed: boolean }> {
@@ -44,7 +46,20 @@ export function LayoutHost({
   const chosen = useLayoutId(session);
   const id = layoutId ?? chosen;
   const builtin = findBuiltin(id);
-  const Chosen: ComponentType | undefined = Custom ?? builtin?.component;
+  // a user layout: compiled by the engine, run only once the user allowed it
+  const [skipped, setSkipped] = useState<string | null>(null);
+  const user = useUserLayout(id, !Custom && !builtin && skipped !== id);
+  const Chosen: ComponentType | undefined =
+    Custom ?? builtin?.component ?? (user.status === 'ready' ? user.Component : undefined);
+  const css = user.status === 'ready' ? user.bundle.css : undefined;
+  useEffect(() => {
+    if (!css) return;
+    const el = document.createElement('style');
+    el.dataset.layout = id;
+    el.textContent = css;
+    document.head.appendChild(el);
+    return () => el.remove();
+  }, [css, id]);
   const [problem, setProblem] = useState<{ id: string; text: string } | null>(null);
   const failed = problem?.id === id;
   const counts = useRef({ mush: 0, input: 0 });
@@ -87,13 +102,24 @@ export function LayoutHost({
   }, [id]);
 
   const Layout = !Chosen || failed ? Classic : Chosen;
-  const reason = failed ? problem?.text : !Chosen ? `no layout named "${id}"` : undefined;
+  const waiting =
+    !Custom && !builtin && (user.status === 'loading' || user.status === 'consent' || skipped === id);
+  const reason = failed
+    ? problem?.text
+    : user.status === 'error' && !builtin && !Custom
+      ? user.message
+      : !Chosen && !waiting && !builtin && user.status === 'off'
+        ? `no layout named "${id}"`
+        : undefined;
   return (
     <LayoutContext.Provider value={env}>
       {reason && (
         <div className="lay-notice" role="alert">
           Layout "{id}" is not used: {reason}. Showing the classic layout.
         </div>
+      )}
+      {user.status === 'consent' && !builtin && !Custom && skipped !== id && (
+        <LayoutConsent bundle={user.bundle} onUseClassic={() => setSkipped(id)} />
       )}
       <Guard key={`${id}:${failed}`} onError={(e) => report(e.message)}>
         <Layout />

@@ -1,0 +1,36 @@
+<!-- name: Evennia demo -->
+<!-- For the local Evennia test game: character, vitals, room, inventory, chat and quick buttons.
+     <script> runs in the window; try changing the thresholds. <lua> runs in the engine. -->
+<App>
+  <Row>
+    <Mush />
+    <Dock side="right" width={250}>
+      <When gmcp="Char.Status">
+        <Panel title="Character">
+          <Text label="Name" value="gmcp:Char.Status.name" />
+          <Text label="Class" value="gmcp:Char.Status.class" />
+          <Text label="Level" value="gmcp:Char.Status.level" />
+          <Text label="Gold" value="gmcp:Char.Status.gold" />
+        </Panel>
+      </When>
+      <Panel title="Vitals">
+        <Vitals />
+        <Gauge label="XP" value="gmcp:Char.Status.xp" max="gmcp:Char.Status.nextxp" color="accent" format="{percent}" />
+      </Panel>
+      <Panel title="Room">
+        <RoomInfo />
+      </Panel>
+      <List title="Inventory" value="items:inv" send="look {name}" empty="Nothing carried." />
+      <Chat height={150} />
+    </Dock>
+  </Row>
+  <Dock side="bottom">
+    <Row gap={6}>
+      <Button send="look">Look</Button>
+      <Button send="hurt 10">Hurt</Button>
+      <Button send="heal">Heal</Button>
+      <Button send="run">Run</Button>
+    </Row>
+  </Dock>
+  <InputBar />
+</App>

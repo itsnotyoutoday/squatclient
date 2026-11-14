@@ -1,0 +1,15 @@
+<!-- name: Sidebar -->
+<!-- Vitals, room, inventory and chat in a right-hand dock. The dock appears only when the game
+     reports something to show in it. -->
+<App>
+  <Row>
+    <Mush />
+    <Dock side="right" width={230}>
+      <Vitals />
+      <RoomInfo />
+      <List title="Inventory" value="items:inv" send="look {name}" />
+      <Chat height={160} />
+    </Dock>
+  </Row>
+  <InputBar />
+</App>

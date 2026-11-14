@@ -63,10 +63,10 @@ export function TFScriptsDialog() {
       wide
     >
       <p className="hint">
-        Sends a TinyFugue macro file to TinyFugue and runs it there. What it may do is decided in
-        TinyFugue: with <code>/set squat_scripts=safe</code> the script runs sandboxed (no shell, no files, no
-        new connections, no Lua, also when its triggers fire later); <code>on</code> gives it
-        TinyFugue&rsquo;s own rights; off refuses uploads.
+        Sends a TinyFugue macro file to TinyFugue and runs it there. What it may do is decided in TinyFugue:
+        with <code>/set squat_scripts=safe</code> the script runs sandboxed (no shell, no files, no new
+        connections, no Lua, also when its triggers fire later); <code>on</code> gives it TinyFugue&rsquo;s
+        own rights; off refuses uploads.
       </p>
       <h3>Stored in TinyFugue</h3>
       {scripts.length === 0 ? (
@@ -109,7 +109,11 @@ export function TFScriptsDialog() {
             placeholder="myscript.tf"
             onChange={(e) => setName(e.target.value)}
           />
-          <span className="hint">{name && !nameOk ? 'Letters, digits, . _ - and ending in .tf' : 'The same name replaces the old script'}</span>
+          <span className="hint">
+            {name && !nameOk
+              ? 'Letters, digits, . _ - and ending in .tf'
+              : 'The same name replaces the old script'}
+          </span>
         </label>
         <div className="field">
           <span className="lbl">File</span>
@@ -135,19 +139,26 @@ export function TFScriptsDialog() {
         </label>
         <div className="checks wide">
           <label className="check">
-            <input type="checkbox" checked={load} onChange={(e) => setLoad(e.target.checked)} /> Activate it now
-            (load it in TinyFugue)
+            <input type="checkbox" checked={load} onChange={(e) => setLoad(e.target.checked)} /> Activate it
+            now (load it in TinyFugue)
           </label>
         </div>
         <div className="actions wide">
-          <button type="button" className="primary" disabled={busy || !nameOk || !content} onClick={() => void send()}>
+          <button
+            type="button"
+            className="primary"
+            disabled={busy || !nameOk || !content}
+            onClick={() => void send()}
+          >
             {load ? 'Send and load' : 'Send'}
           </button>
         </div>
       </div>
       {result && (
         <div role="status" className={result.loaded || !load ? '' : 'err'} data-testid="script-result">
-          <strong>{load ? (result.loaded ? 'Loaded.' : 'Stored, but TinyFugue reported a problem.') : 'Stored.'}</strong>
+          <strong>
+            {load ? (result.loaded ? 'Loaded.' : 'Stored, but TinyFugue reported a problem.') : 'Stored.'}
+          </strong>
           {result.out.length > 0 && <pre>{result.out.join('\n')}</pre>}
         </div>
       )}

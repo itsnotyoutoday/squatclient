@@ -21,7 +21,8 @@ export function SquattersDialog() {
 
   const pickKind = (k: SquatterKind): void => {
     // keep a port the user typed; only swap the default of the other kind
-    if (port === (kind === 'tf-squatterd' ? '10328' : '10327')) setPort(k === 'tf-squatterd' ? '10328' : '10327');
+    if (port === (kind === 'tf-squatterd' ? '10328' : '10327'))
+      setPort(k === 'tf-squatterd' ? '10328' : '10327');
     setKind(k);
   };
 

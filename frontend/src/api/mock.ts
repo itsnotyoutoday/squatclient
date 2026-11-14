@@ -2,6 +2,9 @@ import { DEFAULT_SETTINGS } from './types';
 import { GAME_TYPES } from '../lib/modules';
 import type {
   ConnectTarget,
+  LayoutBundle,
+  LayoutInfo,
+  LayoutStarter,
   EditAttrFlagResult,
   EditAttrLockResult,
   EditAttrOwnerResult,
@@ -515,10 +518,16 @@ export class MockEngine implements EngineAPI {
     if (q?.role !== 'admin') throw new Error('forbidden: admin role required');
     return { ok: true, out: [`ran: ${line}`] };
   }
-  async putTFScript(squatterId: string, name: string, content: string, load: boolean): Promise<TFScriptResult> {
+  async putTFScript(
+    squatterId: string,
+    name: string,
+    content: string,
+    load: boolean,
+  ): Promise<TFScriptResult> {
     const q = this.squatters.find((x) => x.id === squatterId);
     if (q?.role !== 'admin') throw new Error('forbidden: admin role required');
-    if (this.tfScriptsMode === 'off') throw new Error('forbidden: script upload is off: /set squat_scripts=safe (or on) in TinyFugue');
+    if (this.tfScriptsMode === 'off')
+      throw new Error('forbidden: script upload is off: /set squat_scripts=safe (or on) in TinyFugue');
     if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,59}\.tf$/.test(name)) {
       throw new Error('a script name is letters, digits, . _ - and ends in .tf');
     }
@@ -568,6 +577,68 @@ export class MockEngine implements EngineAPI {
     if (!sd) throw new Error(`no such session: ${id}`);
     sd.info = { ...sd.info, ...(worldId ? { worldId } : {}) };
     this.emit('session', sd.info);
+  }
+  // ---- layouts (the real compiler is in Go; the mock keeps sources and lets tests supply compiled code)
+  private layoutFiles = new Map<
+    string,
+    { source: string; code?: string; lua?: string; css?: string; allowed: boolean }
+  >();
+  /** Test/demo hook: a layout with already compiled code. */
+  setLayout(
+    id: string,
+    source: string,
+    code: string,
+    opts: { allowed?: boolean; lua?: string; css?: string } = {},
+  ): void {
+    this.layoutFiles.set(id, { source, code, lua: opts.lua, css: opts.css, allowed: opts.allowed ?? true });
+    this.emit('layouts-changed', {});
+  }
+  private layoutHash(id: string): string {
+    return `h-${id}-${this.layoutFiles.get(id)?.source.length ?? 0}`;
+  }
+  async listLayouts(): Promise<LayoutInfo[]> {
+    return [...this.layoutFiles.entries()].map(([id, f]) => ({
+      id,
+      name: id,
+      file: `${id}.layout`,
+      hash: this.layoutHash(id),
+      modified: 0,
+      allowed: f.allowed,
+    }));
+  }
+  async loadLayout(id: string): Promise<LayoutBundle> {
+    const f = this.layoutFiles.get(id);
+    if (!f) throw new Error(`no layout named "${id}"`);
+    const hash = this.layoutHash(id);
+    if (!f.allowed) return { id, hash, needsConsent: true, source: f.source };
+    if (!f.code) return { id, hash, error: 'the mock engine cannot compile layouts' };
+    return { id, hash, code: f.code, lua: f.lua, css: f.css };
+  }
+  async allowLayout(id: string, _hash: string, allow: boolean): Promise<void> {
+    const f = this.layoutFiles.get(id);
+    if (f) f.allowed = allow;
+    this.emit('layouts-changed', {});
+  }
+  async readLayout(id: string): Promise<string> {
+    const f = this.layoutFiles.get(id);
+    if (!f) throw new Error(`no layout named "${id}"`);
+    return f.source;
+  }
+  async saveLayout(id: string, source: string): Promise<LayoutInfo> {
+    const prev = this.layoutFiles.get(id);
+    this.layoutFiles.set(id, { source, code: prev?.code, allowed: true });
+    this.emit('layouts-changed', {});
+    return { id, name: id, file: `${id}.layout`, hash: this.layoutHash(id), modified: 0, allowed: true };
+  }
+  async deleteLayout(id: string): Promise<void> {
+    this.layoutFiles.delete(id);
+    this.emit('layouts-changed', {});
+  }
+  async layoutStarters(): Promise<LayoutStarter[]> {
+    return [{ id: 'classic', name: 'Classic', source: '<App>\n  <Mush />\n  <InputBar />\n</App>\n' }];
+  }
+  async layoutsDir(): Promise<string> {
+    return '~/.squatclient/layouts';
   }
   async setGameType(id: string, t: string): Promise<void> {
     const sd = this.sessions.get(id);

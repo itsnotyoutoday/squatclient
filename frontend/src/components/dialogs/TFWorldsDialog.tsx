@@ -68,7 +68,12 @@ export function TFWorldsDialog() {
       {draft ? (
         <form className="form grid" onSubmit={(e) => void save(e)}>
           <Field label="Name">
-            <input required readOnly={!isNew} value={draft.name} onChange={(e) => set('name', e.target.value)} />
+            <input
+              required
+              readOnly={!isNew}
+              value={draft.name}
+              onChange={(e) => set('name', e.target.value)}
+            />
           </Field>
           <Field label="Host">
             <input required value={draft.host} onChange={(e) => set('host', e.target.value)} />
@@ -81,7 +86,11 @@ export function TFWorldsDialog() {
           </Field>
           <Field
             label="Password"
-            hint={draft.passSet ? 'One is stored in TinyFugue; leave empty to keep it' : 'Stored in TinyFugue, never here'}
+            hint={
+              draft.passSet
+                ? 'One is stored in TinyFugue; leave empty to keep it'
+                : 'Stored in TinyFugue, never here'
+            }
           >
             <input
               type="password"
@@ -95,11 +104,12 @@ export function TFWorldsDialog() {
           </Field>
           <div className="checks">
             <label className="check">
-              <input type="checkbox" checked={!!draft.tls} onChange={(e) => set('tls', e.target.checked)} /> TLS
+              <input type="checkbox" checked={!!draft.tls} onChange={(e) => set('tls', e.target.checked)} />{' '}
+              TLS
             </label>
             <label className="check">
-              <input type="checkbox" checked={!!draft.save} onChange={(e) => set('save', e.target.checked)} /> Keep
-              after TinyFugue restarts (/saveworld)
+              <input type="checkbox" checked={!!draft.save} onChange={(e) => set('save', e.target.checked)} />{' '}
+              Keep after TinyFugue restarts (/saveworld)
             </label>
           </div>
           <div className="actions wide">

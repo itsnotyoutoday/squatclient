@@ -274,6 +274,41 @@ export interface EngineEvents {
   msdp: { session: string; vars: Record<string, unknown> };
   /** Snapshot of a session's GMCP/MSDP data (after attach or on request). */
   data: SessionData;
+  /** The layouts folder or the list of allowed layouts changed: reload the layout in use. */
+  'layouts-changed': Record<string, never>;
+}
+
+/** A layout file in the user's layouts folder (docs/LAYOUTS.md). */
+export interface LayoutInfo {
+  id: string;
+  name: string;
+  file: string;
+  hash: string;
+  modified: number;
+  /** The user allowed this exact content to run. */
+  allowed: boolean;
+}
+
+/** What the window needs to run a layout. */
+export interface LayoutBundle {
+  id: string;
+  hash: string;
+  /** Compiled JavaScript (CommonJS); empty until the user allowed the layout. */
+  code?: string;
+  /** The layout's <lua> block, for the engine. */
+  lua?: string;
+  css?: string;
+  needsConsent?: boolean;
+  /** Source to show when consent is needed. */
+  source?: string;
+  error?: string;
+}
+
+/** A layout that ships with the app, as source to copy and edit. */
+export interface LayoutStarter {
+  id: string;
+  name: string;
+  source: string;
 }
 
 /** Latest GMCP and MSDP values of a session. */
@@ -574,6 +609,16 @@ export interface EngineAPI {
   nudgeSquatters(): Promise<number>;
   /** Set what kind of game a session is ("" or "auto" detects it again). */
   setGameType(sessionId: string, gameType: string): Promise<void>;
+  /** Layout files (docs/LAYOUTS.md). `loadLayout` compiles; a layout nobody allowed comes back with `needsConsent`. */
+  listLayouts(): Promise<LayoutInfo[]>;
+  loadLayout(id: string): Promise<LayoutBundle>;
+  allowLayout(id: string, hash: string, allow: boolean): Promise<void>;
+  readLayout(id: string): Promise<string>;
+  /** Saves a layout (it must compile) and allows it to run. */
+  saveLayout(id: string, source: string): Promise<LayoutInfo>;
+  deleteLayout(id: string): Promise<void>;
+  layoutStarters(): Promise<LayoutStarter[]>;
+  layoutsDir(): Promise<string>;
   /** Link a session to a saved world (after saving a quick connect as a world). */
   setSessionWorld(sessionId: string, worldId: string): Promise<void>;
   /** /suspend: detach squatter sessions (they keep running) and minimise; returns how many were detached. */

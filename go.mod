@@ -6,6 +6,7 @@ require github.com/wailsapp/wails/v2 v2.10.2
 
 require (
 	github.com/coder/websocket v1.8.15 // indirect
+	github.com/evanw/esbuild v0.25.5 // indirect
 	github.com/yuin/gopher-lua v1.1.2 // indirect
 )
 
@@ -41,6 +42,5 @@ require (
 	golang.org/x/sys v0.30.0 // indirect
 	golang.org/x/text v0.22.0 // indirect
 )
-
 
 replace github.com/itsnotyoutoday/squatClientDaemon => ../squatClientDaemon

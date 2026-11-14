@@ -18,6 +18,7 @@ import (
 	"github.com/itsnotyoutoday/squatClientDaemon/pkg/proto"
 
 	"github.com/itsnotyoutoday/squatclient/internal/config"
+	"github.com/itsnotyoutoday/squatclient/internal/layouts"
 	"github.com/itsnotyoutoday/squatclient/internal/secrets"
 )
 
@@ -51,12 +52,14 @@ type Service struct {
 	win   func(string)
 	flush time.Duration
 
-	ctx    context.Context
-	cancel context.CancelFunc // stops squatter connects at shutdown
-	boot   sync.WaitGroup
-	keyMu  sync.Mutex
-	pair   pairing
-	hist   *historyStore
+	ctx     context.Context
+	cancel  context.CancelFunc // stops squatter connects at shutdown
+	boot    sync.WaitGroup
+	keyMu   sync.Mutex
+	pair    pairing
+	hist    *historyStore
+	lay     *layouts.Manager
+	layOnce sync.Once
 
 	fgMu     sync.Mutex
 	uiFg     string // foreground the UI last chose or was told about
@@ -117,6 +120,7 @@ func (s *Service) Engine() *engine.Engine { return s.eng }
 // Start subscribes to the engine, starts event delivery, loads scripts and
 // connects autoConnect worlds.
 func (s *Service) Start() {
+	s.watchLayouts()
 	ch, unsub := s.eng.Subscribe()
 	s.unsub = unsub
 	go s.pump(ch)

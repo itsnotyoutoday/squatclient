@@ -28,6 +28,8 @@ type World struct {
 	Login       *Login `json:"login,omitempty"`
 	AutoConnect bool   `json:"autoConnect,omitempty"`
 	MacrosFile  string `json:"macrosFile,omitempty"`
+	// Layout is the layout this world uses (a built-in or user layout id); empty = the default.
+	Layout string `json:"layout,omitempty"`
 	// GameType overrides detection of the kind of game (see engine.GameKinds: pennmush, cobramush,
 	// circlemud, evennia, lambdamoo...; "other" = something else). Empty means detect.
 	GameType string `json:"gameType,omitempty"`
@@ -70,6 +72,7 @@ func (q Squatter) IsTF() bool { return q.KindOrDefault() == KindTFSquatterd }
 // Settings mirrors docs/UI-CONTRACT.md Settings.
 type Settings struct {
 	Theme           string  `json:"theme"`
+	Layout          string  `json:"layout,omitempty"` // the default layout id (empty = classic)
 	FontFamily      string  `json:"fontFamily"`
 	FontSize        float64 `json:"fontSize"`
 	ScrollbackLines int     `json:"scrollbackLines"`

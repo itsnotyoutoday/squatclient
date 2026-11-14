@@ -277,6 +277,9 @@ export function handleMenuAction(action: string, controller: Controller): void {
     case 'about':
       u.openDialog('about');
       break;
+    case 'layouts':
+      u.openDialog('layouts');
+      break;
     case 'search':
       u.setSearch(true);
       break;

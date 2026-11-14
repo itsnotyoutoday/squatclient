@@ -43,7 +43,8 @@ func buildMenu(a *App) *menu.Menu {
 		view := m.AddSubmenu("View")
 		view.AddText("Find...", nil, act("search"))
 		view.AddText("Object Editor", nil, act("editor")) // Cmd-E is handled by the page
-		m.Append(menu.WindowMenu())                       // Minimize, Zoom, Full Screen, ...
+		view.AddText("Layouts...", nil, act("layouts"))
+		m.Append(menu.WindowMenu()) // Minimize, Zoom, Full Screen, ...
 		help := m.AddSubmenu("Help")
 		help.AddText("SquatClient Help", nil, act("help"))
 		return m

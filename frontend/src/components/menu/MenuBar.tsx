@@ -80,6 +80,7 @@ export const MENUS: readonly Menu[] = [
     items: [
       { label: 'Find...', key: 'F', shortcut: 'Ctrl+Shift+F', action: 'search' },
       { label: 'Object Editor', key: 'O', shortcut: 'Ctrl+E', action: 'editor', needsSession: true },
+      { label: 'Layouts...', key: 'L', action: 'layouts' },
     ],
   },
   {

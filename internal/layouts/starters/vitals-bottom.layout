@@ -1,0 +1,10 @@
+<!-- name: Vitals bar -->
+<App>
+  <Mush />
+  <Dock side="bottom">
+    <Row gap={12}>
+      <Vitals />
+    </Row>
+  </Dock>
+  <InputBar />
+</App>

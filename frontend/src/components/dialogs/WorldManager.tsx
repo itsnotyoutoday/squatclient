@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { GAME_TYPES } from '../../lib/modules';
+import { BUILTIN_LAYOUTS } from '../../layout/builtin';
+import type { LayoutInfo } from '../../api/types';
 import type { FormEvent } from 'react';
 import type { WorldConfig } from '../../api/types';
 import { useUi } from '../../state/stores';
@@ -38,6 +40,13 @@ export function WorldManager() {
   const [draft, setDraft] = useState<WorldConfig | null>(null);
   const [password, setPassword] = useState('');
   const [err, setErr] = useState('');
+  const [userLayouts, setUserLayouts] = useState<LayoutInfo[]>([]);
+  useEffect(() => {
+    void engine
+      ?.listLayouts()
+      .then(setUserLayouts)
+      .catch(() => undefined);
+  }, [engine]);
   const groups = useMemo(() => groupWorlds(worlds, filter), [worlds, filter]);
   const close = (): void => useUi.getState().openDialog(null);
   const editWorldId = useUi((s) => s.editWorldId);
@@ -173,6 +182,21 @@ export function WorldManager() {
                   {squatters.map((s) => (
                     <option key={s.id} value={s.id}>
                       Squatter: {s.name}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Layout" hint="How this world's window is arranged (Layouts in the View menu)">
+                <select value={draft.layout ?? ''} onChange={(e) => set('layout', e.target.value)}>
+                  <option value="">Default</option>
+                  {BUILTIN_LAYOUTS.map((l) => (
+                    <option key={l.id} value={l.id}>
+                      {l.name}
+                    </option>
+                  ))}
+                  {userLayouts.map((l) => (
+                    <option key={l.id} value={l.id}>
+                      {l.name}
                     </option>
                   ))}
                 </select>
