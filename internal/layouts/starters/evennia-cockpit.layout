@@ -1,11 +1,15 @@
 <!-- name: Evennia cockpit -->
-<!-- The showcase: everything a layout can do, against the local Evennia test game.
-       markup   components and plain HTML, arranged with resizable docks (drag an edge; double-click resets)
-       <script> JavaScript/TypeScript in the window: hooks, state, a live HP chart, derived values
-       <lua>    Lua in the engine: tracks vitals, raises alerts, auto-heals, counts, keeps a clock
-       <style>  CSS for the layout, here a pulsing warning banner
-     JavaScript and Lua share variables both ways: Lua's squat.var.set("danger", ...) shows up here as
-     useVar("danger"), and setVar("autoheal", true) here is squat.var.get("autoheal") in Lua. -->
+<!-- The showcase: what a layout can do, against the local Evennia test game.
+       markup   components and plain HTML in resizable docks (drag an edge; double-click resets)
+       <script> JavaScript/TypeScript in the window: hooks, state, a live HP chart, a compass built from the
+                room's exits (so same-named exits stay distinct and every room gets the buttons it needs)
+       <lua>    Lua in the engine: tracks vitals, alerts, auto-heals, counts, keeps a clock, and opens its own
+                windows: a Who list and a help browser made by capturing the game's own WHO and HELP output
+       <style>  CSS for the layout
+     Lua and JavaScript share variables both ways (squat.var.set("danger", ...) here is useVar("danger"),
+     setVar("autoheal", true) here is squat.var.get("autoheal") there). Lua opens windows with
+     squat.ui.window{...} and docked panels with squat.ui.panel{...}; they are data, drawn by <LuaWindows />
+     (every layout has it) and <LuaPanels /> (put it in a dock). -->
 <App>
   <When var="alert">
     <Dock side="top">
@@ -17,7 +21,7 @@
   </When>
 
   <Row>
-    <Dock side="left" width={235} resizable id="cockpit-left">
+    <Dock side="left" width={245} resizable id="cockpit-left">
       <When gmcp="Char.Status">
         <Panel title="Character">
           <Text label="Name" value="gmcp:Char.Status.name" />
@@ -36,6 +40,21 @@
           </svg>
         )}
       </Panel>
+
+      {room && room.exitInfo.length > 0 && (
+        <Panel title="Go">
+          {compass}
+          {others.length > 0 && (
+            <div className="cp-others">
+              {others.map((x, i) => (
+                <button key={i} type="button" className="lay-button" title={`type: ${x.cmd}`} onClick={() => send(x.cmd)}>
+                  {x.name}{x.to ? ` → ${x.to}` : ''}
+                </button>
+              ))}
+            </div>
+          )}
+        </Panel>
+      )}
 
       <Panel title="Combat" collapsible>
         <Row gap={6}>
@@ -56,7 +75,7 @@
         />
       </Panel>
 
-      <Panel title="Session" collapsible>
+      <Panel title="Session" collapsible defaultOpen={false}>
         <Table value={stats} columns={[{ key: 'stat', title: 'Stat' }, { key: 'value', title: '' }]} />
         <Button send="/stats">Print to window</Button>
       </Panel>
@@ -65,7 +84,8 @@
     <Mush />
 
     <Dock side="right" width={265} resizable id="cockpit-right">
-      <Panel title="Room"><RoomInfo /></Panel>
+      <Panel title="Room"><RoomInfo exits={false} /></Panel>
+      <LuaPanels dock="right" />
       <List title="Inventory" value="items:inv" send="look {name}" empty="Nothing carried." />
       <Chat height={170} />
     </Dock>
@@ -74,9 +94,10 @@
   <Dock side="bottom">
     <Row gap={6}>
       <Button send="look">Look</Button>
-      {exits.map((x) => (
-        <Button key={x} send={x}>{x}</Button>
-      ))}
+      <Button send="/who" title="Who is online (opens a window)">
+        Who {whoCount > 0 && <span className="cp-count">{whoCount}</span>}
+      </Button>
+      <Button send="/helpbrowser" title="Browse the game's help (opens a window)">Help</Button>
       <Spacer />
       <span className="cp-clock" title="Time since this layout loaded (a Lua timer)">⏱ {clock}</span>
     </Row>
@@ -90,12 +111,12 @@
   const alert = (useVar('alert') as string) ?? '';
   const autoheal = Boolean(useVar('autoheal'));
   const healAt = Number(useVar('heal_at') ?? 40);
+  const whoCount = Number(useVar('who_count') ?? 0);
   const setVar = useSetVar();
+  const send = useSend();
 
   const hp = Number(useGmcp('Char.Vitals.hp'));
   const maxhp = Number(useGmcp('Char.Vitals.maxhp')) || 100;
-  const exitsRaw = useGmcp('Room.Info.exits');
-  const exits = exitsRaw && typeof exitsRaw === 'object' ? Object.keys(exitsRaw as object) : [];
 
   // ---- state: the last 40 HP readings, drawn as a chart
   const [hist, setHist] = React.useState<number[]>([]);
@@ -103,6 +124,35 @@
     if (Number.isFinite(hp)) setHist((h) => [...h, hp / maxhp].slice(-40));
   }, [hp, maxhp]);
   const points = hist.map((v, i) => `${(i / 39) * 100},${29 - Math.max(0, Math.min(1, v)) * 28}`).join(' ');
+
+  // ---- the compass: whatever exits this room has, placed by direction; anything else becomes a button below
+  const room = useRoom();
+  const LONG: Record<string, string> = { n: 'north', ne: 'northeast', e: 'east', se: 'southeast', s: 'south', sw: 'southwest', w: 'west', nw: 'northwest', u: 'up', d: 'down' };
+  const GRID = [['northwest', 'north', 'northeast'], ['west', '', 'east'], ['southwest', 'south', 'southeast']];
+  const ARROW: Record<string, string> = { north: '↑', northeast: '↗', east: '→', southeast: '↘', south: '↓', southwest: '↙', west: '←', northwest: '↖', up: '⇑', down: '⇓' };
+  const bySlot: Record<string, { name: string; cmd: string; to?: string }> = {};
+  const others: { name: string; cmd: string; to?: string }[] = [];
+  for (const x of room?.exitInfo ?? []) {
+    const dir = LONG[x.name.toLowerCase()] ?? x.name.toLowerCase();
+    if ((dir in ARROW) && !bySlot[dir]) bySlot[dir] = x;
+    else others.push(x); // not a compass direction, or a second exit in the same direction
+  }
+  const exitButton = (dir: string) => {
+    const x = bySlot[dir];
+    if (!x) return <span key={dir} className="cp-exit empty" />;
+    return (
+      <button key={dir} type="button" className="cp-exit" title={`${dir}${x.to ? ' to ' + x.to : ''} (type: ${x.cmd})`} onClick={() => send(x.cmd)}>
+        <span className="cp-arrow">{ARROW[dir]}</span>
+        <span className="cp-dest">{x.to ?? dir}</span>
+      </button>
+    );
+  };
+  const compass = (
+    <div className="cp-compass" role="group" aria-label="Exits">
+      {GRID.flat().map((dir, i) => (dir ? exitButton(dir) : <span key={i} className="cp-exit here" title="You are here">✦</span>))}
+      {(bySlot.up || bySlot.down) && <div className="cp-updown">{exitButton('up')}{exitButton('down')}</div>}
+    </div>
+  );
 
   // ---- numbers Lua keeps
   const secs = Number(useVar('uptime') ?? 0);
@@ -116,18 +166,17 @@
 </script>
 
 <lua>
--- Runs in the engine for as long as this layout is shown. Handlers, timers and rules vanish when you
--- switch layouts; the variables stay.
+-- Runs in the engine for as long as this layout is shown. Handlers, timers, rules and the windows it
+-- opened vanish when you switch layouts; the variables stay.
 local hp, maxhp = nil, 100
 local last_heal = 0
-local rooms = {}
+local rooms, trail = {}, {}
+local world                  -- the connection this script last heard from (timers need it to send)
 
 local function count(t) local n = 0 for _ in pairs(t) do n = n + 1 end return n end
+local function trim(s) return (s:gsub("^%s+", ""):gsub("%s+$", "")) end
+local function default(name, v) if squat.var.get(name) == nil then squat.var.set(name, v) end end
 
--- defaults (only if nothing set them already)
-local function default(name, v)
-  if squat.var.get(name) == nil then squat.var.set(name, v) end
-end
 default("autoheal", false)
 default("heal_at", 40)
 squat.var.set("uptime", 0)
@@ -135,7 +184,265 @@ squat.var.set("damage_taken", squat.var.get("damage_taken", 0))
 squat.var.set("heals", squat.var.get("heals", 0))
 squat.var.set("levelups", squat.var.get("levelups", 0))
 
--- the danger level and the banner text, from HP
+---------------------------------------------------------------------------------------------------
+-- capturing the game's own output: send a command, collect (and hide) the lines it answers with, and
+-- hand them to a function once the game has been quiet for a moment. Works for any game's WHO/HELP.
+---------------------------------------------------------------------------------------------------
+local cap = nil
+
+local function finish()
+  local c = cap
+  cap = nil
+  if c then c.done(c.lines) end
+end
+
+local function arm(wait)
+  if cap.timer then squat.cancel(cap.timer) end
+  cap.timer = squat.after(wait, finish)
+end
+
+local function request(cmd, done)
+  if cap then return false end            -- one at a time
+  cap = { lines = {}, done = done }
+  squat.send(cmd, world)
+  arm(1.5)                                -- the game may be slow to start answering
+  return true
+end
+
+squat.on("line", function(l)
+  world = l.world or world
+  if cap and l.live then
+    cap.lines[#cap.lines + 1] = l.text
+    arm(0.4)
+    return { gag = true }
+  end
+end, 10)
+
+---------------------------------------------------------------------------------------------------
+-- WHO: parse a text table ("| Name | On for |" rows) into a window
+---------------------------------------------------------------------------------------------------
+local function parse_table(lines)
+  local cols, rows, extra = nil, {}, {}
+  for _, ln in ipairs(lines) do
+    if ln:match("^%s*|") then
+      local cells = {}
+      for c in ln:gmatch("|([^|]*)") do cells[#cells + 1] = trim(c) end
+      if ln:match("|%s*$") then cells[#cells] = nil end
+      if not cols then
+        cols = {}
+        for i, c in ipairs(cells) do
+          cols[i] = { key = (c:lower():gsub("[^%w]+", "_")), title = c }
+        end
+      else
+        local row = {}
+        for i, col in ipairs(cols) do row[col.key] = cells[i] or "" end
+        rows[#rows + 1] = row
+      end
+    elseif not ln:match("^%s*[%+%-=]+%s*$") and trim(ln) ~= "" then
+      extra[#extra + 1] = trim(ln)
+    end
+  end
+  return cols, rows, extra
+end
+
+local function show_who(lines, open)
+  if #lines == 0 then return end
+  local cols, rows, extra = parse_table(lines)
+  local children, names = {}, {}
+  if cols then
+    for _, r in ipairs(rows) do names[#names + 1] = { name = r[cols[1].key] } end
+    children[#children + 1] = { type = "table", columns = cols, rows = rows, empty = "Nobody." }
+  else
+    children[#children + 1] = { type = "code", value = table.concat(lines, "\n") }
+  end
+  local summary = extra[#extra]
+  if summary and summary:match("^Accounts:?$") then summary = nil end
+  if summary then children[#children + 1] = { type = "text", value = summary, dim = true } end
+  if #names > 0 then
+    children[#children + 1] = { type = "list", title = "Look at", items = names, send = "look *{name}" }
+  end
+  children[#children + 1] = { type = "button", text = "Refresh", send = "/who" }
+  squat.var.set("who_count", cols and #rows or 0)
+  if open or squat.ui.get("who") then
+    squat.ui.window{ id = "who", title = "Who is online", x = 140, y = 90, w = 420,
+      body = { type = "column", gap = 8, children = children } }
+  end
+end
+
+local function refresh_who(open)
+  return request("who", function(lines) show_who(lines, open) end)
+end
+
+squat.alias{ match = "/who", fn = function(m) world = m.world or world; refresh_who(true) end }
+
+-- somebody came or went: refresh the count (and the window, if it is open)
+squat.trigger{ match = "^\\[MudInfo\\].*(connected|disconnected)\\s*$", regex = true, fn = function()
+  squat.after(1, function() refresh_who(false) end)
+end }
+
+---------------------------------------------------------------------------------------------------
+-- HELP: capture the game's help index and any topic, and show them as a browser
+---------------------------------------------------------------------------------------------------
+local help = { cats = {}, flat = {}, filter = "" }
+
+local function parse_index(lines)
+  local cats, flat, cur = {}, {}, nil
+  for _, ln in ipairs(lines) do
+    if ln:match("^%-+$") then
+      -- a plain rule
+    else
+      local h = ln:match("^%-%-+%s*(.-)%s*%-+$")
+      if h and h ~= "" then
+        cur = { name = h, topics = {} }
+        cats[#cats + 1] = cur
+      elseif cur then
+        for w in ln:gmatch("%S+") do
+          cur.topics[#cur.topics + 1] = w
+          flat[w:lower()] = true
+        end
+      end
+    end
+  end
+  local out = {}
+  for _, c in ipairs(cats) do if #c.topics > 0 then out[#out + 1] = c end end
+  return out, flat
+end
+
+local function help_window()
+  local f = help.filter:lower()
+  local children = {
+    { type = "input", placeholder = "Filter commands…", send = "/hfind {value}", clear = false },
+  }
+  local shown = 0
+  for _, c in ipairs(help.cats) do
+    local buttons = {}
+    for _, t in ipairs(c.topics) do
+      if f == "" or t:lower():find(f, 1, true) then
+        buttons[#buttons + 1] = { type = "button", text = t, send = "/htopic " .. t }
+      end
+    end
+    if #buttons > 0 then
+      shown = shown + #buttons
+      children[#children + 1] = { type = "panel", title = c.name .. " (" .. #buttons .. ")",
+        collapsible = true, open = true,
+        children = { { type = "grid", columns = 4, gap = 4, children = buttons } } }
+    end
+  end
+  if shown == 0 then children[#children + 1] = { type = "text", value = "Nothing matches.", dim = true } end
+  squat.ui.window{ id = "help", title = "Help browser", x = 130, y = 70, w = 540, h = 500,
+    body = { type = "column", gap = 8, children = children } }
+end
+
+local function open_help()
+  if #help.cats > 0 then return help_window() end
+  request("help", function(lines)
+    help.cats, help.flat = parse_index(lines)
+    if #help.cats == 0 then
+      squat.ui.window{ id = "help", title = "Help browser", x = 130, y = 70, w = 480,
+        body = { type = "code", value = table.concat(lines, "\n") } }
+    else
+      help_window()
+    end
+  end)
+end
+
+squat.alias{ match = "/helpbrowser", fn = function(m) world = m.world or world; open_help() end }
+squat.alias{ match = "^/hfind\\s*(.*)$", regex = true, fn = function(m)
+  help.filter = trim(m[1] or "")
+  if #help.cats > 0 then help_window() end
+end }
+
+-- one topic: split its text into the parts the game wrote (Usage, Switches, Examples, ...) and add buttons
+-- for every other help topic it mentions
+local CODE = { usage = true, examples = true, example = true, switches = true, options = true, syntax = true }
+
+local function paragraphs(lines)
+  local out, cur = {}, {}
+  for _, ln in ipairs(lines) do
+    if trim(ln) == "" then
+      if #cur > 0 then out[#out + 1] = table.concat(cur, " "); cur = {} end
+    else
+      cur[#cur + 1] = trim(ln)
+    end
+  end
+  if #cur > 0 then out[#out + 1] = table.concat(cur, " ") end
+  return out
+end
+
+local function show_topic(name, lines)
+  local body = {}
+  for _, ln in ipairs(lines) do
+    if not ln:match("^%-+$") then body[#body + 1] = ln end
+  end
+  while #body > 0 and trim(body[1]) == "" do table.remove(body, 1) end
+  if #body == 0 then return end
+  local title, aliases = name, nil
+  local t, a = (body[1] or ""):match("^Help for (.-) %(aliases: (.-)%)%s*$")
+  if t then
+    title, aliases = t, a
+    table.remove(body, 1)
+  elseif (body[1] or ""):match("^Help for ") then
+    title = body[1]:match("^Help for (.+)$")
+    table.remove(body, 1)
+  end
+  local sections, cur = {}, { name = "", lines = {} }
+  for _, ln in ipairs(body) do
+    local h = ln:match("^(%u[%w ]*):%s*$")
+    if h then
+      sections[#sections + 1] = cur
+      cur = { name = h, lines = {} }
+    else
+      cur.lines[#cur.lines + 1] = ln
+    end
+  end
+  sections[#sections + 1] = cur
+
+  local kids = { { type = "heading", value = title } }
+  if aliases then
+    local row = {}
+    for al in aliases:gmatch("[^,%s]+") do row[#row + 1] = { type = "badge", value = al } end
+    kids[#kids + 1] = { type = "row", gap = 4, children = row }
+  end
+  for _, s in ipairs(sections) do
+    if s.name ~= "" then kids[#kids + 1] = { type = "heading", value = s.name } end
+    if CODE[s.name:lower()] then
+      local text = table.concat(s.lines, "\n"):gsub("^%s+", ""):gsub("%s+$", "")
+      kids[#kids + 1] = { type = "code", value = text }
+    else
+      for i, p in ipairs(paragraphs(s.lines)) do
+        kids[#kids + 1] = { type = "text", value = p, bold = (s.name == "" and i == 1) }
+      end
+    end
+  end
+  -- other topics mentioned in the text
+  local seen, related = {}, {}
+  for w in table.concat(body, " "):gmatch("[%w_]+") do
+    local lw = w:lower()
+    if help.flat[lw] and lw ~= name:lower() and not seen[lw] and #related < 12 then
+      seen[lw] = true
+      related[#related + 1] = { type = "button", text = lw, send = "/htopic " .. lw }
+    end
+  end
+  if #related > 0 then
+    kids[#kids + 1] = { type = "separator" }
+    kids[#kids + 1] = { type = "heading", value = "See also" }
+    kids[#kids + 1] = { type = "grid", columns = 4, gap = 4, children = related }
+  end
+  kids[#kids + 1] = { type = "button", text = "Show in the game window", send = "/hraw " .. name }
+  squat.ui.window{ id = "helptopic", title = "Help: " .. name, x = 690, y = 90, w = 480, h = 520,
+    body = { type = "column", gap = 6, children = kids } }
+end
+
+squat.alias{ match = "^/htopic\\s+(.+)$", regex = true, fn = function(m)
+  world = m.world or world
+  local name = trim(m[1])
+  request("help " .. name, function(lines) show_topic(name, lines) end)
+end }
+squat.alias{ match = "^/hraw\\s+(.+)$", regex = true, fn = function(m) squat.send("help " .. trim(m[1])) end }
+
+---------------------------------------------------------------------------------------------------
+-- vitals, alerts, auto-heal
+---------------------------------------------------------------------------------------------------
 local function assess()
   if not hp then return end
   local pct = hp / maxhp * 100
@@ -151,21 +458,40 @@ local function assess()
   -- auto-heal, at most every 3 seconds
   if level ~= "ok" and squat.var.get("autoheal") and squat.now() - last_heal > 3 then
     last_heal = squat.now()
-    squat.send("heal")
+    squat.send("heal", world)
   end
 end
 
+-- a trail of the rooms you walked through, as a panel that Lua adds to the right dock
+local function show_trail()
+  local items = {}
+  for i = #trail, 1, -1 do
+    items[#items + 1] = { type = "text", value = (i == #trail and "● " or "○ ") .. trail[i], bold = (i == #trail) }
+  end
+  squat.ui.panel{ id = "trail", title = "Trail", dock = "right", body = { type = "column", gap = 2, children = items } }
+end
+
+local did_first = false
 squat.on("gmcp", function(e)
+  world = e.world or world
   local name = e.package:lower()
   if name == "char.vitals" then
     local d = e.data or {}
     hp = tonumber(d.hp) or hp
     maxhp = tonumber(d.maxhp) or maxhp
     assess()
+  elseif name == "char.status" and not did_first then
+    did_first = true
+    squat.after(1, function() refresh_who(false) end)   -- the Who count, quietly
   elseif name == "room.info" and e.data and e.data.name then
     if not rooms[e.data.name] then
       rooms[e.data.name] = true
       squat.var.set("rooms", count(rooms))
+    end
+    if trail[#trail] ~= e.data.name then
+      trail[#trail + 1] = e.data.name
+      if #trail > 8 then table.remove(trail, 1) end
+      show_trail()
     end
   end
 end)
@@ -217,5 +543,26 @@ end}
   .cp-switch { display: flex; gap: 6px; align-items: center; font-size: 12px; margin-top: 6px; }
   .cp-range { width: 100%; }
   .cp-clock { font-variant-numeric: tabular-nums; color: var(--ui-text-dim); }
+  .cp-count {
+    margin-left: 4px;
+    padding: 0 6px;
+    border-radius: 9px;
+    font-size: 11px;
+    background: var(--ui-accent);
+    color: var(--ui-accent-text);
+  }
+  .cp-compass { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+  .cp-exit {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 38px; padding: 2px 3px; overflow: hidden;
+    background: var(--ui-panel-alt); color: var(--ui-text);
+    border: 1px solid var(--ui-border); border-radius: 5px; font-size: 11px; cursor: pointer;
+  }
+  .cp-exit:hover:not(.empty):not(.here) { border-color: var(--ui-accent); }
+  .cp-exit.empty, .cp-exit.here { background: transparent; border-style: dashed; opacity: 0.45; cursor: default; }
+  .cp-arrow { font-size: 15px; line-height: 1; }
+  .cp-dest { max-width: 100%; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+  .cp-updown { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+  .cp-others { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
   @media (prefers-reduced-motion: reduce) { .cp-banner.cp-critical { animation: none; } }
 </style>

@@ -167,4 +167,30 @@ describe('the Evennia demo layout', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Heal' }));
     expect(engine.sent.some((s) => s.text === 'heal')).toBe(true);
   });
+
+  it('shows every exit, even two with the same name, and sends the command the game gave', async () => {
+    const { engine: e, sid } = await boot('sidebar');
+    push(e, 'gmcp', {
+      session: sid,
+      package: 'Room.Info',
+      data: {
+        name: 'Limbo',
+        exits: [
+          { name: 'north', cmd: 'north-1', to: 'Plaza' },
+          { name: 'north', cmd: 'north-2', to: 'Market Square' },
+        ],
+      },
+    });
+    const a = await screen.findByRole('button', { name: 'north → Plaza' });
+    const b = screen.getByRole('button', { name: 'north → Market Square' });
+    await userEvent.click(b);
+    expect(e.sent.at(-1)?.text).toBe('north-2');
+    await userEvent.click(a);
+    expect(e.sent.at(-1)?.text).toBe('north-1');
+    // the old shapes still work: a name -> room map, and a plain list of names
+    push(e, 'gmcp', { session: sid, package: 'Room.Info', data: { name: 'X', exits: { east: 4 } } });
+    expect(await screen.findByRole('button', { name: 'east' })).toBeInTheDocument();
+    push(e, 'gmcp', { session: sid, package: 'Room.Info', data: { name: 'Y', exits: ['out'] } });
+    expect(await screen.findByRole('button', { name: 'out' })).toBeInTheDocument();
+  });
 });

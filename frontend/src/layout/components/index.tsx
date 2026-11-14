@@ -511,8 +511,18 @@ export interface RoomView {
   name: string;
   area: string;
   desc: string;
+  /** The exits' names (a game that names two exits the same lists both). */
   exits: string[];
+  /** The exits with what to type to take each one, and where it leads when the game says. */
+  exitInfo: ExitInfo[];
   players: string[];
+}
+
+export interface ExitInfo {
+  name: string;
+  /** What to send to take it (the name, unless the game sends something more exact, e.g. "north-2"). */
+  cmd: string;
+  to?: string;
 }
 
 const isRec = (v: unknown): v is Record<string, unknown> =>
@@ -526,14 +536,29 @@ export function useRoom(): RoomView | undefined {
   const flatExits = useBinding('msdp:ROOM_EXITS');
   const flatArea = useBinding('msdp:AREA_NAME');
   return useMemo(() => {
-    const exitNames = (e: unknown): string[] =>
-      isRec(e) ? Object.keys(e) : Array.isArray(e) ? e.map(toText) : [];
+    // exits arrive as {name: destination}, ["name", ...] or [{name, cmd, to}, ...]
+    const exitList = (e: unknown): ExitInfo[] =>
+      isRec(e)
+        ? Object.entries(e).map(([name, v]) => ({
+            name,
+            cmd: name,
+            to: typeof v === 'string' && Number.isNaN(Number(v)) ? v : undefined,
+          }))
+        : Array.isArray(e)
+          ? e.map((x) => {
+              if (!isRec(x)) return { name: toText(x), cmd: toText(x) };
+              const name = toText(x.name ?? x.dir ?? x.cmd);
+              return { name, cmd: toText(x.cmd) || name, to: toText(x.to ?? x.destination) || undefined };
+            })
+          : [];
+    const exitNames = (e: unknown): string[] => exitList(e).map((x) => x.name);
     if (isRec(info)) {
       return {
         name: toText(info.name),
         area: toText(info.area ?? info.zone),
         desc: toText(info.desc ?? info.description),
         exits: exitNames(info.exits),
+        exitInfo: exitList(info.exits),
         players: Array.isArray(info.players)
           ? info.players.map((x) => (isRec(x) ? toText(x.name) : toText(x)))
           : [],
@@ -545,6 +570,7 @@ export function useRoom(): RoomView | undefined {
         area: toText(room.AREA),
         desc: '',
         exits: exitNames(room.EXITS),
+        exitInfo: exitList(room.EXITS),
         players: [],
       };
     }
@@ -554,6 +580,7 @@ export function useRoom(): RoomView | undefined {
         area: toText(flatArea),
         desc: '',
         exits: exitNames(flatExits),
+        exitInfo: exitList(flatExits),
         players: [],
       };
     return undefined;
@@ -567,9 +594,15 @@ export function Exits() {
   if (!room || room.exits.length === 0) return null;
   return (
     <div className="lay-exits" role="group" aria-label="Exits">
-      {room.exits.map((e) => (
-        <button key={e} type="button" className="lay-button" onClick={() => send(e)}>
-          {e}
+      {room.exitInfo.map((e, i) => (
+        <button
+          key={`${e.cmd}:${i}`}
+          type="button"
+          className="lay-button"
+          title={e.to ? `${e.name} to ${e.to}` : undefined}
+          onClick={() => send(e.cmd)}
+        >
+          {e.to ? `${e.name} → ${e.to}` : e.name}
         </button>
       ))}
     </div>

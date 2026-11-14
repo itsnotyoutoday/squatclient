@@ -5,6 +5,7 @@ import { useSettings, useUi } from '../state/stores';
 import { Classic, findBuiltin } from './builtin';
 import { LayoutConsent } from './consent';
 import { LayoutContext } from './context';
+import { LuaWindows } from './components/luaui';
 import { useUserLayout } from './loader';
 import type { LayoutEnv } from './context';
 
@@ -21,11 +22,12 @@ class Guard extends Component<{ onError(e: Error): void; children: ReactNode }, 
   }
 }
 
-/** Which layout a session uses: its world's, else the setting's, else the classic one. */
+/** Which layout a session uses: the one chosen for this connection, else its world's, else the setting's, else classic. */
 export function useLayoutId(session: SessionInfo): string {
   const world = useUi((s) => s.worlds.find((w) => w.id === session.worldId));
+  const mine = useUi((s) => s.sessionLayouts[session.id]);
   const dflt = useSettings((s) => s.settings.layout);
-  return world?.layout || dflt || 'classic';
+  return mine || world?.layout || dflt || 'classic';
 }
 
 /**
@@ -135,6 +137,7 @@ export function LayoutHost({
       <Guard key={`${id}:${failed}`} onError={(e) => report(e.message)}>
         <Layout />
       </Guard>
+      <LuaWindows />
     </LayoutContext.Provider>
   );
 }

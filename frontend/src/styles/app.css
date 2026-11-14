@@ -1487,3 +1487,108 @@ h3.lay-panel-title {
   font-size: 12px;
   box-sizing: border-box;
 }
+
+/* ---- windows and panels opened by Lua (squat.ui) */
+.lay-ui-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 30;
+}
+.lay-ui-window {
+  position: absolute;
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  min-width: 200px;
+  max-width: 92vw;
+  max-height: 80vh;
+  background: var(--ui-panel);
+  color: var(--ui-text);
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+  resize: both;
+}
+.lay-ui-titlebar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5px 8px 5px 12px;
+  background: var(--ui-panel-alt);
+  border-bottom: 1px solid var(--ui-border);
+  font-weight: 600;
+  cursor: grab;
+  user-select: none;
+}
+.lay-ui-titlebar button {
+  background: none;
+  border: 0;
+  color: var(--ui-text-dim);
+  font-size: 16px;
+  cursor: pointer;
+}
+.lay-ui-titlebar button:hover {
+  color: var(--ui-danger);
+}
+.lay-ui-body {
+  padding: 8px;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+}
+.lay-ui-grid {
+  display: grid;
+}
+.lay-ui-heading {
+  margin: 4px 0 0;
+  font-size: 13px;
+}
+.lay-ui-text.dim {
+  color: var(--ui-text-dim);
+}
+.lay-ui-text.bold {
+  font-weight: 600;
+}
+.lay-ui-text.mono,
+.lay-ui-code {
+  font-family: var(--font, monospace);
+}
+.lay-ui-code {
+  margin: 0;
+  padding: 6px 8px;
+  background: var(--ui-panel-alt);
+  border: 1px solid var(--ui-border);
+  border-radius: 4px;
+  white-space: pre-wrap;
+  font-size: 12px;
+}
+.lay-ui-badge {
+  display: inline-block;
+  padding: 0 7px;
+  border-radius: 9px;
+  font-size: 11px;
+  background: var(--ui-panel-alt);
+  border: 1px solid var(--ui-border);
+}
+.lay-ui-badge.ok {
+  border-color: var(--ui-ok);
+}
+.lay-ui-badge.warn {
+  border-color: var(--ui-warn);
+}
+.lay-ui-badge.danger {
+  border-color: var(--ui-danger);
+}
+.lay-ui-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 4px 8px;
+  background: var(--ui-panel-alt);
+  color: var(--ui-text);
+  border: 1px solid var(--ui-border);
+  border-radius: 4px;
+}

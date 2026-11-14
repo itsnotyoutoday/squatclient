@@ -140,9 +140,12 @@ export interface UiState {
   editWorldId: string | null;
   /** The TinyFugue squatter the TinyFugue worlds dialog is about. */
   tfWorldsFor: string | null;
+  /** A layout chosen for one connection (by session id); it wins over the world's and the default. */
+  sessionLayouts: Record<string, string>;
   toasts: Toast[];
   now: number;
   setEngine(e: EngineAPI): void;
+  setSessionLayout(sessionId: string, layout: string): void;
   setView(v: AppView): void;
   openDialog(d: DialogId): void;
   setSearch(open: boolean): void;
@@ -173,9 +176,15 @@ export const useUi = create<UiState>((set) => ({
   sessionDialog: null,
   editWorldId: null,
   tfWorldsFor: null,
+  sessionLayouts: {},
   toasts: [],
   now: Date.now(),
   setEngine: (engine) => set({ engine }),
+  setSessionLayout: (id, layout) =>
+    set((s) => {
+      const { [id]: _old, ...rest } = s.sessionLayouts;
+      return { sessionLayouts: layout ? { ...rest, [id]: layout } : rest };
+    }),
   setView: (view) => set({ view }),
   openDialog: (dialog) => set({ dialog }),
   setSearch: (searchOpen) => set({ searchOpen }),
@@ -202,6 +211,7 @@ export function resetStores(): void {
     dialog: null,
     searchOpen: false,
     awayIds: [],
+    sessionLayouts: {},
     toasts: [],
     worlds: [],
     squatters: [],

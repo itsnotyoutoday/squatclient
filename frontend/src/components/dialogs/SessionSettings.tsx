@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Dialog } from './Dialog';
 import { useSessions, useUi } from '../../state/stores';
 import { GAME_TYPES } from '../../lib/modules';
-import type { WorldConfig } from '../../api/types';
+import type { LayoutInfo, WorldConfig } from '../../api/types';
+import { BUILTIN_LAYOUTS } from '../../layout/builtin';
 
 const Row = ({ label, children }: { label: string; children: React.ReactNode }) => (
   <div className="sset-row">
@@ -27,6 +28,14 @@ export function SessionSettings() {
   const [name, setName] = useState(s?.name ?? '');
   const [route, setRoute] = useState(s?.via ?? 'direct');
   const [msg, setMsg] = useState('');
+  const [userLayouts, setUserLayouts] = useState<LayoutInfo[]>([]);
+  const layoutHere = useUi((st) => (sid ? st.sessionLayouts[sid] : undefined)) ?? '';
+  useEffect(() => {
+    void engine
+      ?.listLayouts()
+      .then(setUserLayouts)
+      .catch(() => undefined);
+  }, [engine]);
   const close = (): void => useUi.getState().openDialog(null);
 
   if (!s || !engine) {
@@ -56,6 +65,7 @@ export function SessionSettings() {
         tlsVerify: s.tlsVerify === 'insecure' ? 'insecure' : 'strict',
         encoding: s.encoding === 'latin1' ? 'latin1' : 'utf-8',
         via: s.via || 'direct',
+        ...(layoutHere ? { layout: layoutHere } : {}),
         ...(s.gameType && s.gameTypeSource !== 'banner' && s.gameTypeSource !== 'probe'
           ? { gameType: s.gameType }
           : {}),
@@ -133,6 +143,47 @@ export function SessionSettings() {
           ) : (
             <p className="dim">This connection has ended. Pick a route and reconnect.</p>
           )}
+        </fieldset>
+
+        <fieldset>
+          <legend>Layout</legend>
+          <Row label="For this connection">
+            <select
+              aria-label="Layout for this connection"
+              value={layoutHere}
+              onChange={(e) => useUi.getState().setSessionLayout(s.id, e.target.value)}
+            >
+              <option value="">{world?.layout ? "The world's layout" : 'The default layout'}</option>
+              {BUILTIN_LAYOUTS.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.name}
+                </option>
+              ))}
+              {userLayouts.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.name}
+                </option>
+              ))}
+            </select>
+          </Row>
+          {world && layoutHere !== (world.layout ?? '') && layoutHere !== '' && (
+            <button
+              type="button"
+              onClick={() =>
+                void engine
+                  .saveWorld({ ...world, layout: layoutHere })
+                  .then(() => setMsg(`"${world.name}" will use this layout every time.`))
+                  .catch(fail)
+              }
+            >
+              Use it for the world "{world.name}" from now on
+            </button>
+          )}
+          <p className="dim">
+            {world
+              ? 'Chosen here for this tab only, until you remember it for the world (or set it in Worlds).'
+              : 'Chosen here for this tab only. Save the connection as a world to keep a layout with it.'}
+          </p>
         </fieldset>
 
         <fieldset>

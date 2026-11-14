@@ -71,3 +71,23 @@ describe('the Layouts dialog', () => {
     expect(await screen.findByRole('dialog', { name: 'Layouts' })).toBeInTheDocument();
   });
 });
+
+describe('a layout for one connection', () => {
+  it('wins over the world and the default, and can be remembered for the world', async () => {
+    await boot();
+    act(() => useUi.getState().openDialog(null));
+    const sid = useSessions.getState().fg as string;
+    expect(document.querySelector('.lay-dock')).toBeNull(); // classic
+    act(() => useUi.getState().openSessionSettings(sid));
+    const pick = await screen.findByLabelText('Layout for this connection');
+    await userEvent.selectOptions(pick, 'sidebar');
+    expect(useUi.getState().sessionLayouts[sid]).toBe('sidebar');
+    act(() => useUi.getState().openDialog(null));
+    // the sidebar layout's dock exists (it stays hidden until data arrives)
+    await waitFor(() => expect(document.querySelector('.lay-dock')).not.toBeNull());
+    // other connections keep the default
+    expect(Object.keys(useUi.getState().sessionLayouts)).toEqual([sid]);
+    act(() => useUi.getState().setSessionLayout(sid, ''));
+    await waitFor(() => expect(document.querySelector('.lay-dock')).toBeNull());
+  });
+});
