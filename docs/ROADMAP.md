@@ -55,3 +55,8 @@ Scripts placed on the squatter run while no client is attached; no shell, file o
 the squatterd; opt-in by `squatterd --allow-automation` and a per-device permission. Design:
 [SQUATTER-AUTOMATION.md](SQUATTER-AUTOMATION.md). Phases: notify-only triggers, then placed TF/Lua
 scripts, then the client UI.
+
+## Squatter hub
+
+A hub for a select set of users using OS accounts and SSH, with per-user ident, source address and an
+optional origin header: [SQUATTER-HUB.md](SQUATTER-HUB.md).
