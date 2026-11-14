@@ -36,9 +36,19 @@ fingerprint pinning is already there). What is reused is the user's **SSH key pa
   role). The credential is a key, not a bearer token: a key never leaves the machine and each request is
   bound to the connection. Use a separate admin key from the everyday key. Admin actions go into an
   audit log.
-- **Manage is not read:** an admin manages users and sessions (list, kill, remove) but does not attach
-  to another user's session unless a separate, explicit support role allows it. Whoever has a shell on
-  the host can still read the logs on disk.
+- **Manage is not read:** an admin manages users and sessions but does not attach to another user's
+  session unless a separate, explicit support role allows it. Whoever has a shell on the host can still
+  read the logs on disk.
+- **What an admin can do:** create users and issue the first pairing code of a *new* user (no sessions
+  yet); list users with metadata only (role, key fingerprints, last seen, session count); `kill` a
+  user's sessions and connections; disable or remove an account (revokes keys, ends sessions, and asks
+  whether to keep or delete the stored logs); **reset** an existing user's access (voids old keys and
+  sessions, then issues a new code).
+- **No takeover through pairing:** a pairing code for a user who already has sessions can only be
+  created or approved from one of that user's own devices, never by an admin alone. Otherwise an admin
+  could redeem it with their own key and read the sessions. Every key addition is shown on the user's
+  other devices and written to the audit log. Reset is the admin's way to give back access, and it
+  destroys the old sessions, so it cannot be used to take one over.
 - Builds on the device roles (`viewer`, `operator`, `admin`) already started in the daemon tree.
 
 ## One squatterd per person, or one hub with named users
