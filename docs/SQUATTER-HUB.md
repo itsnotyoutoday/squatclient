@@ -24,6 +24,23 @@ fingerprint pinning is already there). What is reused is the user's **SSH key pa
 - If a user name is given, the name selects which keys are acceptable; with the hub, the name is the
   user.
 
+## Administration
+
+- **On the host:** `squatterd user list|add|remove|pair|kill`. `add` creates a user; `pair` prints a
+  one-time code for them; `list` shows role, key fingerprints, last seen and live sessions; `kill` ends
+  a user's sessions and drops their connections but keeps the account; `remove` also revokes their keys.
+  The command line is trusted because the caller can reach the data directory; the first admin key is
+  set up this way.
+- **From the client:** a device whose key has the `admin` role gets an Admin panel in the app that does
+  the same over the existing authenticated TLS connection (new `admin.*` messages, refused for any other
+  role). The credential is a key, not a bearer token: a key never leaves the machine and each request is
+  bound to the connection. Use a separate admin key from the everyday key. Admin actions go into an
+  audit log.
+- **Manage is not read:** an admin manages users and sessions (list, kill, remove) but does not attach
+  to another user's session unless a separate, explicit support role allows it. Whoever has a shell on
+  the host can still read the logs on disk.
+- Builds on the device roles (`viewer`, `operator`, `admin`) already started in the daemon tree.
+
 ## One squatterd per person, or one hub with named users
 
 Open decision. Key login works with either.
@@ -76,6 +93,7 @@ If a game does no ident and shows only the host, nothing here changes what it sh
 ## Phases
 
 1. SSH-key login: key sources in the client, the `authorized_keys` file and `squatterd authorize`.
+   Then the `user` subcommands and the Admin panel.
 2. Per-user ident setting; documentation for running one squatterd per account behind a system identd.
 3. Per-user source address binding (`bind`) and the PTR documentation.
 4. Connection limits and the destination policy.
