@@ -391,9 +391,7 @@ func TestRecordDevPageStreams(t *testing.T) {
 			_ = g.hub.Event("lcars", id, ev, 0, 0)
 			g.h.advance(time.Second)
 			var delta []gfx.Op
-			for _, o := range g.ops[n:] {
-				delta = append(delta, o)
-			}
+			delta = append(delta, g.ops[n:]...)
 			name := "lcars-" + strings.NewReplacer(":", "-", "_", "").Replace(key) + "-" + first + ".json"
 			if alert {
 				name = strings.Replace(name, ".json", "-red.json", 1)
