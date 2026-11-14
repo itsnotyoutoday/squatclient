@@ -90,6 +90,35 @@ a banner saying what went wrong. A bad layout can never stop the user typing or 
 Rule: anything that must keep working when the window is closed belongs in Lua or TF; the layout only draws
 and offers controls.
 
+## Lua (and TF) in the picture
+
+Lua runs in the Go engine (gopher-lua, sandboxed, with budgets), the layout in the window; they meet in three
+places and nothing else:
+
+1. **Lua feeds the layout through variables.** `squat.var.set(name, value)` (numbers, strings, booleans,
+   JSON-style tables; the store the engine already has) is read in a layout with `useVar('name')`. New: the
+   engine sends the UI an event when a variable changes (batched), and variables can be scoped per world
+   (`squat.var.set(name, value, world)`; the existing store is global, shared by all plugins).
+2. **Lua normalises a game's data**, so one layout fits many games. A short per-game plugin maps whatever a
+   game sends (`hp`/`maxhp`, `HP`/`MaxHP`, ...) into a standard shape (`vitals = {hp, maxhp, mp, maxmp}`) with
+   `squat.on("gmcp", ...)`; games without GMCP fill the same variables from triggers on lines. Adapters
+   should also update their variables from REPLAYED GMCP (`live=false`; state only, never sending), so panels
+   are not blank after reattaching to a squatter.
+3. **The layout calls back into Lua** in two ways. A `<Button send="look">` goes through the normal input
+   pipeline, so Lua aliases and input handlers see it like typed text. For anything else a plugin registers a
+   named handler, `squat.layout.handler("heal", fn)`, and the layout calls `callLua('heal', args)` and gets a
+   JSON result; only registered handlers can be called.
+
+```
+game --GMCP--> engine --> Lua plugin --squat.var.set--> layout: useVar('vitals')
+                  \--> GMCP state store ---------------> layout: gmcp('Char.Vitals.hp')
+layout button --send / callLua--> input pipeline / Lua handler --> game
+```
+
+Rule: anything that must keep working with the window closed (and later on the squatterd) is Lua or TF; the
+layout only draws and offers controls. Optional later, for people used to Mudlet: `squat.gauge.create{...}`
+declares a gauge from a script, drawn by the built-in widgets. TF variables can feed `useVar` the same way.
+
 ## Themes stay data
 
 A theme is JSON (colours, fonts) validated at load and applied as CSS variables, as today (`src/themes`).
@@ -142,5 +171,6 @@ and cannot call the engine) is a possible later option and is also the route for
 ## Open questions
 
 - Which widgets first (suggested: Gauge, Text, List, Chat).
+- Whether variables read by layouts are per world (suggested) or global.
 - Whether the consent prompt is wanted for the user's own files.
 - Whether the first shipped layout targets CobraMUSH or a common standard such as IRE-style `Char.Vitals`.
