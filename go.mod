@@ -51,4 +51,4 @@ replace github.com/itsnotyoutoday/squatClientDaemon => ../squatClientDaemon-gtf
 // LOCAL DEVELOPMENT ONLY: the daemon branch needs unreleased engine changes
 // ("core:" commits, see squatClientDaemon docs/TF-ENGINE.md). Delete this line
 // when they are released; `require ... gtfparser` below is then the pin.
-replace github.com/itsnotyoutoday/gtfparser => /Users/rock/mush/squat/gtfparser-squat
+replace github.com/itsnotyoutoday/gtfparser => /Users/rock/mush/squat/gtfparser-squat2

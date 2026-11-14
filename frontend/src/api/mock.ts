@@ -40,6 +40,7 @@ import type {
   SquatterKind,
   TFAutomation,
   TFExecResult,
+  TFKeyResult,
   TFScript,
   TFScriptResult,
   TFPreset,
@@ -510,7 +511,8 @@ export class MockEngine implements EngineAPI {
     const w = list.find((x) => x.name === name);
     if (!w) throw new Error('no such world');
     if (!/^[^\s(][^\s]*$/.test(newName) || newName === 'default') throw new Error('illegal world name');
-    if (list.some((x) => x.name === newName && x !== w)) throw new Error(`a world named ${newName} already exists`);
+    if (list.some((x) => x.name === newName && x !== w))
+      throw new Error(`a world named ${newName} already exists`);
     w.name = newName;
     delete w.temp; // a temporary world becomes a kept one
     // sessions of that world follow, like the tab of a connected world
@@ -573,6 +575,12 @@ export class MockEngine implements EngineAPI {
   }
   async deleteTFScript(squatterId: string, name: string): Promise<void> {
     if (!this.tfScripts.get(squatterId)?.delete(name)) throw new Error('no such script');
+  }
+  async tfKeyBindings(): Promise<string[]> {
+    return [];
+  }
+  async tfKey(_sessionId: string, _seq: string, text: string, cursor: number): Promise<TFKeyResult> {
+    return { handled: false, text, cursor };
   }
   async sendGmcp(sessionId: string, pkg: string, dataJson: string): Promise<void> {
     this.tfSession(sessionId);

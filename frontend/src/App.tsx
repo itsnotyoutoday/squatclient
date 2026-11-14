@@ -28,6 +28,8 @@ import HistoryBrowser from './components/history/HistoryBrowser';
 import { UploadHost } from './components/upload/UploadDialog';
 import { useGlobalKeys } from './global-keys';
 import { insertIntoInput, openHelp } from './help/command';
+import { applyTfVar } from './lib/tfvars';
+import { setTfBindings } from './lib/tfkeys';
 import './styles/app.css';
 
 // The help browser and its content load on first use, keeping the main bundle small.
@@ -147,12 +149,24 @@ export function App({ engine }: { engine: EngineAPI }) {
     const off = engine.on('quit', () => window.close());
     const offHelp = engine.on('help', (p) => openHelp(p.topic));
     const offInput = engine.on('input', (p) => insertIntoInput(p.text));
+    const offDialog = engine.on('dialog', (p) => {
+      if (p.name === 'worlds') useUi.getState().openDialog('worlds');
+    });
+    const offVar = engine.on('tfvar', (p) => applyTfVar(p.name, p.value));
+    const offKeys = engine.on('tfkeys', (p) => setTfBindings(p.seqs));
+    void engine
+      .tfKeyBindings()
+      .then(setTfBindings)
+      .catch(() => undefined);
     const tick = setInterval(() => useUi.getState().tick(), 1000);
     return () => {
       dead = true;
       off();
       offHelp();
       offInput();
+      offDialog();
+      offVar();
+      offKeys();
       clearInterval(tick);
       c?.dispose();
     };

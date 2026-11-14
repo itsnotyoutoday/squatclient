@@ -36,21 +36,23 @@ Anything you type that starts with `/` is a command. Everything else is sent to 
 
 The scripting language provides the rest. Open any of them with `/help name`.
 
-| Area                | Commands                                                                                                                    |
-| ------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| Output              | `/echo` `/send` `/beep` `/notify` `/gag` `/hilite`                                                                          |
-| Variables           | `/set` `/setenv` `/export` `/unset` `/let` `/listvar` `/shift`                                                              |
-| Evaluation          | `/eval` `/test` `/return` `/break` `/builtin`                                                                               |
-| Control flow        | `/if` `/elseif` `/else` `/endif` `/while` `/do` `/done` `/for`                                                              |
-| Macros and triggers | `/def` `/undef` `/undefn` `/untrig` `/undeft` `/unhook` `/nogag` `/nohilite` `/partial` `/list` `/purge` `/trigger` `/hook` |
-| Keys                | `/bind` `/unbind` `/dokey`                                                                                                  |
-| Files               | `/load` `/save` `/require` `/quote`                                                                                         |
-| Timers              | `/repeat` `/ps` `/kill`                                                                                                     |
-| Worlds              | `/addworld` `/connect` `/dc` `/fg` `/world` `/unworld` `/renameworld` `/listworlds` `/listsockets` `/saveworld`             |
-| View                | `/limit` `/unlimit` `/relimit` `/recall` `/log` `/input` `/localecho` `/status_add` `/status_edit` `/status_rm` `/histsize` |
-| Information         | `/version` `/features` `/restrict` `/quit` (`/exit` ends a `/load`, as in TinyFugue)                                        |
+| Area                | Commands                                                                                                                                                                                           |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Output              | `/echo` `/send` `/beep` `/notify` `/gag` `/hilite`                                                                                                                                                 |
+| Variables           | `/set` `/setenv` `/export` `/unset` `/let` `/listvar` `/shift`                                                                                                                                     |
+| Evaluation          | `/eval` `/test` `/return` `/break` `/builtin`                                                                                                                                                      |
+| Control flow        | `/if` `/elseif` `/else` `/endif` `/while` `/do` `/done` `/for`                                                                                                                                     |
+| Macros and triggers | `/def` `/undef` `/undefn` `/untrig` `/undeft` `/unhook` `/nogag` `/nohilite` `/partial` `/list` `/purge` `/trigger` `/hook`                                                                        |
+| Keys                | `/bind` `/unbind` `/dokey`                                                                                                                                                                         |
+| Files               | `/load` `/save` `/require` `/quote`                                                                                                                                                                |
+| Timers              | `/repeat` `/ps` `/kill`                                                                                                                                                                            |
+| Worlds              | `/addworld` `/connect` `/dc` `/fg` `/world` `/unworld` `/renameworld` `/listworlds` `/listsockets` `/saveworld`                                                                                    |
+| View                | `/limit` `/unlimit` `/relimit` `/recall` `/recordline` `/log` `/input` `/localecho` `/status_add` `/status_edit` `/status_rm` `/status_clear` `/histsize` `/wrap` `/nowrap` `/wrapspace` `/visual` |
+| Information         | `/version` `/features` `/restrict` `/quit` (`/exit` ends a `/load`, as in TinyFugue)                                                                                                               |
 
 Start at [the scripting language](help:scripting), especially [Commands](help:scripting/commands), and see [TinyFugue Script Compatibility](help:compat) for which commands behave differently from TinyFugue.
+
+`/listworlds`, `/world` and `/addworld` typed alone open the Worlds window; give `/listworlds` an argument (`/listworlds *`, `/listworlds -s`) or use it inside a script, a pipe or `$(...)` and it prints the list as text. `/set wrap off`, `/wrap 80`, `/wrapspace 2` and `/nowrap` change how the output window wraps. `/limit pattern` filters the window and its scrollback; `/unlimit` brings the lines back. Keys that a script binds with `/bind` or `/def -b` run from the input line (see [Keys](help:keys)).
 
 The scripting language is the shared **gtfparser** engine, the same one the `gtf` terminal client uses. A command that TinyFugue has but SquatClient cannot offer says `not supported by this client`.
 

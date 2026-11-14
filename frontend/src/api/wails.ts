@@ -34,6 +34,7 @@ import type {
   SquatterKind,
   TFAutomation,
   TFExecResult,
+  TFKeyResult,
   TFScript,
   TFScriptResult,
   TFPreset,
@@ -160,7 +161,8 @@ export class WailsEngine implements EngineAPI {
   listTFWorlds = (id: string) => list(call<TFWorld[] | null>('ListTFWorlds', id));
   putTFWorld = (id: string, w: TFWorldPut) => call<void>('PutTFWorld', id, w);
   deleteTFWorld = (id: string, name: string) => call<void>('DeleteTFWorld', id, name);
-  renameTFWorld = (id: string, name: string, newName: string) => call<void>('RenameTFWorld', id, name, newName);
+  renameTFWorld = (id: string, name: string, newName: string) =>
+    call<void>('RenameTFWorld', id, name, newName);
   renameTFSession = (id: string, newName: string) => call<void>('RenameTFSession', id, newName);
   connectTFWorld = (id: string, name: string) => call<SessionInfo>('ConnectTFWorld', id, name);
   tfExec = (id: string, line: string) =>
@@ -169,6 +171,9 @@ export class WailsEngine implements EngineAPI {
     call<TFScriptResult>('PutTFScript', id, name, content, load).then((r) => ({ ...r, out: r.out ?? [] }));
   listTFScripts = (id: string) => list(call<TFScript[] | null>('ListTFScripts', id));
   deleteTFScript = (id: string, name: string) => call<void>('DeleteTFScript', id, name);
+  tfKeyBindings = () => list(call<string[] | null>('TFKeyBindings'));
+  tfKey = (id: string, seq: string, text: string, cursor: number) =>
+    call<TFKeyResult>('TFKey', id, seq, text, cursor);
   sendGmcp = (id: string, pkg: string, json: string) => call<void>('SendGmcp', id, pkg, json);
   sendMsdp = (id: string, json: string) => call<void>('SendMsdp', id, json);
   getSessionData = (id: string) => call<SessionData>('GetSessionData', id);

@@ -143,3 +143,7 @@ You can bind keys from scripts with `/bind`; see [Macros: /def](help:scripting/m
 ## What next
 
 If a key does not do what you expect, see [Troubleshooting](help:troubleshooting#ctrl-b-and-ctrl-f-do-not-scroll). To learn what the input line can do, read [Using the client](help:using).
+
+## Keys bound by scripts
+
+A key that a script binds with `/bind ^A = /dokey home` or `/def -b'^[x' = ...` works in the input line: **Ctrl-letter** is written `^A`, **Alt-letter** `^[x`, and the function keys `F1` to `F12` and the arrow, Home, End, Page and Insert/Delete keys can be bound with `/def -B name`. The bound macro may edit the line with `/input`, `/dokey` and the `kb*()` functions. Keys no script has bound keep their normal meaning.

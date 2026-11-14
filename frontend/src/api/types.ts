@@ -256,6 +256,12 @@ export interface EngineEvents {
   help: { topic: string };
   /** A script ran /input: insert this text into the input line (it is never sent). */
   input: { text: string };
+  /** A world command typed alone asks for its window ("worlds"). */
+  dialog: { name: string };
+  /** A TinyFugue variable that shapes the output window changed (wrap, wrapsize, wrapspace, wrappunct, visual, more). */
+  tfvar: { name: string; value: string };
+  /** The key sequences TinyFugue scripts have bound (/bind notation). */
+  tfkeys: { seqs: string[] };
   /** A session was dismissed (by this or another client). */
   'session-removed': { id: string };
   /** The engine changed the foreground session (e.g. a script ran /fg). */
@@ -376,6 +382,13 @@ export interface TFScript {
   size: number;
   /** unix milliseconds */
   mtime: number;
+}
+
+export interface TFKeyResult {
+  handled: boolean;
+  text: string;
+  /** a byte offset */
+  cursor: number;
 }
 
 export interface TFExecResult {
@@ -625,6 +638,10 @@ export interface EngineAPI {
   listTFScripts(squatterId: string): Promise<TFScript[]>;
   deleteTFScript(squatterId: string, name: string): Promise<void>;
   sendGmcp(sessionId: string, pkg: string, dataJson: string): Promise<void>;
+  /** The key sequences TinyFugue scripts have bound. */
+  tfKeyBindings(): Promise<string[]>;
+  /** Run the script binding of one keystroke; text and cursor (a byte offset) are the input line as it is. */
+  tfKey(sessionId: string, seq: string, text: string, cursor: number): Promise<TFKeyResult>;
   sendMsdp(sessionId: string, varsJson: string): Promise<void>;
   getSessionData(sessionId: string): Promise<SessionData>;
   /** Retry lost squatter links immediately (wake, window shown, network back); returns how many it is retrying. */

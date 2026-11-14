@@ -154,6 +154,22 @@ func (s *Service) Start() {
 	}()
 }
 
+// TFKeyBindings lists the key sequences scripts have bound.
+func (s *Service) TFKeyBindings() []string { return s.eng.TFKeyBindings() }
+
+// TFKeyResult is what a keystroke's script binding did to the input line.
+type TFKeyResult struct {
+	Handled bool   `json:"handled"`
+	Text    string `json:"text"`
+	Cursor  int    `json:"cursor"`
+}
+
+// TFKey runs the script binding of one keystroke (cursor is a byte offset).
+func (s *Service) TFKey(sessionID, seq, text string, cursor int) (TFKeyResult, error) {
+	h, t, c, err := s.eng.TFKey(sessionID, seq, text, cursor)
+	return TFKeyResult{Handled: h, Text: t, Cursor: c}, err
+}
+
 // StopScripts interrupts a runaway TinyFugue script (the engine's Ctrl-C). The
 // typed equivalent is /stop.
 func (s *Service) StopScripts() { s.eng.StopScripts() }
@@ -332,6 +348,24 @@ func (s *Service) deliver(batch []engine.Event) {
 				s.emit("data", ev.Data)
 			}
 		case engine.EvWindow:
+			if name, ok := strings.CutPrefix(ev.Text, "dialog:"); ok {
+				s.emit("dialog", map[string]string{"name": name}) // a world command typed alone opens its window
+				break
+			}
+			if kv, ok := strings.CutPrefix(ev.Text, "var:"); ok {
+				if name, val, ok := strings.Cut(kv, "="); ok {
+					s.emit("tfvar", map[string]string{"name": name, "value": val}) // wrap, wrapsize, ... drive the output window
+				}
+				break
+			}
+			if keys, ok := strings.CutPrefix(ev.Text, "keys:"); ok {
+				var seqs []string
+				if keys != "" {
+					seqs = strings.Split(keys, "\n")
+				}
+				s.emit("tfkeys", map[string][]string{"seqs": seqs}) // the keys scripts have bound
+				break
+			}
 			if text, ok := strings.CutPrefix(ev.Text, "input:"); ok {
 				s.emit("input", map[string]string{"text": text}) // a script's /input fills the input line
 				break

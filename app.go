@@ -94,6 +94,9 @@ func (a *App) build(ctx context.Context) (*app.Service, *config.Store, error) {
 			// unrestricted by default. SQUATCLIENT_TF_RESTRICT=shell|file|world starts it more tightly
 			// (a script can raise the level with /restrict, never lower it).
 			Restrict: tfRestrictFromEnv(),
+			// SQUATCLIENT_TFLIB names a directory with real tf's lib/tf (or its stdlib.tf): it is loaded at start,
+			// as tf does, which defines tf's library commands. Not bundled.
+			TF: tfengine.Options{StdLib: os.Getenv("SQUATCLIENT_TFLIB")},
 		},
 	})
 	return svc, cfg, err
