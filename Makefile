@@ -38,8 +38,11 @@ lint-go:
 lint-frontend: $(FRONTEND)/node_modules
 	cd $(FRONTEND) && npm run typecheck && npm run lint
 
+# The icon is drawn in build/icon-source/squatter.svg. Render it to build/appicon.png (1024x1024,
+# transparent; e.g. headless Chrome --screenshot) and Wails builds the platform icons from that.
+# (scripts/genicon.go is the old generated placeholder and would overwrite the artwork.)
 icon:
-	go run scripts/genicon.go
+	@echo "edit build/icon-source/squatter.svg, then render it to build/appicon.png (see the Makefile comment)"
 
 run: build
 	open build/bin/squatclient.app

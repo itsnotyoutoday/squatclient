@@ -10,7 +10,7 @@ If you already run **TinyFugue** (TF) on a server, it can act as your squatter. 
 
 ## Setting it up
 
-1. In TinyFugue (built with the squat support) run `/squat start`, then `/squat pair`. It prints a one-time **pairing code** and its **fingerprint**.
+1. In TinyFugue (built with the squat support) run `/squat on`, then `/squat pair`. It prints a one-time **pairing code** and its **fingerprint**.
 2. In SquatClient open the Squatters dialog, choose **Add a squatter**, set **Type** to **TinyFugue**, and enter the host, the port (10328 unless you changed it) and the code.
 3. Compare the fingerprint, then press **Trust and pair**.
 

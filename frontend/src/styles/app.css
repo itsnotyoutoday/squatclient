@@ -364,7 +364,8 @@ textarea {
 .inputline.password input {
   border-color: var(--ui-warn);
 }
-.ended {
+/* the banner under an ended connection (EndedBanner, class endbar); not the tab's "ended" badge */
+.endbar {
   flex: none;
   display: flex;
   justify-content: space-between;
