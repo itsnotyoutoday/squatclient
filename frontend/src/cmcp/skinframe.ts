@@ -154,6 +154,26 @@ export function navShapes(skin: Skin, pal: Pal, current: number, idp: string, av
   return out;
 }
 
+/** CMCP 2: the nav column shows the layouts the active context allows (the screen menu of 20.5), not a row of console tabs. A console is a
+ * context with a layout; switching here is only a local view among the layouts the game allows for it. The skin supplies the slots and the roles. */
+export interface NavEntry { id: string; title: string; available: boolean; active: boolean }
+export function navShapesV2(skin: Skin, pal: Pal, entries: NavEntry[], idp: string): Prim[] {
+  const b = skin.nav.button, out: Prim[] = [];
+  const shown = entries.filter((e) => e.available).slice(0, 8);
+  shown.forEach((e, i) => {
+    const role = skin.nav.items[i % Math.max(1, skin.nav.items.length)]?.role ?? 'p';
+    const nf = fitText((e.title || e.id).toUpperCase(), b.size * (skin.font.tscale ?? 1), b.w - 2 * (b.padX ?? 16) - Math.abs(b.skewX ?? 0), skin.font.family, skin.font.weight);
+    out.push({
+      id: `${idp}nav${i}`, type: 'button', events: ['click'], target: { path: '', event: '', special: 'nav', screen: e.id },
+      props: { x: b.x + i * (b.dx ?? 0), y: b.y + i * (b.dy ?? 0), w: b.w, h: b.h, r: b.r ?? b.h / 2, fill: col(role, pal), text: nf.text, color: col(b.color, pal), size: nf.size, weight: skin.font.weight,
+        align: b.align ?? 'center', padX: b.padX ?? 16, font: skin.font.family, glow: 0.04, key: `alt+${i + 1}`, skewX: b.skewX ?? 0, stroke: b.stroke ? col(b.stroke, pal) : undefined, strokeWidth: b.sw, opacity: e.active ? 1 : 0.8 },
+    });
+  });
+  const m = skin.nav.marker, cur = shown.findIndex((e) => e.active);
+  if (m && cur >= 0) out.push({ id: `${idp}marker`, type: 'rect', props: { x: m.x, y: m.y + cur * (b.dy ?? 0), w: m.w, h: m.h, fill: col(m.fill, pal), glow: m.glow } });
+  return out;
+}
+
 /** Where the notice pill goes: centred at the top edge unless that covers one of the frame's texts (a title that starts near the top), then the
  * right end, then the left end, then wherever it overlaps least. Returns the pill's left edge (scene units). `texts` are the frame's text prims. */
 export function noticeX(texts: { x: number; y: number; text: string; size: number; align?: string; weight?: string }[], w: number, h: number, font?: string): number {

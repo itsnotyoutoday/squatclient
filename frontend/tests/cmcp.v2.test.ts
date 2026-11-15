@@ -89,3 +89,31 @@ describe('CMCP 2 screens', () => {
     expect(ids.has('alertbtn')).toBe(true);
   });
 });
+
+describe('CMCP 2 nav column', () => {
+  it('lists the layouts the context allows (not console tabs), marks the active one and switches by layout id', async () => {
+    const { navShapesV2 } = await import('../src/cmcp/skinframe');
+    const { SKINS } = await import('../src/cmcp/skins');
+    const skin = SKINS.tng;
+    const prims = navShapesV2(
+      skin,
+      skin.pal.normal,
+      [
+        { id: 'fspace-klingon/navigation', title: 'Navigation', available: true, active: true },
+        { id: 'fspace-klingon/helm', title: 'Helm', available: true, active: false },
+        { id: 'fspace-klingon/off', title: 'Hidden', available: false, active: false },
+      ],
+      'nv.',
+    );
+    const buttons = prims.filter((p) => p.type === 'button');
+    const texts = buttons.map((b) => (b.props as { text: string }).text);
+    expect(texts).toHaveLength(2); // the unavailable one is not listed
+    expect(texts[0]).toMatch(/^NAVIGAT/);
+    expect(texts[1]).toBe('HELM');
+    expect(buttons.map((b) => b.target?.screen)).toEqual([
+      'fspace-klingon/navigation',
+      'fspace-klingon/helm',
+    ]);
+    expect(prims.some((p) => p.id === 'nv.marker')).toBe(true);
+  });
+});

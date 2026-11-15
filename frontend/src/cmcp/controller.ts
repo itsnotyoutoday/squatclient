@@ -6,7 +6,7 @@ import { findTextport, place, type Placed } from './layout';
 import { skinFor } from './skins';
 import { layoutSkinned } from './skinlayout';
 import type { Pal, Skin } from './skins/types';
-import { col, fitText, frameShapes, measureText, navShapes, noticeX, templateVars } from './skinframe';
+import { col, fitText, frameShapes, measureText, navShapes, navShapesV2, noticeX, templateVars } from './skinframe';
 
 /** the notice pill: its height and the widest it gets (scene units) */
 export const NOTICE_H = 26;
@@ -129,6 +129,7 @@ export class CmcpController {
   /** The menu: only the screens this console can show, then a "more..." entry that opens the list of every screen (never a non-screen entry). */
   private menuList(s: SessionState): { id: string; title: string; available: boolean; active: boolean; hintCmd?: string; reason?: string }[] {
     const own = (s.ui?.screens ?? []).filter((o) => o.available && o.state !== 'locked');
+    if (s.ui?.v2) return own; // v2: the layouts the context allows; there is no list of other consoles to browse
     return [...own, { id: '#more', title: 'More screens...', available: true, active: false }];
   }
   /** every screen with the console that provides it (the popover behind "more...") */
@@ -185,8 +186,9 @@ export class CmcpController {
     if (!s?.ui) return;
     const spec = s.ui.catalogue?.['alert.set'];
     if (!(s.ui.commands ?? []).includes('alert.set') || s.ui.readonly) {
-      const mans = (spec?.consoles ?? []).filter((c) => !c.includes(':')).slice(0, 3).join(' or ');
-      this.onError?.(s.ui.readonly ? 'The alert cannot be changed while the screen is read-only.' : `Not available from this console${mans ? `: man ${mans}` : ''}.`);
+      // v2: what this context offers is its own `commands` list; there is no "man <console>" to point at
+      const mans = s.ui.v2 ? '' : (spec?.consoles ?? []).filter((c) => !c.includes(':')).slice(0, 3).join(' or ');
+      this.onError?.(s.ui.readonly ? 'The alert cannot be changed while the screen is read-only.' : s.ui.v2 ? 'Not available here.' : `Not available from this console${mans ? `: man ${mans}` : ''}.`);
       return;
     }
     const cur = String(((s.ui.status ?? s.ui.docs?.['Space.Ship.Status'] ?? {}) as Record<string, unknown>).alert ?? s.ui.alert ?? 'green');
@@ -542,7 +544,8 @@ export class CmcpController {
     // a ship room is not a console: its frame names the ROOM (the game's room name), has no console tabs and says ROOM where the console frames say CONSOLE
     const isRoom = screenName === 'shiproom' || screenName === 'room';
     const roomName = isRoom ? ((s.ui?.stack ?? []).find((e) => e.active && e.kind === 'room')?.name ?? '').toUpperCase() : '';
-    const label = isRoom ? roomName || 'SHIP ROOM' : cur >= 0 ? skin.nav.items[cur].label : (t.title || screenName);
+    // v2: the frame names the context (its title), not a console tab
+    const label = isRoom ? roomName || 'SHIP ROOM' : s.ui?.v2 ? (t.title || s.ui.title || screenName).toUpperCase() : cur >= 0 ? skin.nav.items[cur].label : (t.title || screenName);
     const vars: Record<string, string> = { ...templateVars(s.ui!, label), screen: screenName, ...(isRoom ? { room: '1' } : {}) };
     // port.max_cols (default 80): the side layout's text is at most 80 monospace columns wide; the box size and font give the scene units
     const lg = this.rtFor(s.id).slot(SCENE).logical;
@@ -582,7 +585,8 @@ export class CmcpController {
       const b = skin.nav.button;
       prims.push({ id: 'nv.room', type: 'button', props: { x: b.x, y: b.y, w: b.w, h: b.h, r: b.r ?? b.h / 2, fill: col('t', pal), text: 'ROOM', color: col(b.color, pal), size: b.size * (skin.font.tscale ?? 1), weight: skin.font.weight, align: b.align ?? 'center', padX: b.padX ?? 16, font: skin.font.family, skewX: b.skewX ?? 0, opacity: 0.9 } });
     } else {
-      prims.push(...navShapes(skin, pal, cur, 'nv.', (id) => { const o = menu.find((x) => x.id === id); return { available: !!o && o.available, hint: o?.hintCmd }; }));
+      if (s.ui?.v2) prims.push(...navShapesV2(skin, pal, menu.map((o) => ({ id: o.id, title: o.title || o.id, available: o.available, active: o.active })), 'nv.'));
+      else prims.push(...navShapes(skin, pal, cur, 'nv.', (id) => { const o = menu.find((x) => x.id === id); return { available: !!o && o.available, hint: o?.hintCmd }; }));
     }
     // a screen too big for one readable widget column is paged: the pager sits at the top of the column (Alt+PageUp / Alt+PageDown too)
     if (L.pages && L.pager) {
