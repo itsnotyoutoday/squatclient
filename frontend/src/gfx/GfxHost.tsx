@@ -174,8 +174,12 @@ export function GfxProvider({ engine, children }: { engine: EngineAPI; children:
   useEffect(() => {
     const c = new CmcpController(engine, (id) => get(id).rt);
     c.onError = (text) => useUi.getState().toast('warn', text);
-    c.onNotes = collectPrompts;
+    c.onNotes = (session, notes) => {
+      collectPrompts(session, notes);
+      for (const n of notes) if (n.kind === 'pack-accepted' && n.text) useUi.getState().toast('info', n.text);
+    };
     c.onHint = (text) => useUi.getState().toast('info', text);
+    c.alertRecolour = () => useSettings.getState().settings.cmcpAlertRecolour || 'theme';
     c.startCollapsed = () => useSettings.getState().settings.cmcpStartCollapsed;
     cmcp.current = c;
     const off = c.attach();

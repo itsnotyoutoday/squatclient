@@ -41,7 +41,7 @@ func (s *Service) applyCmcpSettings() {
 	} else {
 		s.eng.SetCmcp(nil)
 	}
-	s.eng.SetCmcpRender(engine.CmcpRender{PortDefault: st.CmcpPortDefault, Calm: st.CmcpCalm, StartCollapsed: st.CmcpStartCollapsed, Theme: st.ConsoleTheme, UseShipTheme: st.ConsoleThemeMode != "fixed", Tokens: CmcpThemeTokens})
+	s.eng.SetCmcpRender(engine.CmcpRender{PortDefault: st.CmcpPortDefault, Calm: st.CmcpCalm, StartCollapsed: st.CmcpStartCollapsed, PackConsent: st.CmcpPackConsent, Theme: st.ConsoleTheme, UseShipTheme: st.ConsoleThemeMode != "fixed", Tokens: CmcpThemeTokens})
 }
 
 type cmcpNotesPayload struct {
@@ -103,6 +103,11 @@ func (s *Service) CmcpSetUI(session, key, valueJSON string) error {
 		}
 	}
 	return s.eng.CmcpSetUI(session, key, v)
+}
+
+// CmcpThemeDoc is the decoded downloaded theme of a session (the web view builds its skin from it).
+func (s *Service) CmcpThemeDoc(session, themeID string) (map[string]any, error) {
+	return s.eng.CmcpThemeDoc(session, themeID)
 }
 
 // CmcpPackConsent answers the first-use question about a game's interface pack (spec 8.8).

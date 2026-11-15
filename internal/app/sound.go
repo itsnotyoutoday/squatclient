@@ -183,7 +183,11 @@ func (ss *soundSvc) resolve(sessionID string, p *msg.SoundPlay) *Instr {
 	if ui, err := ss.s.eng.CmcpUI(sessionID); err == nil && ui.Ship != nil {
 		shipTheme = ui.Ship.Theme
 	}
-	era := audio.SelectEra(st.SoundEra, st.UseShipTheme, shipTheme, ss.idx)
+	mode := "ship"
+	if st.ConsoleThemeMode == "fixed" || !st.UseShipTheme {
+		mode = "fixed"
+	}
+	era := audio.SelectEra(st.SoundEra, mode, shipTheme, st.ConsoleTheme, ss.idx)
 	em := ss.eraMap(era)
 	ss.mu.Lock()
 	files := ss.files

@@ -205,6 +205,8 @@ export interface Settings {
   soundMuted: boolean;
   /** CMCP screens start switched off (the text has the whole area); Alt+S or the pane's button brings them back. */
   cmcpStartCollapsed: boolean;
+  cmcpPackConsent: 'always' | 'ask' | 'never';
+  cmcpAlertRecolour: 'theme' | 'full' | 'edge' | 'off';
   /** Console theme: follow the ship's suggested theme (default) or always use `consoleTheme`. */
   consoleThemeMode: 'ship' | 'fixed';
   /** Text view size: compact (the theme's own, ~20%, animated LOG toggle), balanced (45%, default), large (60%). */
@@ -662,6 +664,7 @@ export interface EngineAPI {
   cmcpPinScreen(session: string, pin: boolean): Promise<void>;
   /** The player's answer to the first-use question about a game's interface pack. */
   cmcpPackConsent(session: string, packId: string, allow: boolean): Promise<void>;
+  cmcpThemeDoc(session: string, themeId: string): Promise<Record<string, unknown>>;
   /** A widget wrote a screen UI key ($ui.team). */
   cmcpSetUi(session: string, key: string, value: unknown): Promise<void>;
   /** A sprite of the current pack with the theme's tokens resolved (JSON text). */
@@ -916,6 +919,8 @@ export const DEFAULT_SETTINGS: Settings = {
   soundVolume: 70,
   soundMuted: false,
   cmcpStartCollapsed: false,
+  cmcpPackConsent: 'always',
+  cmcpAlertRecolour: 'theme',
   consoleThemeMode: 'ship',
   cmcpPortDefault: 'balanced',
   cmcpCalm: false,

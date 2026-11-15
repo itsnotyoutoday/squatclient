@@ -130,6 +130,8 @@ type Settings struct {
 	ConsoleThemeMode   string         `json:"consoleThemeMode"`               // ship (default: follow the ship's suggested theme) | fixed (always ConsoleTheme)
 	CmcpPortDefault    string         `json:"cmcpPortDefault"`                // text view size: compact | balanced (default, 45%) | large (60%)
 	CmcpCalm           bool           `json:"cmcpCalm"`                       // eased motion 2.5x slower
+	CmcpPackConsent    string         `json:"cmcpPackConsent"`                // interface packs from games: always (default) | ask | never
+	CmcpAlertRecolour  string         `json:"cmcpAlertRecolour"`              // theme (default) | full | edge | off
 	CmcpStartCollapsed bool           `json:"cmcpStartCollapsed"`             // a console screen starts switched off
 	SoundCategoryV     map[string]int `json:"soundCategoryVolumes,omitempty"` // 0..100 per category (alert, weapons, hits, ui, comms, ...)
 }
@@ -189,7 +191,7 @@ func DefaultSettings() Settings {
 		ScrollbackLines: 20000, Notifications: true, Linkify: true, PauseOnScroll: true,
 		DefaultEncoding: "utf-8", Truecolor: true,
 		EditorHeight: DefaultEditorH, SoftcodeJoin: true, StripBlankLines: true, HistoryMax: DefaultHistoryMax, WarnUnbalanced: true, AutoReconnectSquatters: true, TFHideQueries: true,
-		Cmcp: true, ConsoleTheme: "tng", SoundVolume: 70, CmcpPortDefault: "balanced", ConsoleThemeMode: "ship",
+		Cmcp: true, ConsoleTheme: "tng", SoundVolume: 70, CmcpPortDefault: "balanced", CmcpPackConsent: "always", CmcpAlertRecolour: "theme", ConsoleThemeMode: "ship",
 	}
 }
 

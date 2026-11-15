@@ -6,7 +6,8 @@ import { skinFor } from './skins';
 import { layoutSkinned } from './skinlayout';
 import type { Skin } from './skins/types';
 import { col, frameShapes, navShapes, templateVars } from './skinframe';
-import { setActiveCmcp, usePane, useScreenHelp } from './pane';
+export type AlertRecolour = 'full' | 'edge' | 'off';
+import { setActiveCmcp, usePane, useScreenHelp, useThemeInUse } from './pane';
 import { useSettings } from '../state/stores';
 import { diffOps, PORT_ID, SCENE, sceneOp, type Ease } from './ops';
 import { drawSprite, type SpriteView } from './sprite';
@@ -113,6 +114,8 @@ export class CmcpController {
 
   /** Called with a short message the first time the menu opens (once per install). */
   onHint?: (text: string) => void;
+  /** the player's alert_recolour setting (theme | full | edge | off) */
+  alertRecolour: () => AlertRecolour | 'theme' = () => 'theme';
 
   menuOpen(session: string): boolean { return this.sess.get(session)?.menu.open ?? false; }
 
@@ -335,6 +338,7 @@ export class CmcpController {
   render(s: SessionState): void {
     const t = s.tree;
     if (!t || s.dismissed === s.key || s.off) return;
+    useThemeInUse.getState().set(t.theme, t.themeSource ?? '', t.themeVersion ?? '');
     const skin = skinFor(t.theme);
     if (skin) { this.renderSkinned(s, t, skin); return; }
     const W = BASE_W, H = Math.round(BASE_W * s.aspect);
@@ -427,7 +431,12 @@ export class CmcpController {
   private renderSkinned(s: SessionState, t: CmcpTree, skin: Skin): void {
     const W = 1600, H = 900, K = 0.75;
     const alert = (s.ui?.alert ?? String(((s.ui?.status ?? s.ui?.docs?.['Space.Ship.Status'] ?? {}) as Record<string, unknown>).alert ?? '')) === 'red';
-    const pal = alert ? skin.pal.red : skin.pal.normal;
+    // alert_recolour: full = every role swaps to the red set; edge = only the edge roles (port frame, alert pill, screen edge) do; off = nothing
+    // recolours (the pill and the strip still say ALERT RED). The theme default: green-identity themes (romulan, ferengi) use edge.
+    const want = this.alertRecolour();
+    const mode: AlertRecolour = want === 'theme' ? (skin.name === 'romulan' || skin.name === 'ferengi' ? 'edge' : 'full') : want;
+    const pal = alert && mode === 'full' ? skin.pal.red : skin.pal.normal;
+    const edgePal = alert && mode !== 'off' ? skin.pal.red : pal;
     const screenName = t.screen.split(/[./]/).pop() ?? '';
     const cur = skin.nav.items.findIndex((i) => i.screens.includes(screenName));
     const label = cur >= 0 ? skin.nav.items[cur].label : (t.title || screenName);
@@ -453,7 +462,7 @@ export class CmcpController {
     for (const p of content) prims.push({ ...p, parent: p.parent ?? 'cw' });
     if (s.vsRect) prims.push({ id: 'fxclip', type: 'group', parent: 'cw', props: { x: 0, y: 0, clip: [s.vsRect.x, s.vsRect.y, s.vsRect.w, s.vsRect.h], z: 9000 } });
     s.skinned = true;
-    prims.push({ id: 'portframe', type: 'rect', props: { x: port[0] - 8, y: port[1] - 8, w: port[2] + 16, h: port[3] + 16, r: skin.port.frame.r, stroke: col(skin.port.frame.role, pal), strokeWidth: skin.port.frame.width, fill: '#00000000', glow: skin.port.frame.glow } });
+    prims.push({ id: 'portframe', type: 'rect', props: { x: port[0] - 8, y: port[1] - 8, w: port[2] + 16, h: port[3] + 16, r: skin.port.frame.r, stroke: col(skin.port.frame.role, edgePal), strokeWidth: skin.port.frame.width, fill: '#00000000', glow: skin.port.frame.glow } });
     if (s.log) prims.push({ id: 'logsum', type: 'text', props: { x: port[0] + 4, y: port[1] - 22, text: `${label}   ${vars.ship}   HULL ${vars.hull}%   CORE ${vars.core}%   ALERT ${vars.alert}`, size: 22, fill: col('x', pal), baseline: 'middle', weight: '700', font: skin.font.family } });
     const menu = s.ui?.screens ?? [];
     prims.push(...navShapes(skin, pal, cur, 'nv.', (id) => { const o = menu.find((x) => x.id === id); return { available: o ? o.available : true, hint: o?.hintCmd }; }));
@@ -463,7 +472,7 @@ export class CmcpController {
     // console may not set it or the screen is read-only
     const ab = skin.alert ?? { ...skin.off.button, y: skin.off.button.y + 56, role: 'x' as const };
     const can = (s.ui?.commands ?? []).includes('alert.set') && !(s.ui?.readonly ?? false);
-    prims.push({ id: 'alertbtn', type: 'button', events: ['click'], target: { path: '', event: '', special: 'alert' }, props: { x: ab.x, y: ab.y, w: ab.w, h: ab.h, r: ab.r ?? ab.h / 2, fill: col(alert ? 'r' : ab.role, pal), text: `ALERT ${vars.alert}`, color: col(ab.color ?? '#000000', pal), size: ab.size * (skin.font.tscale ?? 1), weight: skin.font.weight, align: ab.align ?? 'center', font: skin.font.family, key: 'alt+a', glow: can ? 0.1 : 0, opacity: can ? 1 : 0.5 } });
+    prims.push({ id: 'alertbtn', type: 'button', events: ['click'], target: { path: '', event: '', special: 'alert' }, props: { x: ab.x, y: ab.y, w: ab.w, h: ab.h, r: ab.r ?? ab.h / 2, fill: col(alert ? 'r' : ab.role, edgePal), text: `ALERT ${vars.alert}`, color: col(ab.color ?? '#000000', pal), size: ab.size * (skin.font.tscale ?? 1), weight: skin.font.weight, align: ab.align ?? 'center', font: skin.font.family, key: 'alt+a', glow: can ? 0.1 : 0, opacity: can ? 1 : 0.5 } });
     if (s.menu.open) { // the focused screen menu over the nav column: every screen, the highlighted one ringed and inverted, locked ones dim
       const items = this.menuList(s);
       const nb = skin.nav.button, rowH = 30, x = nb.x, y = nb.y, w = Math.max(nb.w, 190);
@@ -477,7 +486,8 @@ export class CmcpController {
     const ob = skin.off.button;
     prims.push({ id: 'offbtn', type: 'button', events: ['click'], target: { path: '', event: '', special: 'off' }, props: { x: ob.x, y: ob.y, w: ob.w, h: ob.h, r: ob.r ?? ob.h / 2, fill: col(ob.role, pal), text: skin.off.label, color: col(ob.color, pal), size: ob.size * (skin.font.tscale ?? 1), weight: skin.font.weight, align: ob.align ?? 'center', font: skin.font.family, key: 'alt+s', glow: 0.04 } });
     prims.forEach((p, i) => { p.props = { ...p.props, z: i }; });
-    const palKey = alert ? 'red' : 'normal';
+    if (alert && mode === 'edge') prims.push({ id: 'alertedge', type: 'rect', props: { x: 4, y: 4, w: 1592, h: 892, r: 0, stroke: skin.pal.red.r, strokeWidth: 8, fill: '#00000000', z: 9500 } });
+    const palKey = alert ? (mode === 'full' ? 'red' : mode === 'edge' ? 'edge' : 'normal') : 'normal';
     const palChanged = s.lastPal !== '' && s.lastPal !== palKey;
     s.lastPal = palKey;
     const slow = this.reduceMotion ? 0 : 1;

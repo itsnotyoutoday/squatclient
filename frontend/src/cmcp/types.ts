@@ -26,6 +26,7 @@ export interface CmcpTree {
   console?: string;
   theme: string;
   themeSource?: 'pack' | 'builtin' | 'plain';
+  themeVersion?: string;
   /** The text view's state from the shared core (LOG / screen-off) and the player's size choice. */
   view?: { state: 'compact' | 'balanced' | 'large' | 'expanded' | 'off'; portDefault: 'compact' | 'balanced' | 'large'; fraction: number; calm: boolean };
   tokens: Record<string, string | number>;
@@ -81,7 +82,7 @@ export interface CmcpEventResult { tickets: { id: number; cmd: string; mutating:
 
 /** Notes that are not model state: sounds, events, replies. */
 export interface CmcpNote {
-  kind: 'state' | 'ready' | 'reset' | 'console' | 'data' | 'event' | 'scan' | 'reply' | 'timeout' | 'pack' | 'bye' | 'error' | 'log' | 'sound' | 'ui-sound' | 'pack-consent' | 'pack-ready';
+  kind: 'state' | 'ready' | 'reset' | 'console' | 'data' | 'event' | 'scan' | 'reply' | 'timeout' | 'pack' | 'bye' | 'error' | 'log' | 'sound' | 'ui-sound' | 'pack-consent' | 'pack-ready' | 'pack-accepted';
   pkg?: string;
   text?: string;
   event?: { type: string; level?: string; text?: string; data?: Record<string, unknown> };

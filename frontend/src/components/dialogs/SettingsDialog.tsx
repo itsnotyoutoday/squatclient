@@ -6,6 +6,15 @@ import type { ScriptFolders, Settings } from '../../api/types';
 import { DEFAULT_FONT } from '../../api/types';
 import { allThemes, parseThemeJson, useThemeVersion } from '../../themes';
 import { Dialog, Field } from './Dialog';
+import { useThemeInUse } from '../../cmcp/pane';
+
+/** Which console theme is drawn now and where it came from: built in, downloaded from the game, or plain. */
+function ThemeInUse() {
+  const t = useThemeInUse();
+  if (!t.theme) return null;
+  const from = t.source === 'pack' ? `downloaded from the game${t.version ? `, version ${t.version}` : ''}` : t.source === 'builtin' ? 'built in' : 'plain (no theme available)';
+  return <p className="hint">Theme in use: {t.theme} ({from})</p>;
+}
 
 export function SettingsDialog() {
   const engine = useUi((s) => s.engine);
@@ -260,6 +269,22 @@ export function SettingsDialog() {
             ))}
           </select>
         </Field>
+        <Field label="Accept interface packs from games" hint="Always (default): packs and themes the game announces load by themselves after every check (hash, size, origin, schema). Ask: a dialog the first time. Never: only the built-in screens and themes.">
+          <select aria-label="Accept interface packs" value={settings.cmcpPackConsent || 'always'} onChange={(e) => update({ cmcpPackConsent: e.target.value as 'always' | 'ask' | 'never' })}>
+            <option value="always">Always (default)</option>
+            <option value="ask">Ask</option>
+            <option value="never">Never</option>
+          </select>
+        </Field>
+        <Field label="Alert recolour" hint="What turns red on a red alert. Theme (default): the theme decides (green-identity themes only change their edge and pill). Full: the whole console. Edge: frame edge and alert pill only. Off: no recolour (the pill and strip still say ALERT RED).">
+          <select aria-label="Alert recolour" value={settings.cmcpAlertRecolour || 'theme'} onChange={(e) => update({ cmcpAlertRecolour: e.target.value as 'theme' | 'full' | 'edge' | 'off' })}>
+            <option value="theme">Theme decides (default)</option>
+            <option value="full">Full</option>
+            <option value="edge">Edge only</option>
+            <option value="off">Off</option>
+          </select>
+        </Field>
+        <ThemeInUse />
         <Field label="Sound era" hint="Which set of sounds to use for your own recordings. Empty = what the game or the ship's theme suggests.">
           <select aria-label="Sound era" value={settings.soundEra} onChange={(e) => update({ soundEra: e.target.value })}>
             {['', 'tos', 'tng', 'ds9', 'voy', 'klingon', 'romulan', 'ferengi', 'any'].map((t) => (

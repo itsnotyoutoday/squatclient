@@ -196,6 +196,7 @@ export class WailsEngine implements EngineAPI {
   cmcpShowScreen = (session: string, screen: string) => call<void>('CmcpShowScreen', session, screen);
   cmcpCycleScreen = (session: string, dir: number) => call<string>('CmcpCycleScreen', session, dir);
   cmcpPinScreen = (session: string, pin: boolean) => call<void>('CmcpPinScreen', session, pin);
+  cmcpThemeDoc = (session: string, themeId: string) => call<Record<string, unknown>>('CmcpThemeDoc', session, themeId);
   cmcpPackConsent = (session: string, packId: string, allow: boolean) => call<void>('CmcpPackConsent', session, packId, allow);
   cmcpSprite = (session: string, sprite: string) => call<string>('CmcpSprite', session, sprite);
   gfxSnapshot = () => list(call<GfxOp[] | null>('GfxSnapshot'));

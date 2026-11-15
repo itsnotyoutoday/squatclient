@@ -80,6 +80,15 @@ func (a *App) CmcpPackConsent(session, packID string, allow bool) error {
 	return s.CmcpPackConsent(session, packID, allow)
 }
 
+// CmcpThemeDoc returns the verified downloaded theme the console is drawn with (the decoded theme document).
+func (a *App) CmcpThemeDoc(session, themeID string) (map[string]any, error) {
+	s, err := a.service()
+	if err != nil {
+		return nil, err
+	}
+	return s.CmcpThemeDoc(session, themeID)
+}
+
 // CmcpViewEvent toggles the text view ("log_toggle" or "screen_toggle") and returns the state (default, expanded, off).
 func (a *App) CmcpViewEvent(session, ev string) (string, error) {
 	s, err := a.service()
