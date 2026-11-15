@@ -222,6 +222,19 @@ export function WorldManager() {
                   <option value="other">Something else</option>
                 </select>
               </Field>
+              <Field
+                label="Local echo"
+                hint="Show what you type in this world's output. Follow the setting uses Settings > Show what I type."
+              >
+                <select
+                  value={draft.localEcho ?? ''}
+                  onChange={(e) => set('localEcho', e.target.value as WorldConfig['localEcho'])}
+                >
+                  <option value="">Follow the setting</option>
+                  <option value="on">On</option>
+                  <option value="off">Off</option>
+                </select>
+              </Field>
               <Field label="Encoding">
                 <select
                   value={draft.encoding}

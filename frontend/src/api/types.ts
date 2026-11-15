@@ -110,6 +110,8 @@ export interface WorldConfig {
   layout?: string;
   /** Overrides game-type detection ("" = detect). */
   gameType?: string;
+  /** Local echo for this world: '' follows the setting, 'on' or 'off'. */
+  localEcho?: '' | 'on' | 'off';
 }
 
 export interface SquatterConfig {
@@ -191,6 +193,8 @@ export interface Settings {
   autoReconnectSquatters: boolean;
   /** TinyFugue squatters: show lines TinyFugue's /gag hid (they are marked, not removed). */
   showGagged: boolean;
+  /** Show what you type in the output (on by default). A world can override it; /localecho changes one session. */
+  localEcho: boolean;
   /** Send TinyFugue (admin devices, squat_scripts on) a script that keeps SquatClient's own queries off its screen. */
   tfHideQueries: boolean;
   /** CMCP: advertise it to games (off = text only). */
@@ -1002,6 +1006,7 @@ export const DEFAULT_SETTINGS: Settings = {
   warnUnbalanced: true,
   autoReconnectSquatters: true,
   showGagged: false,
+  localEcho: true,
   tfHideQueries: true,
   cmcp: true,
   consoleTheme: 'tng',

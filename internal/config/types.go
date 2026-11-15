@@ -35,6 +35,8 @@ type World struct {
 	GameType string `json:"gameType,omitempty"`
 	// SoundMuted mutes this world's sound (the speaker button, the tab menu); the global soundMuted setting mutes every world.
 	SoundMuted bool `json:"soundMuted,omitempty"`
+	// LocalEcho overrides the global local-echo setting for this world: "" = follow the setting, "on" or "off".
+	LocalEcho string `json:"localEcho,omitempty"`
 }
 
 // Squatter is a remote daemon entry (stored now, used when squatter
@@ -117,6 +119,9 @@ type Settings struct {
 
 	// ShowGagged shows lines TinyFugue gagged (tf-squatterd sessions) instead of hiding them.
 	ShowGagged bool `json:"showGagged"`
+	// LocalEcho shows what you type in the output (on by default). A world can override it (World.LocalEcho); /localecho in a session changes that
+	// session only, and a CONNECT hook (/def -hCONNECT = /localecho off in startup.tf) works too. With a squatter the echo comes back from it.
+	LocalEcho bool `json:"localEcho"`
 	// TFHideQueries sends TinyFugue (admin devices, squat_scripts on) a small script that keeps SquatClient's own
 	// queries (Object Editor, game type detection) off TinyFugue's screen. On by default.
 	TFHideQueries bool `json:"tfHideQueries"`
@@ -197,7 +202,7 @@ func DefaultSettings() Settings {
 		Theme: "dark", FontFamily: "JetBrains Mono, SF Mono, Menlo, Consolas, monospace", FontSize: 14,
 		ScrollbackLines: 20000, Notifications: true, Linkify: true, PauseOnScroll: true,
 		DefaultEncoding: "utf-8", Truecolor: true,
-		EditorHeight: DefaultEditorH, SoftcodeJoin: true, StripBlankLines: true, HistoryMax: DefaultHistoryMax, WarnUnbalanced: true, AutoReconnectSquatters: true, TFHideQueries: true,
+		EditorHeight: DefaultEditorH, SoftcodeJoin: true, StripBlankLines: true, HistoryMax: DefaultHistoryMax, WarnUnbalanced: true, AutoReconnectSquatters: true, TFHideQueries: true, LocalEcho: true,
 		Cmcp: true, ConsoleTheme: "tng", SoundVolume: 70, CmcpPortDefault: "balanced", CmcpPackConsent: "always", CmcpAlertRecolour: "theme", CmcpAlertPulse: "theme", CmcpAlertAmbient: "theme", CmcpHitShake: "theme", CmcpTextLayout: "auto", ConsoleThemeMode: "ship",
 	}
 }

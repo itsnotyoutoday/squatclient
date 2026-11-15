@@ -213,6 +213,11 @@ func (w *World) Validate(defaultEncoding string) error {
 	default:
 		return fmt.Errorf("bad tlsVerify %q", w.TLSVerify)
 	}
+	switch w.LocalEcho {
+	case "", "on", "off":
+	default:
+		return fmt.Errorf("bad localEcho %q", w.LocalEcho)
+	}
 	if w.GameType == "auto" {
 		w.GameType = ""
 	}

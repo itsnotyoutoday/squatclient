@@ -186,3 +186,26 @@ func TestSeedWorldsOnlyOnAFirstRun(t *testing.T) {
 		t.Fatalf("seeded again over a worlds.json: %+v", s2.Worlds())
 	}
 }
+
+func TestLocalEchoDefaultsAndWorldValue(t *testing.T) {
+	s, err := Open(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !s.Settings().LocalEcho {
+		t.Fatal("local echo is on by default")
+	}
+	w, err := s.SaveWorld(World{Name: "A", Host: "h", Port: 1})
+	if err != nil || w.LocalEcho != "" {
+		t.Fatalf("a world follows the setting by default: %+v %v", w, err)
+	}
+	w.LocalEcho = "off"
+	got, err := s.SaveWorld(w)
+	if err != nil || got.LocalEcho != "off" {
+		t.Fatalf("%+v %v", got, err)
+	}
+	w.LocalEcho = "maybe"
+	if _, err := s.SaveWorld(w); err == nil {
+		t.Fatal("a bad value is refused")
+	}
+}

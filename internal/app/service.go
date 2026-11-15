@@ -254,6 +254,19 @@ func (s *Service) syncWorlds() {
 		ws = append(ws, toEngineWorld(w, enc))
 	}
 	s.eng.SetWorlds(ws)
+	s.applyLocalEcho()
+}
+
+// applyLocalEcho gives the engine the persisted local-echo settings: the global one and each world's own (by world name).
+func (s *Service) applyLocalEcho() {
+	per := map[string]string{}
+	for _, w := range s.cfg.Worlds() {
+		if w.LocalEcho == "on" || w.LocalEcho == "off" {
+			per[w.Name] = w.LocalEcho
+		}
+	}
+	s.eng.SetWorldLocalEcho(per)
+	s.eng.SetLocalEchoDefault(s.cfg.Settings().LocalEcho)
 }
 
 // ---- events ---------------------------------------------------------------

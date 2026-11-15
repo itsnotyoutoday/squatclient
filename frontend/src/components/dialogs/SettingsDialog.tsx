@@ -460,6 +460,11 @@ export function SettingsDialog() {
             "Keep SquatClient's own queries off TinyFugue's screen",
             '(sends TinyFugue a small script when an admin device connects; needs squat_scripts)',
           )}
+          {check(
+            'localEcho',
+            'Show what I type (local echo)',
+            '(a world can override it in its settings; /localecho changes one session; with a squatter it hides your own echo and the squatter\'s keyboard)',
+          )}
           {check('timestamps', 'Show timestamps')}
           {check('boldAsBright', 'Bold text uses bright colours')}
           {check('linkify', 'Make bare URLs clickable')}
