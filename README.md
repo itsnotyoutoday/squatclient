@@ -2,19 +2,49 @@
 
 # SquatClient
 
-A graphical **MUD / MUSH / MU\*** client for the desktop. It speaks the protocols real games use (telnet, TLS,
-MCCP2, GMCP, MSDP and more), draws full UTF-8 text in 16, 256 and 24-bit colour, can be themed and rearranged
-with layouts, is scriptable in a TinyFugue-compatible language and in Lua, and can keep your connections alive
-while the window is closed by handing them to a small relay called a **squatter**.
+**A MUD / MUSH / MU\* client where the game can draw its own consoles.**
 
-It is free software, GPL-3.0-or-later.
+SquatClient is a desktop client for text games that also speaks **CMCP**, a protocol that lets a game send the
+*data* of an interface (gauges, radar, damage control, alerts, sound) instead of making you read it out of text. Where a
+game has consoles, you get them: live, themed, clickable, with the text still right there. Where it does not, you get a
+fast, scriptable, themeable MU\* client with an in-game object editor, TinyFugue and Lua scripting, and connections that
+can stay alive while the window is closed.
 
-- [Download](#download)
-- [What it does](#what-it-does) · [Protocols](#protocols-and-terminal-support) · [Themes](#themes) · [Layouts](#layouts)
-- [Build from source](#build-from-source)
-- [Squatters: keeping connections alive](#squatters-keeping-connections-alive) · [squatterd](#squatterd) · [TinyFugue](#tinyfugue-and-the-tf-bridge)
-- [Files and settings](#files-and-settings) · [Development](#development) · [Documentation](#documentation)
-- [Code signing policy](#code-signing-policy) · [Privacy](#privacy) · [License](#license)
+<p align="center"><img src="docs/screenshots/cmcp-hit.gif" width="720" alt="A starship tactical console in SquatClient: the shields take hits, the display shakes, the radar sweeps"></p>
+<p align="center"><em>The tactical console of the CMCP test game, drawn from the game's own data. The ship takes hits; the display shakes, the log prints each hit, the radar keeps sweeping.</em></p>
+
+It is free software, GPL-3.0-or-later. **Alpha:** expect rough edges; see
+[Reporting problems](#reporting-problems-the-diagnostics-log).
+
+- [Download](#download) · [Quickstart: connect directly](#quickstart-1-connect-directly) · [Quickstart: keep connections alive](#quickstart-2-keep-your-connections-alive-a-remote-squatter-or-gtf)
+- [CMCP: consoles the game draws](#cmcp-consoles-the-game-draws) · [The object editor](#the-object-editor) · [Scripting](#scripting-tinyfugue-lua-and-webgl)
+- [Protocols](#protocols-and-terminal-support) · [Themes and layouts](#themes-and-layouts) · [Squatters](#squatters-in-brief)
+- [Build from source](#build-from-source) · [Files and settings](#files-and-settings) · [Documentation](#documentation) · [License](#license)
+
+## Why SquatClient
+
+| | |
+|---|---|
+| **Consoles, not text parsing** | With CMCP a game says "here is the ship's power, the contacts, the alert"; the client draws it. No triggers scraping lines, nothing to break when the game's wording changes. |
+| **The text never goes away** | The output pane and your input line are never covered. Switch the screen off and you are back to plain text. |
+| **Looks and sounds the game ships with it** | Screens, themes and sound packs come from the game (checked by hash, cached, with your consent), or from your own sound folder, which is never uploaded. |
+| **A real MU\* client underneath** | Telnet, TLS, MCCP2, GMCP, MSDP, MSSP, 24-bit colour, UTF-8, saved worlds with keychain passwords, many tabs, searchable scrollback, history. |
+| **Edit objects, not `@set` lines** | An in-game object and attribute editor for PennMUSH, CobraMUSH, TinyMUX and friends. |
+| **Scriptable two ways, with graphics** | TinyFugue-compatible scripts and Lua, both able to draw WebGL scenes. |
+| **Stays connected** | Hand your connections to a small relay (a *squatter*) or to [gtf](https://github.com/itsnotyoutoday/gtf), close the app, come back and replay what you missed. |
+
+## See it
+
+<table>
+<tr>
+<td width="50%"><a href="docs/screenshots/cmcp-tactical.png"><img src="docs/screenshots/cmcp-tactical.png" alt="CMCP tactical console in the LCARS-style theme with a radar scope"></a><br><sub><b>A CMCP console.</b> Tactical console on the test game: commands, a radar scope, status chips, ship-wide red alert.</sub></td>
+<td width="50%"><a href="docs/screenshots/editor.png"><img src="docs/screenshots/editor.png" alt="The Object Editor editing a softcode attribute"></a><br><sub><b>The object editor.</b> An attribute of an object on a CobraMUSH game, with syntax colouring, flags, locks and a filterable attribute list.</sub></td>
+</tr>
+<tr>
+<td><a href="docs/screenshots/terminal.png"><img src="docs/screenshots/terminal.png" alt="A MUSH session with coloured output"></a><br><sub><b>A regular world.</b> 24-bit colour, your own commands shown dimmed, a command line with history.</sub></td>
+<td><a href="docs/screenshots/worlds.png"><img src="docs/screenshots/worlds.png" alt="The Worlds dialog listing the alpha test worlds"></a><br><sub><b>Worlds.</b> The alpha starts with the CMCP test game and two real games already in the list.</sub></td>
+</tr>
+</table>
 
 ## Download
 
@@ -33,166 +63,81 @@ Linux, macOS and Windows. If there is no release for your platform yet, [build i
 **Code signing:** free code signing provided by [SignPath.io](https://about.signpath.io), certificate by
 [SignPath Foundation](https://signpath.org). See the [code signing policy](#code-signing-policy).
 
-## What it does
+## Quickstart 1: connect directly
 
-- **Connects to anything that speaks telnet**, with or without TLS (certificate checking on by default, an
-  explicit per-world switch to turn it off), UTF-8 or Latin-1.
-- **Many connections in tabs**, with unread badges, an "ended" state that keeps the scrollback and says why the
-  connection ended (it never reconnects behind your back), and a "While you were away" summary.
-- **Fast output**: a virtualised scrollback with search, clickable links (OSC 8 and plain URLs), a command
-  history per world that never stores passwords, and logging.
-- **Worlds**: saved connections with keychain-stored passwords (never written to a file), auto-login,
-  per-world layout, and **game-type detection** (PennMUSH, CobraMUSH, TinyMUX, TinyMUSH, RhostMUSH, TinyMUSE,
-  CircleMUD/tbaMUD, ROM/Merc, SMAUG, LPmud, MOO, Evennia, MUCK, ColdMUD, CoffeeMUD, Iron Realms and others)
-  that decides which tools apply.
-- **An in-game object and attribute editor** for MU\* games: browse and edit objects, attributes, flags and
-  locks in a workspace instead of typing `@set` lines.
-- **Scripting in two languages**: the TinyFugue language, run by the shared [gtfparser](https://github.com/itsnotyoutoday/gtfparser)
-  engine that also runs TinyFugue's own library files (triggers, macros, hooks, timers,
-  `/def`, `/load` of existing `.tf` files) and **Lua** plugins with an `squat.*` API. Scripts can open their own
-  windows and panels.
-- **Themes and layouts** (below), the keyboard-first input line, a file-upload dialog for sending long text,
-  and a built-in searchable help browser.
-- **Native feel**: native menus on macOS; an in-window menu bar on Windows and Linux. macOS is the primary
-  development platform.
-- **Squatters** that hold your connections while the app is closed (below).
+No relay, no account, no setup. About two minutes.
 
-## Protocols and terminal support
+**1. Start SquatClient.** On a first run the **Worlds** list already holds three games (**Cmd/Ctrl+O**, or *Worlds...* in the **Session** menu on a Mac and the **File** menu elsewhere; the **+** in the tab bar is *Quick connect*):
 
-| Area | Supported |
+<p align="center"><img src="docs/screenshots/worlds.png" width="640" alt="The Worlds dialog: CMCPTest, Typhon Accords, M*U*S*H"></p>
+
+| World | What it is |
 |---|---|
-| Transport | TCP, TLS (strict or, per world, unverified), UTF-8 and Latin-1 |
-| Telnet options | ECHO (password prompts are masked in history and echo), SGA, EOR / GA prompt detection, NAWS (window size), TTYPE with **MTTS** capability reporting, CHARSET (UTF-8), **MCCP2** (zlib compression) |
-| Out-of-band data | **GMCP** (JSON packages: `Char.Vitals`, `Room.Info`, `Comm.Channel.*`, `Char.Items.*`, ...). **MSDP** is decoded and delivered to scripts and layouts for games reached through the [TinyFugue bridge](#tinyfugue-and-the-tf-bridge) (TinyFugue built with `--enable-msdp`) |
-| Text | ANSI SGR: 16, **xterm-256** and **24-bit truecolor**; bold, dim, italic, underline, strike, blink and reverse; OSC 8 hyperlinks; full UTF-8 |
-| Relay protocols | **SWP** (SquatClient Wire Protocol) to `squatterd`, **TFSP** to TinyFugue's bridge; both run over WebSocket on TLS with pinned certificates and ed25519 device keys |
+| **CMCPTest** | the alpha test game for CMCP: a small cooperative starship game with every console and sound. **Start here.** |
+| **Typhon Accords** | a CobraMUSH game (startrekkin.net, port 1701) |
+| **M\*U\*S\*H** | a PennMUSH game (pennmush.org, port 4201) |
 
-Protocol details and the choices made where specifications are silent are in
-[`squatClientDaemon/docs/PROTOCOL.md`](https://github.com/itsnotyoutoday/squatClientDaemon/blob/main/docs/PROTOCOL.md)
-and `PROTOCOL-NOTES.md`.
+**2. Double-click CMCPTest.** It connects and you see the game's welcome text.
 
-## Themes
-
-The look of the whole window and of the game text is a **theme**: the 16 ANSI colours, default foreground and
-background, cursor, selection, links, and the colours of the app's own panels. Three themes are built in
-(**Dark**, **Light** and **High contrast**, which meets WCAG AAA for default text). Pick one in
-**Settings → Theme**; it changes instantly, no restart.
-
-Your own themes are files in the **themes folder** (shown in Settings): `<config dir>/themes/name.json`, or
-`<config dir>/themes/name/theme.json`. The list updates within a second of saving a file, and a theme that is
-not valid is skipped with a message naming the file.
-
-```json
-{
-  "id": "night-owl", "name": "Night Owl", "kind": "dark",
-  "fg": "#d6deeb", "bg": "#011627", "cursor": "#80a4c2", "selection": "#1d3b53", "link": "#82aaff",
-  "ansi": ["#011627", "#ef5350", "#22da6e", "#addb67", "#82aaff", "#c792ea", "#21c7a8", "#d6deeb",
-           "#575656", "#ef5350", "#22da6e", "#ffeb95", "#82aaff", "#c792ea", "#7fdbca", "#ffffff"],
-  "chrome": { "panel": "#0b2942", "panelAlt": "#010e1a", "border": "#1d3b53", "text": "#d6deeb",
-              "textDim": "#7e97ac", "accent": "#7e57c2", "accentText": "#ffffff",
-              "danger": "#ef5350", "warn": "#ffcb8b", "ok": "#22da6e" }
-}
-```
-
-A "minimum contrast" setting keeps text readable against any background a game chooses.
-
-## Layouts
-
-A **layout** arranges the window: where the game output, input line, docks and panels go, and which live game
-data (GMCP / MSDP) they show. Layouts are chosen per world, per connection (Session → Connection settings), or as
-the default (**View → Layouts…**). A game that sends vitals, a room and an inventory can get bars, a compass built
-from the room's exits, a chat window and buttons, appearing only when the game has sent the data.
-
-A layout is one file in the layouts folder, in the style of a single-file component:
+**3. Make a throwaway account** (do not reuse a real password on a test game):
 
 ```
-<App>
-  <Row>
-    <Mush />
-    <Dock side="right" width={240} resizable>
-      <Vitals />
-      <RoomInfo />
-      <Chat height={150} />
-    </Dock>
-  </Row>
-  <InputBar />
-</App>
-
-<script>
-  // JavaScript / TypeScript, runs in the window
-  const hp = useGmcp('Char.Vitals.hp');
-</script>
-
-<lua>
--- Lua, runs in the engine
-squat.on("gmcp", function(e) --[[ ... ]] end)
-</lua>
-
-<style>
-  /* CSS */
-  .lay-gauge { height: 18px; }
-</style>                          <!-- CSS -->
+create yourname somepassword
 ```
 
-- Built-in layouts: Classic (the default), Sidebar, Vitals bar and an Evennia demo. The **Evennia cockpit**
-  starter shows what is possible: resizable docks, a compass from the exit list, an HP chart, auto-heal, and
-  Lua-built **Who** and **Help browser** windows made from the game's own output.
-- Layouts are compiled in the app (esbuild), never loaded from the network, and one you did not write asks for
-  your consent before it runs. If a layout fails, the classic layout is shown with a message saying why.
-- JavaScript and Lua share variables both ways. Lua can open floating windows and docked panels with
-  `squat.ui.window{...}` / `squat.ui.panel{...}` ([Lua API](https://github.com/itsnotyoutoday/squatClientDaemon/blob/main/docs/LUA-API.md)).
+**4. Board a ship and man a console:**
 
-See [`docs/LAYOUTS.md`](docs/LAYOUTS.md).
+```
+board resolute
+man tac
+```
 
-## Graphics and consoles (WebGL)
+The tactical console appears around the text. Try the buttons, then `simulatehit` to take a hit and watch the display shake. `unman` gives the console back; the **screen menu** at the top of a console switches between the ones you may use, **SCREEN OFF** brings back the plain text. More in the in-app help (**?**): *CMCP consoles and sound*.
 
-SquatClient has a scriptable retained-mode graphics layer: `/gfx` objects, tweens, data bindings, shaders, particles,
-a planet and a parallax starfield, bloom, pointer events and a draggable-stick control, drawn with WebGL2. It is driven
-from Lua (`require "gfx"`) or TinyFugue (`/gfx`, plus gtf's `/canvas` family), with the same JSON scene operations
-underneath. Try it in a session: `/lcars` (the LCARS console, Lua; `/lcars themes` lists soft, romulan, klingon, tos, ferengi and bridge styles, `/lcars tour` cycles them, `/lcars calm on` tones any of them down), `/gfxdemo` (a short TF script).
-No Wails needed to look: `cd frontend && npm run dev`, then open
-`http://localhost:5173/gfx-demo.html?stream=/gfx/lcars-sens.json`. See `docs/GFX.md` (language, protocol, performance,
-screenshots in `docs/gfx-shots/`) and `docs/LIB.md` (the standard library SquatClient now ships).
+**5. Connect to anything else.** Use **Quick connect** (host, port, TLS) or **+ Add world** in the Worlds dialog to save it with a login (the password goes to your system keychain, never to a file):
 
-## Build from source
+<p align="center"><img src="docs/screenshots/quick-connect.png" width="640" alt="The Quick connect dialog"></p>
 
-You need **Go 1.24+**, **Node 20+** and the **Wails CLI**. On Linux also GTK 3 and WebKitGTK (`libgtk-3-dev`
-and `libwebkit2gtk-4.0-dev`, or the `4.1` package with `-tags webkit2_41`); `wails doctor` tells you what is
-missing. Windows needs the WebView2 runtime (already present on current Windows).
+**6. Edit an object** (MU\* games only): press **Object Editor**, then **Open an object** or type `/edit #123` in the terminal. See [The object editor](#the-object-editor).
 
-The client uses the engine from the daemon repository, so clone **both repositories side by side**:
+## Quickstart 2: keep your connections alive (a remote squatter, or gtf)
+
+A **squatter** holds your game connections on a machine that stays on (a server, a Pi, a VPS). You attach with the app, it
+replays what you missed, and you carry on; when you close the app the connections stay up. Pick one:
+
+- **gtf**, if you want a terminal MU\* client you can also attach SquatClient to. [GoTinyFugue](https://github.com/itsnotyoutoday/gtf) is
+  our TinyFugue-compatible terminal client and has the squatter **built in**: one program, nothing else to run. Recommended.
+- **squatterd**, a small stand-alone relay: "screen for MUDs" with no client of its own.
+
+Either way the link is TLS with a certificate whose fingerprint **you confirm once and the app pins**, plus a device key,
+so a pairing code is needed only the first time. A squatter never stores your game passwords; the app sends your login.
+
+### With gtf
+
+On the machine that stays on:
 
 ```sh
-mkdir squat && cd squat
-git clone https://github.com/itsnotyoutoday/squatclient.git
-git clone https://github.com/itsnotyoutoday/squatClientDaemon.git
-
-go install github.com/wailsapp/wails/v2/cmd/wails@v2.10.2
-cd squatclient
-make build            # frontend, then the app
+curl -fsSL https://raw.githubusercontent.com/itsnotyoutoday/gtf/main/install.sh | sh     # installs gtf to ~/bin
+gtf                                                                                      # run it (in tmux or screen to keep it up)
 ```
 
-The result is `build/bin/squatclient.app` (macOS) or `build/bin/squatclient[.exe]`. `make run` builds and opens it
-on macOS; `make dev` runs it with live reload. `make test` runs the Go and frontend tests, `make lint` the linters.
+In gtf:
 
-## Squatters: keeping connections alive
+```
+/set squatter=on
+/pair
+```
 
-The app works fully on its own. A **squatter** is a relay that runs on a machine that stays on (a server, a Pi, a
-VPS). It holds your game connections; you attach with the app, it replays what you missed, and you carry on. When you
-close the app the connections stay up. SquatClient supports two kinds:
+`/pair` prints a one-time code and the TLS fingerprint. In SquatClient open **Squatters** (the cloud button in the top right) and choose **Add a squatter**, Type **gtf (GoTinyFugue)**, enter the host and port **10328** and the code, press **Pair**,
+check that the fingerprint matches what gtf printed, then **Trust and pair**.
 
-| | `squatterd` | TinyFugue bridge (`tf-squatterd`) |
-|---|---|---|
-| What holds the game connections | the relay itself | **your running TinyFugue** |
-| Default port / path | 10327, `/swp` | 10328, `/tfsp` |
-| Triggers and macros | run in SquatClient | run in TinyFugue (or SquatClient, by your choice) |
-| Best for | a client-independent "screen for MUDs" | adding a GUI to the TinyFugue you already use |
+<p align="center"><img src="docs/screenshots/squatters.png" width="640" alt="The Squatters dialog"></p>
 
-Both use TLS with a self-signed certificate whose fingerprint **you confirm once and the app pins**, and
-ed25519 device keys, so a pairing code is needed only the first time. Neither ever logs in for you or stores a game
-password; the app sends your login.
+gtf's connections appear as tabs. gtf keeps running its own triggers; SquatClient shows the text, runs its consoles and
+lets you type. If gtf runs on another machine, keep it private and tunnel the port:
+`ssh -N -L 10328:127.0.0.1:10328 you@server`, then add the squatter as host `127.0.0.1`. Details: gtf's `docs/SQUATTER.md`.
 
-### squatterd
+### With squatterd
 
 On the machine that will hold the connections:
 
@@ -228,82 +173,132 @@ Run it under systemd (`systemctl --user enable --now squatterd`, plus `loginctl 
 the unit file, Docker commands and the security model are in the daemon's
 [README](https://github.com/itsnotyoutoday/squatClientDaemon#readme).
 
-### TinyFugue and the tf-bridge
+Then, in a world's settings, choose **Connect via** that squatter.
 
-If you already run [TinyFugue](https://github.com/ingwarsw/tinyfugue) in `screen` or `tmux`, it can be paired with
-SquatClient the same way: you see all of TinyFugue's connections (history, then live), type into them, edit its world
-list, and take the keyboard from, share it with, or hand it back to the TinyFugue terminal. TinyFugue keeps
-running its own triggers.
+## CMCP: consoles the game draws
 
-The pieces: a TinyFugue build with the squat support (branch `squatterbridge` of the fork below) and the helper
-`tf-squatterd`, which TinyFugue starts as its own child process. Nothing in TinyFugue listens on the network.
+**CMCP** (the Cobra console protocol) is an out-of-band protocol carried inside GMCP. The game stays a text game; CMCP adds
+three planes on top of it:
 
-**1. Get and build TinyFugue (the fork with squat support)**
+1. **Layout and art packs**: screens as data (widget trees), vector art, themes and sound packs: versioned, hashed, cached.
+2. **Console control**: which ship and console you man, which screen to show, what to subscribe to.
+3. **Live data and commands**: `Space.*` documents (a snapshot, then small patches with sequence numbers), `Cobra.Cmd` for clicks
+   (the game says what you "typed"), `Sound.*` for audio.
+
+What that gives you in SquatClient:
+
+- **Real consoles**: sensors, power, tactical, damage control, operations, comms and more, with gauges, a radar scope,
+  schematics, and buttons that send the game's own commands.
+- **Contexts, not just consoles**: ship rooms, the turbolift, an away team, an event or a docking can have their own screen;
+  a stack of contexts you can close from the X (the game decides).
+- **Ship-wide alerts**: red and yellow alert recolour, pulse and glow the whole display on every screen aboard; a hit shakes it.
+  Each is a setting (follow the theme, on, off) and there is a **Calm** switch for gentler motion.
+- **Themes as data**: seven built-in looks (TNG, soft, Klingon, Romulan, TOS, Ferengi, ops), a theme follows the ship you are on,
+  and a game can ship a whole **theme pack** (palette, frames, widget skins, motion) that SquatClient applies.
+- **Sound**: the game sends *events* (`red_alert`, `phaser_fire`), SquatClient plays your own file for it (a **local sound
+  folder** with era maps, read-only and never uploaded), else the game's sample, else a synthesised recipe. Loops resume when you
+  return to a tab; mute per world or globally; volume per category.
+- **Packs with consent**: the first time a game offers a pack you can say always / ask / never; packs are data and cannot run code,
+  are fetched only from the game's own host or an https origin it announced, and are verified by hash.
+- **Degrades gracefully**: games that do not speak CMCP are unaffected; the text pane and input line are never covered; the same
+  protocol also drives the terminal client gtf.
+- **Open and specified**: the protocol, schemas, conformance vectors and a reference sound set live in the
+  [cmcp repository](https://github.com/itsnotyoutoday/cmcp) (`spec/`), so other games and clients can implement it.
+
+Turn it off in **Settings > Game consoles (CMCP) and sound** if you only want text. Help topic: *CMCP consoles and sound*; docs:
+[`docs/CMCP.md`](docs/CMCP.md), [`docs/CMCP-THEMES.md`](docs/CMCP-THEMES.md).
+
+## The object editor
+
+For MU\* games (PennMUSH, CobraMUSH, TinyMUX, TinyMUSH, RhostMUSH and relatives) SquatClient has an **in-game object and
+attribute editor**: open an object by name or `#dbref`, browse its attributes like files, edit softcode with syntax colouring
+and error markers, change flags, powers and locks, compare and revert, all without typing `@set` lines. It works through
+the game's own commands: nothing is installed on the game.
+
+<p align="center"><img src="docs/screenshots/editor.png" width="760" alt="The Object Editor"></p>
+
+See [`docs/EDIT.md`](docs/EDIT.md) and the in-app help topic *Editing objects and attributes*.
+
+## Scripting: TinyFugue, Lua and WebGL
+
+- **TinyFugue language**, run by the shared [gtfparser](https://github.com/itsnotyoutoday/gtfparser) engine that also runs
+  TinyFugue's own library files: triggers, macros, hooks, timers, `/def`, `/load` of existing `.tf` files.
+- **Lua 5.1** plugins with a `squat.*` API (triggers, timers, sending, variables, your own windows and panels), sandboxed.
+- **Graphics** from either language: a retained-mode **WebGL2** scene with shapes, gradients, glow, a lit planet, a starfield,
+  a radar, graphs, particle emitters, your own shaders, tweens and data bindings (to TinyFugue variables, `gmcp:` and
+  `msdp:` data). Try `/lcars` (a full LCARS console written in Lua) and `/gfxdemo`.
+
+The help browser has chapters for all three: *The scripting language*, *Lua scripting*, *Scripting graphics*. Reference:
+[`docs/GFX.md`](docs/GFX.md), [`docs/LIB.md`](docs/LIB.md).
+
+## Protocols and terminal support
+
+| Area | Supported |
+|---|---|
+| Transport | TCP, TLS (strict or, per world, unverified), UTF-8 and Latin-1 |
+| Telnet options | ECHO (password prompts are masked in history and echo), SGA, EOR / GA prompt detection, NAWS (window size), TTYPE with **MTTS** capability reporting, CHARSET (UTF-8), **MCCP2** (zlib compression), **MSSP** (server status data) |
+| Out-of-band data | **GMCP** (JSON packages: `Char.Vitals`, `Room.Info`, `Comm.Channel.*`, `Char.Items.*`, ...) feeding layouts and scripts. **MSDP** is decoded and delivered to scripts and layouts for games reached through gtf or the [TinyFugue bridge](docs/TF-BRIDGE.md). |
+| Console protocol | **CMCP** over GMCP: consoles, contexts, packs, themes, commands, sound, plus the squatter peer model (several clients on one connection) |
+| Text | ANSI SGR: 16, **xterm-256** and **24-bit truecolor**; bold, dim, italic, underline, strike, blink and reverse; OSC 8 hyperlinks; full UTF-8 |
+| Relay protocols | **SWP** (SquatClient Wire Protocol) to `squatterd` and gtf, **TFSP** to TinyFugue's bridge; WebSocket on TLS with pinned certificates and ed25519 device keys |
+
+Protocol details: [`squatClientDaemon/docs/PROTOCOL.md`](https://github.com/itsnotyoutoday/squatClientDaemon/blob/main/docs/PROTOCOL.md)
+and `PROTOCOL-NOTES.md`; CMCP: the [cmcp spec](https://github.com/itsnotyoutoday/cmcp).
+
+## Themes and layouts
+
+The look of the window is a **theme** (three built in: Dark, Light, High contrast; your own are JSON files in the themes folder,
+[`docs/THEMES.md`](docs/THEMES.md)). The arrangement of the window is a **layout**: docks and panels for the game output, input
+line and live GMCP data (vitals bars, a compass built from the exits, chat), chosen per world, with built-ins (Classic, Sidebar,
+Vitals bar, Evennia cockpit) and your own single-file layouts written with markup, JavaScript, Lua and CSS
+([`docs/LAYOUTS.md`](docs/LAYOUTS.md)). A layout can never stop you typing or connecting; one you did not write asks for consent.
+
+## Squatters in brief
+
+The app works fully on its own. Squatters are optional:
+
+| | gtf squatter | `squatterd` | TinyFugue bridge (`tf-squatterd`) |
+|---|---|---|---|
+| What holds the game connections | **gtf**, a terminal client | the relay itself | your running **TinyFugue** |
+| Default port | 10328 | 10327 | 10328 |
+| Best for | one program that is both a terminal client and a squatter | a client-independent "screen for MUDs" | adding a GUI to the TinyFugue you already use |
+| Setup | [Quickstart 2](#with-gtf) | [Quickstart 2](#with-squatterd) | [`docs/TF-BRIDGE.md`](docs/TF-BRIDGE.md) |
+
+Useful `squatterd` commands: `squatterd devices` · `squatterd revoke <id>` · `squatterd status` · `squatterd reload` (restart onto a new
+binary without losing connections) · `squatterd user ...`. Reaching it from outside your network: open port 10327, or keep it
+private and tunnel (`ssh -N -L 10327:127.0.0.1:10327 you@server`). systemd, Docker and the security model are in the daemon's
+[README](https://github.com/itsnotyoutoday/squatClientDaemon#readme).
+
+## Reporting problems: the diagnostics log
+
+The alpha keeps a **diagnostics log** of what it does (connections, what the game sent, sound decisions, packs, settings, errors)
+so a bug can be found without guessing. It stays on your computer, secrets are removed as it is written, and only the current and
+previous session are kept (up to about 100 MB). **Help > Send Diagnostics Log...** shows it, lets you turn it off or clear it, and
+walks you through saving a zip and opening a prefilled GitHub issue. Nothing is ever uploaded by the app. Details:
+[`docs/DIAGNOSTICS.md`](docs/DIAGNOSTICS.md).
+
+<p align="center"><img src="docs/screenshots/send-diagnostics.png" width="560" alt="The Send Diagnostics Log dialog"></p>
+
+## Build from source
+
+You need **Go 1.24+**, **Node 20+** and the **Wails CLI**. On Linux also GTK 3 and WebKitGTK (`libgtk-3-dev`
+and `libwebkit2gtk-4.0-dev`, or the `4.1` package with `-tags webkit2_41`); `wails doctor` tells you what is
+missing. Windows needs the WebView2 runtime (already present on current Windows).
+
+The client uses the engine from the daemon repository, so clone **both repositories side by side**:
 
 ```sh
-git clone -b squatterbridge https://github.com/itsnotyoutoday/tinyfugue.git
-cd tinyfugue
-./configure --prefix="$HOME/.local" --enable-gmcp --enable-msdp
-make && make install
+mkdir squat && cd squat
+git clone https://github.com/itsnotyoutoday/squatclient.git
+git clone https://github.com/itsnotyoutoday/squatClientDaemon.git
+
+go install github.com/wailsapp/wails/v2/cmd/wails@v2.10.2
+cd squatclient
+make build            # frontend, then the app
 ```
 
-`--enable-gmcp` and `--enable-msdp` let the client see GMCP and MSDP data from games (MSDP needs `flex`).
-TinyFugue also needs a C toolchain, OpenSSL and the ICU libraries (`libicu-dev`) as usual. On macOS, if linking
-fails with missing `utext_*` / `ucnv_*` symbols, add `-licuuc` to `LIBS` in `src/Makefile` and run `make` again.
-Make sure `~/.local/bin` is on your `PATH`.
-
-**2. Build the bridge helper**
-
-```sh
-git clone https://github.com/itsnotyoutoday/squatClientDaemon.git     # skip if you already have it
-cd squatClientDaemon && make build                                    # produces ./tf-squatterd
-install -m 755 tf-squatterd ~/.local/bin/                             # anywhere on PATH
-```
-
-(or leave it where it is and tell TinyFugue: `/set squat_bin=/full/path/to/tf-squatterd`)
-
-**3. Start it from TinyFugue**
-
-Run TinyFugue, preferably inside `tmux new -s tf`, so it keeps running when you log out:
-
-```
-/squat on                    start the bridge (127.0.0.1:10328, TLS)
-/squat pair                  print a one-time pairing code and the TLS fingerprint
-```
-
-`/squat pair operator` or `admin` pairs with a higher role (default: `operator`, which can type and open
-connections; `admin` can also edit worlds' macro files, run allowed commands and upload scripts).
-
-**4. Pair SquatClient**
-
-**Cloud button → Squatters → Add a squatter**, Type **TinyFugue**, the host, port **10328** and the code. Compare the
-fingerprint with the one TinyFugue printed, then **Trust and pair**. Your TinyFugue connections appear as tabs
-marked **(tf)**. If TinyFugue runs on another machine, either set `/set squat_bind=0.0.0.0` before `/squat on` (and
-open the port), or leave it on loopback and tunnel it: `ssh -N -L 10328:127.0.0.1:10328 you@server`, then add the
-squatter as host `127.0.0.1`.
-
-**Who has the keyboard.** Each TinyFugue connection has two switches, shown on its tab and in the status bar:
-*input* (TinyFugue only / both / SquatClient only) and *automation* (whose triggers run). Set them from the app,
-or in TinyFugue with `/control`. By default a paired operator can take over; `/set squat_takeover=ask` makes
-TinyFugue ask you first (`/control allow`, `/control deny`). `/control <world> tf` always takes a world back, and
-everything reverts to TinyFugue when the app disconnects.
-
-**Settings** are ordinary TinyFugue variables, set before `/squat on`: `squat_port` (10328), `squat_bind`
-(127.0.0.1), `squat_dir` (`~/.tf-squatter`), `squat_takeover` (`auto`, `ask`, `off`), `squat_exec` and
-`squat_scripts` (both **off** by default; remote commands and uploaded scripts for admin devices; leave them off
-unless you need them: `squat_exec=on` is the same as a shell on that account) and `squat_mtts`. The full list, the
-control model and the security notes are in TinyFugue's `README.squat.md`.
-
-Games must be read while in the background: keep TinyFugue's `/set background=on` (the default).
-
-### TinyFugue scripting and the remote TinyFugue
-
-Typed `/commands` are answered by SquatClient's own script engine, also on sessions that run through a remote
-TinyFugue; plain text goes to the game as typed. To run one command in the remote TinyFugue itself, prefix it
-with `/tf` (`/tf /def ...`; admin device, `squat_exec` on); `/local cmd` forces the local engine past Lua aliases,
-and `/stop` interrupts a runaway script. The desktop app runs scripts unrestricted by default; start it more
-tightly with `SQUATCLIENT_TF_RESTRICT=shell|file|world`. Details: the daemon repository's `docs/TF-ENGINE.md`,
-`docs/TF-ROUTING.md` and `docs/COMMAND-STATUS.md`.
+The result is `build/bin/squatclient.app` (macOS) or `build/bin/squatclient[.exe]`. `make run` builds and opens it
+on macOS; `make dev` runs it with live reload. `make test` runs the Go and frontend tests, `make lint` the linters.
 
 ## Files and settings
 
@@ -331,10 +326,11 @@ to `build/appicon.png` (1024×1024) and Wails builds the platform icons from tha
 
 ## Documentation
 
-The app has a searchable **Help** browser (the `?` button or the Help menu) covering getting started, connecting,
-settings, scripting, the Lua API, layouts and squatters. Design notes are in [`docs/`](docs/):
-[`DESIGN.md`](docs/DESIGN.md), [`LAYOUTS.md`](docs/LAYOUTS.md), [`APP.md`](docs/APP.md),
-[`EDIT.md`](docs/EDIT.md), [`SQUATTER-HUB.md`](docs/SQUATTER-HUB.md), [`ROADMAP.md`](docs/ROADMAP.md).
+The app has a searchable **Help** browser (the `?` button or the Help menu): getting started, connecting, settings, editing,
+scripting, Lua, graphics, layouts, CMCP consoles and sound, squatters. Design notes are in [`docs/`](docs/):
+[`CMCP.md`](docs/CMCP.md), [`GFX.md`](docs/GFX.md), [`LAYOUTS.md`](docs/LAYOUTS.md), [`EDIT.md`](docs/EDIT.md),
+[`DIAGNOSTICS.md`](docs/DIAGNOSTICS.md), [`TF-BRIDGE.md`](docs/TF-BRIDGE.md), [`GTF-INTEGRATION.md`](docs/GTF-INTEGRATION.md),
+[`SQUATTER-HUB.md`](docs/SQUATTER-HUB.md), [`DESIGN.md`](docs/DESIGN.md), [`APP.md`](docs/APP.md), [`ROADMAP.md`](docs/ROADMAP.md).
 
 ## Code signing policy
 
