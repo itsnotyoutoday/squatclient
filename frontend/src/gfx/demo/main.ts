@@ -120,6 +120,8 @@ const stream = q.get('stream');
 if (q.get('smoke')) rt.apply(SMOKE);
 else if (stream) play(stream).catch((e: unknown) => { msg.textContent = String(e); });
 else msg.textContent = 'Open with ?smoke=1 or ?stream=/gfx/<name>.json';
+const calmQ = q.get('calm'); // ?calm=0.7 applies the calm setting
+if (calmQ) setTimeout(() => rt.apply([{ op: 'scene', scene: SCENE, calm: Number(calmQ) }]), 800);
 const click = q.get('click'); // ?click=nav2 plays that button's recorded effect (screenshots)
 if (click) setTimeout(() => rt.onEvent?.({ scene: SCENE, id: click, event: 'click', x: 0, y: 0 }), 1500);
 

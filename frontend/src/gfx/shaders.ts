@@ -282,12 +282,16 @@ uniform sampler2D uColor;
 uniform sampler2D uBloom;
 uniform float uStrength;
 uniform float uHasBloom;
+uniform float uCalm;
 out vec4 o;
 void main() {
   vec4 c = texture(uColor, vUv);
   vec3 b = uHasBloom > 0.5 ? texture(uBloom, vUv).rgb * uStrength * 0.5 : vec3(0.0);
   float ba = min(1.0, max(b.r, max(b.g, b.b)));
-  o = vec4(c.rgb + b, max(c.a, ba));
+  vec3 rgb = c.rgb + b;
+  float l = dot(rgb, vec3(0.299, 0.587, 0.114));
+  rgb = mix(rgb, vec3(l), 0.45 * uCalm) * (1.0 - 0.22 * uCalm);   // calm: less saturated, dimmer
+  o = vec4(rgb, max(c.a, ba));
 }`;
 
 /** Starfield: instanced billboards, positions advance with time on the GPU. */

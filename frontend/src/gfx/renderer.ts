@@ -351,7 +351,7 @@ export class GfxRenderer {
 
   // ------------------------------------------------------------------ frame
   /** Draws a scene. `time` is in seconds. */
-  render(scene: Scene, built: BuildResult, time: number, logical?: { w: number; h: number }): FrameStats {
+  render(scene: Scene, built: BuildResult, time: number, logical?: { w: number; h: number }, calm = 0): FrameStats {
     const gl = this.gl;
     const cfg = scene.cfg;
     if (this.lost || this.w === 0) return this.stats;
@@ -407,7 +407,8 @@ export class GfxRenderer {
     gl.bindVertexArray(this.vaoEmpty);
     this.bindTex(0, this.texColor!); gl.uniform1i(this.u(pr, 'uColor'), 0);
     this.bindTex(1, bloom ? this.bloomTex[0].tex : this.texColor!); gl.uniform1i(this.u(pr, 'uBloom'), 1);
-    gl.uniform1f(this.u(pr, 'uStrength'), cfg.bloom.strength);
+    gl.uniform1f(this.u(pr, 'uStrength'), cfg.bloom.strength * (1 - 0.9 * calm));
+    gl.uniform1f(this.u(pr, 'uCalm'), calm);
     gl.uniform1f(this.u(pr, 'uHasBloom'), bloom ? 1 : 0);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     this.stats.draws++;

@@ -34,11 +34,15 @@ type luaHost struct {
 	failTF  bool
 }
 
-func (h *luaHost) Send(w, t string) error        { return nil }
-func (h *luaHost) Echo(w string, s []proto.Span) {}
-func (h *luaHost) Notify(t, b string)            {}
-func (h *luaHost) Now() time.Time                { return h.now }
-func (h *luaHost) WorldName(id string) string    { return id }
+func (h *luaHost) Send(w, t string) error { return nil }
+func (h *luaHost) Echo(w string, s []proto.Span) {
+	for _, sp := range s {
+		h.echoes = append(h.echoes, sp.S)
+	}
+}
+func (h *luaHost) Notify(t, b string)         {}
+func (h *luaHost) Now() time.Time             { return h.now }
+func (h *luaHost) WorldName(id string) string { return id }
 func (h *luaHost) Log(l lua.LogLevel, p, t string) {
 	h.logs = append(h.logs, fmt.Sprintf("%v %s: %s", l, p, t))
 }
@@ -361,7 +365,7 @@ func TestRecordDevPageStreams(t *testing.T) {
 		if alert {
 			f.rt.OnInput("w", "/lcars alert red")
 		}
-		s := stream{Ops: append([]gfx.Op(nil), f.ops...), Loop: 12}
+		s := stream{Ops: devFonts(f.ops), Loop: 12}
 		var vars []map[string]any
 		for i := 1; i <= 12; i++ {
 			n := len(f.ops)
@@ -400,6 +404,22 @@ func TestRecordDevPageStreams(t *testing.T) {
 			s.Commands[cmd] = "/gfx/" + name
 		}
 		return s
+	}
+	for _, th := range []string{"soft", "romulan", "klingon", "tos", "ferengi", "bridge"} {
+		f := startLua(t)
+		f.rt.OnInput("w", "/lcars "+th)
+		first := devFonts(f.ops)
+		var vars []map[string]any
+		for i := 1; i <= 12; i++ {
+			n := len(f.ops)
+			f.h.advance(time.Second)
+			for _, o := range f.ops[n:] {
+				if o["op"] == "vars" {
+					vars = append(vars, map[string]any{"t": float64(i), "vars": o["vars"]})
+				}
+			}
+		}
+		write("lcars-theme-"+th+".json", stream{Ops: first, Vars: vars, Loop: 12})
 	}
 	write("lcars-sens.json", record("sens", false))
 	write("lcars-eng.json", record("eng", false))
@@ -608,6 +628,222 @@ func TestLcarsLogToggleAnimatesThePortAndSurvivesSwitchesAndReopen(t *testing.T)
 	f.rt.OnInput("w", "/lcars log")
 	if h := tweenH(n, "textport"); h != 182 {
 		t.Fatalf("collapse after reopen: %v", h)
+	}
+	f.errors(t)
+}
+
+// GFX_RECORD_THEMES=<dir> writes every theme and console as a stream for the dev page (screenshots, frame-rate checks).
+func TestRecordThemeStreams(t *testing.T) {
+	dir := os.Getenv("GFX_RECORD_THEMES")
+	if dir == "" {
+		t.Skip("set GFX_RECORD_THEMES=<dir>")
+	}
+	for _, theme := range []string{"tng", "soft", "romulan", "klingon", "tos", "ferengi", "bridge"} {
+		for _, con := range []string{"sens", "eng", "tac", "ship"} {
+			f := startLua(t)
+			f.rt.OnInput("w", "/lcars "+theme)
+			f.rt.OnInput("w", "/lcars "+con)
+			ops := devFonts(f.ops)
+			var vars []map[string]any
+			for i := 1; i <= 12; i++ {
+				n := len(f.ops)
+				f.h.advance(time.Second)
+				for _, o := range f.ops[n:] {
+					if o["op"] == "vars" {
+						vars = append(vars, map[string]any{"t": float64(i), "vars": o["vars"]})
+					}
+				}
+			}
+			b, _ := json.Marshal(map[string]any{"ops": ops, "vars": vars, "loop": 12.0})
+			if err := os.WriteFile(filepath.Join(dir, "lcars-"+theme+"-"+con+".json"), b, 0o644); err != nil {
+				t.Fatal(err)
+			}
+			// the same with the LOG toggle pressed (text port expanded, the other widgets shrunk or faded)
+			g := startLua(t)
+			g.rt.OnInput("w", "/lcars "+theme)
+			g.rt.OnInput("w", "/lcars "+con)
+			_ = g.hub.Event("lcars", "logbtn", "click", 0, 0)
+			g.h.advance(time.Second)
+			b, _ = json.Marshal(map[string]any{"ops": devFonts(g.ops), "loop": 12.0})
+			_ = os.WriteFile(filepath.Join(dir, "lcars-"+theme+"-"+con+"-log.json"), b, 0o644)
+		}
+	}
+}
+
+// devFonts replaces the font data inside recorded streams by the file under /fonts (the dev page serves frontend/public/fonts).
+func devFonts(ops []gfx.Op) []gfx.Op {
+	out := make([]gfx.Op, 0, len(ops))
+	for _, o := range ops {
+		if o["op"] == "font" {
+			c := gfx.Op{}
+			for k, v := range o {
+				c[k] = v
+			}
+			if f, ok := o["file"].(string); ok {
+				c["src"] = "/fonts/" + filepath.Base(f)
+			}
+			o = c
+		}
+		out = append(out, o)
+	}
+	return out
+}
+
+var allThemes = []string{"tng", "soft", "romulan", "klingon", "tos", "ferengi", "bridge"}
+
+// Every theme opens, builds the shared pieces (text port object, frame round it, LOG toggle, console buttons), obeys the
+// alert, survives switching to every other theme without losing the LOG state, and reopens after a window close.
+func TestEveryThemeOpensSwitchesAndKeepsTheLogState(t *testing.T) {
+	f := startLua(t)
+	f.rt.OnInput("w", "/lcars")
+	f.hub.Event("lcars", "logbtn", "click", 0, 0) // expand once; the state must survive every switch below
+	f.h.advance(time.Second)
+	for _, theme := range allThemes {
+		n := len(f.ops)
+		if !f.rt.OnInput("w", "/lcars "+theme) {
+			t.Fatalf("/lcars %s not handled", theme)
+		}
+		for _, id := range []string{"textport", "portframe", "logbtn", "nav1", "nav4", "c_sens", "c_eng", "c_tac", "c_ship", "joyknob"} {
+			found := false
+			for _, o := range f.ops[n:] {
+				if o["op"] == "create" && o["id"] == id {
+					found = true
+				}
+			}
+			if !found {
+				t.Errorf("%s: %s not created", theme, id)
+			}
+		}
+		// the port object ends up expanded (instantly) in every theme
+		var h float64
+		for _, o := range f.ops[n:] {
+			if o["op"] == "set" && o["id"] == "textport" {
+				if v, ok := o["props"].(map[string]any)["h"].(float64); ok {
+					h = v
+				}
+			}
+		}
+		if h != 552 {
+			t.Errorf("%s: expanded port height %v after the switch", theme, h)
+		}
+		f.h.advance(2 * time.Second) // ticks run
+		f.rt.OnInput("w", "/lcars alert red")
+		f.rt.OnInput("w", "/lcars alert off")
+		for _, console := range []string{"eng", "tac", "ship", "sens"} {
+			f.rt.OnInput("w", "/lcars "+console)
+		}
+	}
+	// close through the window, reopen: the last theme comes back
+	f.hub.Event("lcars", "#scene", "close", 0, 0)
+	n := len(f.ops)
+	f.rt.OnInput("w", "/lcars")
+	reopened := false
+	for _, o := range f.ops[n:] {
+		if o["op"] == "scene" && o["open"] == true {
+			reopened = true
+		}
+	}
+	if !reopened {
+		t.Fatal("not reopened")
+	}
+	f.errors(t)
+}
+
+func TestThemesListAliasesAndTour(t *testing.T) {
+	f := startLua(t)
+	f.rt.OnInput("w", "/lcars themes")
+	if len(f.h.echoes) == 0 || !strings.Contains(f.h.echoes[len(f.h.echoes)-1], "bridge") || !strings.Contains(f.h.echoes[len(f.h.echoes)-1], "soft") {
+		t.Fatalf("themes: %v", f.h.echoes)
+	}
+	f.rt.OnInput("w", "/lcars picard") // alias of bridge
+	if f.find("create", "ship") == nil {
+		t.Fatal("/lcars picard did not open the bridge")
+	}
+	// the tour cycles through every theme every 12 seconds and /lcars stop ends it
+	g := startLua(t)
+	g.rt.OnInput("w", "/lcars tour")
+	seen := map[string]bool{}
+	for i := 0; i < 8; i++ {
+		g.h.advance(12 * time.Second)
+		for _, o := range g.ops {
+			if o["op"] == "create" && o["id"] == "plate" {
+				seen["romulan"] = true
+			}
+			if o["op"] == "create" && o["id"] == "topplate" {
+				seen["klingon"] = true
+			}
+			if o["op"] == "create" && o["id"] == "bB" {
+				seen["bridge"] = true
+			}
+			if o["op"] == "create" && o["id"] == "coin1" {
+				seen["ferengi"] = true
+			}
+			if o["op"] == "create" && o["id"] == "rv1" {
+				seen["tos"] = true
+			}
+			if o["op"] == "create" && o["id"] == "glass1" {
+				seen["soft"] = true
+			}
+		}
+	}
+	if len(seen) != 6 {
+		t.Fatalf("the tour showed %v", seen)
+	}
+	g.rt.OnInput("w", "/lcars stop")
+	n := len(g.ops)
+	g.h.advance(30 * time.Second)
+	if len(g.ops) != n {
+		t.Fatal("the tour kept running after /lcars stop")
+	}
+	// a click ends the tour too
+	h := startLua(t)
+	h.rt.OnInput("w", "/lcars tour")
+	h.hub.Event("lcars", "nav2", "click", 0, 0)
+	n = len(h.ops)
+	h.h.advance(13 * time.Second)
+	for _, o := range h.ops[n:] {
+		if o["op"] == "create" && o["id"] == "plate" {
+			t.Fatal("the tour continued after a click")
+		}
+	}
+	f.errors(t)
+}
+
+// Calm is a global setting: it applies to every theme (a scene property the renderer eases), survives theme switches and
+// is remembered (squat.var) across a restart of the plugin.
+func TestCalmAppliesToEveryThemeAndIsRemembered(t *testing.T) {
+	f := startLua(t)
+	f.rt.OnInput("w", "/lcars calm 60")
+	f.rt.OnInput("w", "/lcars soft")
+	calmOf := func() any {
+		var c any
+		for _, o := range f.ops {
+			if o["op"] == "scene" {
+				if v, ok := o["calm"]; ok {
+					c = v
+				}
+			}
+		}
+		return c
+	}
+	if c := calmOf(); c != 0.6 {
+		t.Fatalf("calm after /lcars calm 60 and a theme switch: %v", c)
+	}
+	f.rt.OnInput("w", "/lcars klingon")
+	if c := calmOf(); c != 0.6 {
+		t.Fatalf("calm lost on theme switch: %v", c)
+	}
+	f.rt.OnInput("w", "/lcars calm off")
+	if c := calmOf(); c != 0.0 {
+		t.Fatalf("calm off: %v", c)
+	}
+	f.rt.OnInput("w", "/lcars calm on")
+	if c := calmOf(); c != 0.7 {
+		t.Fatalf("calm on: %v", c)
+	}
+	// remembered: a new plugin instance reads the variable
+	if err := f.rt.Exec("w", `if squat.var.get("lcars_calm") ~= 0.7 then error("not remembered") end`); err != nil {
+		t.Fatal(err)
 	}
 	f.errors(t)
 }

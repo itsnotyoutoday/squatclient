@@ -314,7 +314,7 @@ function M.shader(t)
   run("/gfx shader " .. t.name .. ' src="' .. src:gsub('"', '\\"') .. '"' .. (#u > 0 and (" uniform=" .. table.concat(u, ",")) or ""))
 end
 
-function M.font(name, file) run("/gfx font " .. name .. " " .. file) end
+function M.font(name, file, weight) run("/gfx font " .. name .. " " .. file .. (weight and (" weight=" .. weight) or "")) end
 
 -- Pointer events arrive as the TF command /_gfxev scene id event x y (what /gfx on runs); this alias dispatches them.
 function M.install()

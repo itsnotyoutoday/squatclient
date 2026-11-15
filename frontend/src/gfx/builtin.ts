@@ -139,6 +139,28 @@ vec4 shade(vec2 uv, vec2 px) {
   return vec4(c * (0.5 + f * 0.8), 0.85);
 }`,
   },
+  shimmer: {
+    uniforms: { uCol: 'vec3', uK: 'float' },
+    glsl: `
+vec4 shade(vec2 uv, vec2 px) {
+  float n = fbm(vec2(uv.x * 5.0, uv.y * 36.0 + uTime * 0.5));
+  float band = smoothstep(0.55, 0.85, fract(uv.y * 2.5 - uTime * 0.12 + n * 0.45));
+  float edge = band * (0.35 + 0.65 * n);
+  return vec4(uCol * edge, edge * uK * 0.7);
+}`,
+  },
+  crt: {
+    uniforms: { uK: 'float' },
+    glsl: `
+vec4 shade(vec2 uv, vec2 px) {
+  float sl = 0.5 + 0.5 * sin(px.y * 3.14159);
+  float flick = 0.05 * sin(uTime * 55.0) + 0.03 * sin(uTime * 13.0);
+  float grain = hash21(floor(px) + floor(uTime * 24.0));
+  float vig = smoothstep(0.35, 0.95, length(uv - 0.5) * 1.25);
+  float a = (0.10 + (1.0 - sl) * 0.14 + flick + (grain - 0.5) * 0.16 + vig * 0.35) * uK;
+  return vec4(vec3(0.02, 0.05, 0.03), clamp(a, 0.0, 0.7));
+}`,
+  },
   scanlines: {
     uniforms: { uCol: 'vec3', uK: 'float' },
     glsl: `

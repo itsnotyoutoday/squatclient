@@ -160,3 +160,31 @@ describe('pointer events', () => {
     expect(events).toHaveLength(1); // no second settle on release
   });
 });
+
+describe('calm', () => {
+  it('eases toward the scene setting and slows the scene clock', () => {
+    const rt = new GfxRuntime();
+    rt.reducedMotion = false;
+    rt.apply([{ op: 'scene', scene: 'c', open: true, w: 100, h: 100, calm: 0.6 }]);
+    const slot = rt.slot('c');
+    slot.renderer = { mapping: { sx: 1, sy: 1, ox: 0, oy: 0 }, lost: false, forget: () => undefined, hasShader: () => true, render: () => ({}) } as unknown as Slot['renderer'];
+    slot.canvas = {} as HTMLCanvasElement;
+    rt.tick(slot, 0.1, 0);
+    expect(slot.calmNow).toBeGreaterThan(0);
+    expect(slot.calmNow).toBeLessThan(0.6);
+    for (let i = 0; i < 60; i++) rt.tick(slot, 0.1, i);
+    expect(slot.calmNow).toBeCloseTo(0.6, 2);
+    const t0 = slot.scene.time;
+    rt.tick(slot, 1, 100);
+    expect(slot.scene.time - t0).toBeCloseTo(1 - 0.6 * 0.6, 2); // a calm scene runs 36% slower at calm 0.6
+  });
+  it('prefers-reduced-motion puts a floor under calm', () => {
+    const rt = new GfxRuntime();
+    rt.reducedMotion = true;
+    rt.apply([{ op: 'scene', scene: 'c', open: true, w: 100, h: 100, calm: 0 }]);
+    const slot = rt.slot('c');
+    slot.renderer = { mapping: { sx: 1, sy: 1, ox: 0, oy: 0 }, lost: false, forget: () => undefined, hasShader: () => true, render: () => ({}) } as unknown as Slot['renderer'];
+    for (let i = 0; i < 60; i++) rt.tick(slot, 0.1, i);
+    expect(slot.calmNow).toBeCloseTo(0.6, 2);
+  });
+});

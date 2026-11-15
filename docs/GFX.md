@@ -224,6 +224,40 @@ consoles, closing and reopening (the end state is mirrored with a `set`). Policy
 `/lcars size 45` gives a 45% strip above the text instead (no port, no toggle), `/lcars full` the framed console,
 `/lcars stop` closes it, and `/lcars` reopens a closed console every time.
 
+## Themes and the calm setting
+
+`/lcars [theme]` is the single entry point. `/lcars themes` lists them, `/lcars tour` cycles through all of them every 12 seconds
+(any button click, any `/lcars` command or `/lcars stop` ends the tour). Plain `/lcars` opens the theme used last this session
+(TNG at first; `/lcars tng` goes back). Switching themes rebuilds only the scene: the text pane, its scroll position, the LOG
+state and the real input bar are untouched. Every theme has the same four consoles (sens, eng, tac, ship) under its own
+names, driven by the same simulation and variables (`lc_*`, `sh_*`, `fg_*`, GMCP `Ship.Status`), so they are interchangeable.
+
+| theme | look | signature |
+|---|---|---|
+| `tng` (default) | bright LCARS: orange/peach/lilac pills and elbows, Antonio | the original console |
+| `soft` (`calm` is a setting, not an alias) | graphite glass, desaturated salmon, cream and dim teal, thin strokes, small-caps headings over double rules, three screens tilted a degree or two, almost no bloom, Rajdhani | restraint |
+| `romulan` | near-black green, cold green and amber, long asymmetric bezier sweeps like folded wings, angular amber nameplate, Rajdhani | cloaking shimmer shader and a dish that fades in and out |
+| `klingon` | black, blood red, dull gold, jagged plates with zig-zag edges, blade motifs, heavy Teko type | an angular hexagonal tactical plot (blade sweep, diamond contacts, a turning disruptor bracket) instead of a radar dish; stepped battle-damage flicker |
+| `tos` | grey riveted panels, chunky primary-colour push-buttons, Orbitron | rows of lamps blinking in stepped patterns, toggles, round dials with needles, CRT scan lines, flicker and grain over the viewscreen |
+| `ferengi` | gold, bronze, deep maroon, ornate double frame with filigree corners, Cinzel | spinning coins, a latinum bar chart with profit and loss, a scrolling ticker of original sayings, sparkles, a shop-counter panel |
+| `bridge` (`picard`) | a wall of three tilted black-glass panels, dense small data, thin red strip lighting, warm floor glow; the text port is the fourth panel | a slowly turning wireframe schematic of an invented ship with overlays per console (reticle and contacts, power flow, shield arcs, damage pulses), line graphs, rolling data columns, blinking grids |
+
+Shared on purpose: the simulation, the LOG toggle (the text port object and its frame), console buttons, the alert recolouring (each
+theme has a `red` palette; calm turns the border flash into a slow shallow pulse), the console builders (themes replace or decorate
+them) and the joystick. A theme is a table registered through `E.register` in `theme_*.lua`: palette, font, `frame`, `nav`,
+optional `decor`, `radar`, `consoles`, `layout`. The bridge supplies its own layout policy (panels shrink toward the top while the
+text grows). Fonts (all SIL OFL, licences next to the files in `lib/squat/fonts`): Antonio, Rajdhani, Teko, Orbitron, Cinzel.
+
+`/lcars calm on|off|0-100` is a **global setting for any theme** (`calm` alone shows the value). The renderer eases it live: it
+slows the scene clock (so sweeps, pulses, blinking, particles and tweens run slower), cuts bloom by up to 90%, and desaturates and
+dims the picture; the alert pulse gets slower and shallower. The value is remembered with `squat.var` (the Lua variable store of
+the app, which survives `/reload`); I found no cleaner place in the app settings, so it is not in the Settings dialog. The system's
+"reduce motion" preference sets a floor of 60%: `window.matchMedia('(prefers-reduced-motion: reduce)')` is read by the renderer.
+
+Performance (headless Chrome on a Metal GPU, 1100x720 pane): every theme and console holds 60 fps (display-limited) with
+0.4 to 1.2 ms of CPU per frame; the bridge (the heaviest, about 200 draw items plus 650 for the Romulan curves) took 0.8 to 1.2 ms,
+so no cheaper quality level was needed. Screenshots of every theme and console are in `docs/gfx-shots/themes/`.
+
 ## Rendering
 
 Own small WebGL2 renderer, no dependency (so nothing to pin; the only new package is the dev-only

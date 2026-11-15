@@ -115,7 +115,12 @@ function localMatrix(n: GfxNode): Mat {
   let px = n.num('pivotX', 0) + (centered.has(n.type) ? 0 : ax * w), py = n.num('pivotY', 0) + (centered.has(n.type) ? 0 : ay * h);
   if (n.str('anchor') === 'center' && !centered.has(n.type)) { px += w / 2; py += h / 2; }
   const sx = n.num('scaleX', n.num('scale', 1)), sy = n.num('scaleY', n.num('scale', 1));
-  return trs(n.num('x', 0), n.num('y', 0), n.num('rotation', 0), sx, sy, px, py);
+  const m = trs(n.num('x', 0), n.num('y', 0), n.num('rotation', 0), sx, sy, px, py);
+  const kx = n.num('skewX', 0), ky = n.num('skewY', 0);
+  if (kx === 0 && ky === 0) return m;
+  // skew about the pivot (glass panels tilted into a curve): applied in local space, before the transform
+  const tx = Math.tan((kx * Math.PI) / 180), ty = Math.tan((ky * Math.PI) / 180);
+  return mul(m, mul([1, 0, 0, 1, px, py], mul([1, ty, tx, 1, 0, 0], [1, 0, 0, 1, -px, -py])));
 }
 
 function blendOf(n: GfxNode, inherit: Blend): Blend {

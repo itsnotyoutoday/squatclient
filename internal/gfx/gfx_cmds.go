@@ -233,7 +233,10 @@ func (h *Hub) gfxCmd(line string) error {
 			expr = strings.TrimSpace(expr[:len(expr)-len(m[0])])
 			op["smooth"], _ = strconv.ParseFloat(m[1], 64)
 		}
-		op["expr"] = strings.Trim(expr, "\"'")
+		if n := len(expr); n >= 2 && (expr[0] == '"' || expr[0] == '\'') && expr[n-1] == expr[0] && !strings.ContainsRune(expr[1:n-1], rune(expr[0])) {
+			expr = expr[1 : n-1] // a quoted whole expression; quotes inside an expression (colour strings) stay
+		}
+		op["expr"] = expr
 		h.emit(s, op)
 	case "unbind":
 		if len(a.Pos) < 2 {
@@ -722,7 +725,7 @@ func (h *Hub) asset(kind string, a Args) error {
 		}
 		src = "data:" + mt + ";base64," + base64.StdEncoding.EncodeToString(b)
 	}
-	op := Op{"op": kind, "name": a.Pos[0], "src": src}
+	op := Op{"op": kind, "name": a.Pos[0], "src": src, "file": a.Pos[1]}
 	for _, k := range []string{"weight", "style"} {
 		if v, ok := a.Kw[k]; ok {
 			op[k] = v

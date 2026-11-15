@@ -44,4 +44,6 @@ export interface SceneConfig {
   port?: [number, number, number, number];
   /** id of an object whose x y w h are the text port (it can be tweened: the console's LOG toggle) */
   portNode?: string;
+  /** calm 0..1: lower saturation and brightness, less bloom, slower animation; eased by the runtime, floor from prefers-reduced-motion */
+  calm?: number;
 }

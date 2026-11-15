@@ -35,6 +35,7 @@ export interface Slot {
   lastFrame: number;
   frameTimes: number[];
   slowFrames: number;
+  calmNow: number;
   fps: number;
   logical: { w: number; h: number };
   error?: string;
@@ -51,6 +52,8 @@ export class GfxRuntime {
   private shaders = new Map<string, { glsl: string; uniforms: Record<string, string> }>();
   private fonts = new Set<string>();
   private images = new Map<string, HTMLImageElement>();
+  /** the user asked the system for less motion: calm has a floor */
+  reducedMotion = typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   private raf = 0;
   private running = false;
   private last = 0;
@@ -60,7 +63,7 @@ export class GfxRuntime {
     let s = this.slots.get(id);
     if (!s) {
       const scene = new Scene(id, { vars: this.vars });
-      s = { scene, canvases: new Map(), hover: null, pressed: null, lastFrame: 0, frameTimes: [], slowFrames: 0, fps: 0, logical: { w: 0, h: 0 }, alpha: false };
+      s = { scene, canvases: new Map(), hover: null, pressed: null, lastFrame: 0, frameTimes: [], slowFrames: 0, calmNow: 0, fps: 0, logical: { w: 0, h: 0 }, alpha: false };
       const slot = s;
       scene.onDelete = (n): void => {
         slot.renderer?.forget(n);
@@ -247,11 +250,15 @@ export class GfxRuntime {
   tick(slot: Slot, dt: number, now: number): boolean {
     const sc = slot.scene;
     if (slot.drag && !slot.drag.settled && now - slot.drag.lastMove > 300) this.dragEmit(slot, 'settle');
-    const changed = sc.update(dt);
+    // calm: eased toward its target (floored by prefers-reduced-motion); slows the scene clock
+    const target = Math.max(Number(sc.cfg.calm) || 0, this.reducedMotion ? 0.6 : 0);
+    if (Math.abs(slot.calmNow - target) > 0.001) slot.calmNow += (target - slot.calmNow) * Math.min(1, dt * 3);
+    else slot.calmNow = target;
+    const changed = sc.update(dt * (1 - 0.6 * slot.calmNow));
     const r = slot.renderer;
     const timeDependent = slot.built?.items.some((i) => i.k === 'stars' || i.k === 'particles' || i.k === 'custom') ?? true;
     if (!r || r.lost) return false;
-    if (!changed && !timeDependent && !sc.animating) return false;
+    if (!changed && !timeDependent && !sc.animating && Math.abs(slot.calmNow - target) < 0.001) return false;
     const logical = sc.cfg.w > 0 && sc.cfg.h > 0 ? { w: sc.cfg.w, h: sc.cfg.h } : slot.logical;
     if (logical.w <= 0 || logical.h <= 0) return true;
     const t0 = performance.now();
@@ -259,7 +266,7 @@ export class GfxRuntime {
       defaultFont: sc.cfg.font, getVar: (n) => this.vars.get(n) as number | string | undefined, canvases: slot.canvases, hasShader: (n) => r.hasShader(n),
     });
     try {
-      r.render(sc, slot.built, sc.time, logical);
+      r.render(sc, slot.built, sc.time, logical, slot.calmNow);
     } catch (e) {
       slot.error = (e as Error).message;
       this.onMessage?.('error', `gfx ${sc.id}: ${slot.error}; the graphics were closed (the text and input are unaffected)`);

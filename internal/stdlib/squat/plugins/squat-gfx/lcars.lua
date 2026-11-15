@@ -12,10 +12,12 @@ local gfx = require("gfx")
 local L = {}
 
 local W, H = 1600, 900
-local PAL = {
-  normal = {p = "#ff9900", s = "#ffcc99", t = "#cc99cc", q = "#9999ff", x = "#ffcc66", r = "#cc6666", k = "#99ccff", bg = "#000000"},
-  red    = {p = "#ff2a1f", s = "#ff8a7a", t = "#b3202a", q = "#8a1622", x = "#ff5a44", r = "#ff2a1f", k = "#ffb0a0", bg = "#140000"},
-}
+-- A theme is a skin over the shared consoles: palette (roles p s t q x r k bg, normal and red), font, a frame and navigation
+-- of its own, optional decorations and replacements. S is the theme in use; the simulation, the text-port toggle, the
+-- alert recolouring and the console builders are shared (docs/GFX.md, "Themes").
+local themes, themeOrder = {}, {}
+local S
+local E = {}      -- what the theme files get to use
 local SYSTEMS = {
   {"warp", "WARP", "x"}, {"impulse", "IMPULSE", "p"}, {"shields", "SHIELDS", "q"},
   {"weapons", "WEAPONS", "r"}, {"sensors", "SENSORS", "t"}, {"life", "LIFE SUPPORT", "s"},
@@ -40,6 +42,8 @@ local PORT_E = {240, 268, 860, 552}
 local DUR = 0.55
 local expanded = false
 local dock, size, usePort = "full", nil, true
+local curTheme = "tng"
+local calm = tonumber(squat.var.get("lcars_calm", 0)) or 0
 
 local function lighten(hex)
   local r, g, b = hex:match("#(%x%x)(%x%x)(%x%x)")
@@ -47,7 +51,9 @@ local function lighten(hex)
   return string.format("#%02x%02x%02x", f(r), f(g), f(b))
 end
 
-local function pal() return PAL[alert == "red" and "red" or "normal"] end
+local function R(v) return S.sharp and 0 or v end   -- sharp themes have no rounded ends
+
+local function pal() return S.pal[alert == "red" and "red" or "normal"] end
 
 local function T(role, o, interactive, prop)
   themed[#themed + 1] = {obj = o, role = role, interactive = interactive, prop = prop or "fill"}
@@ -55,8 +61,8 @@ local function T(role, o, interactive, prop)
 end
 
 local function text(parent, id, x, y, str, size, fill, align, extra)
-  local t = {id = id, parent = parent, x = x, y = y, text = str, size = size or 28, fill = fill or "#99ccff", align = align or "left",
-    baseline = "middle", weight = "700", font = "Antonio"}
+  local t = {id = id, parent = parent, x = x, y = y, text = str, size = (size or 28) * (S.tscale or 1), fill = fill or "#99ccff", align = align or "left",
+    baseline = "middle", weight = S.weight or "700", font = S.font}
   for k, v in pairs(extra or {}) do t[k] = v end
   return sc:text(t)
 end
@@ -64,7 +70,7 @@ end
 -- ------------------------------------------------------------------ simulation
 local function newSim()
   return {
-    sd = 47634.4, hull = 100, core = 62, trend = 50, lock = 0,
+    fg = {52, 48, 60, 57, 63, 58, 66, 70}, sd = 47634.4, hull = 100, core = 62, trend = 50, lock = 0,
     ship = L.shipsim(),
     pw = {warp = 80, impulse = 40, shields = 70, weapons = 55, sensors = 90, life = 100},
     c = {
@@ -84,6 +90,8 @@ local function push()
     ct[#ct + 1] = string.format("%d:%d:%d:%s", i, c.b, c.r, c.t)
   end
   v.lc_ct = table.concat(ct, ";")
+  for i, val in ipairs(sim.fg) do v["fg_" .. i] = val end
+  v.fg_profit = sim.fg[8] - sim.fg[7]
   for k, val in pairs(sim.pw) do v["lc_pw_" .. k] = val end
   for k, val in pairs(sim.ship) do v[k] = val end
   gfx.vars(v)
@@ -98,6 +106,8 @@ local function tick()
   for _, c in ipairs(sim.c) do c.b = (c.b + c.d + 360) % 360 end
   sim.core = math.max(40, math.min(95, sim.core + math.random(-3, 3)))
   sim.trend = math.random(20, 80)
+  for i = 1, 7 do sim.fg[i] = sim.fg[i + 1] end
+  sim.fg[8] = math.max(15, math.min(95, sim.fg[8] + math.random(-9, 10)))
   local sh = sim.ship
   sh.sh_charge = math.min(35000, sh.sh_charge + 2500)
   if sh.sh_charge >= 35000 then sh.sh_charge = 0 end
@@ -108,8 +118,8 @@ local function tick()
 end
 
 -- ------------------------------------------------------------------ frame
-local function frame()
-  local P = PAL.normal
+local function tng_frame()
+  local P = S.pal.normal
   T("p", sc:elbow{id = "el_top", x = 20, y = 20, w = 330, h = 176, ro = 92, ri = 28, bar = 48, side = 190, corner = "tl", fill = P.p, glow = 0.08})
   T("t", sc:elbow{id = "el_bot", x = 20, y = 724, w = 330, h = 156, ro = 80, ri = 26, bar = 44, side = 190, corner = "bl", fill = P.t, glow = 0.08})
   local top = {{354, 300, "p"}, {660, 170, "s"}, {836, 430, "t"}, {1272, 112, "q"}, {1390, 190, "x"}}
@@ -137,27 +147,27 @@ local function frame()
   sc:rect{id = "alert_edge", x = 6, y = 6, w = W - 12, h = H - 12, r = 22, stroke = "#ff2a1f", strokeWidth = 8, fill = "none", opacity = 0, glow = 0.9, z = 50}
 end
 
-local function nav()
+local function tng_nav()
   local items = {{"SENSORS", "sens", "p"}, {"ENGINEER", "eng", "x"}, {"TACTICAL", "tac", "t"}, {"SHIP", "ship", "q"}, {"COMMS", nil, "r"}}
-  local P = PAL.normal
+  local P = S.pal.normal
   for i, it in ipairs(items) do
     local y = 206 + (i - 1) * 68
     local b = sc:button{id = "nav" .. i, x = 20, y = y, w = 190, h = 60, r = {0, 30, 30, 0}, fill = P[it[3]], text = it[1], color = "#000000",
-      size = 30, weight = "700", align = "right", padX = 20, font = "Antonio", glow = 0.04}
+      size = 30, weight = "700", align = "right", padX = 20, font = S.font, glow = 0.04}
     b:state("hover", {fill = lighten(P[it[3]])}, {dur = 0.1})
     b:state("down", {scaleX = 0.96}, {dur = 0.06})
     T(it[3], b, true)
     if it[2] then b:on("click", function() L.show(it[2]) end) end
   end
   sc:rect{id = "marker", x = 216, y = 206, w = 12, h = 60, fill = "#ffffff", glow = 0.8}
-  T("t", sc:rect{id = "navfill", x = 20, y = 552, w = 190, h = 172, fill = PAL.normal.t, r = 0})
+  T("t", sc:rect{id = "navfill", x = 20, y = 552, w = 190, h = 172, fill = S.pal.normal.t, r = 0})
   text(nil, "st1", 34, 636, "ALERT {lc_alert|upper}", 24, "#000000")
   text(nil, "st2", 34, 668, "CORE {lc_core|%d}%", 24, "#000000")
   text(nil, "st3", 34, 700, "HULL {lc_hull|%d}%", 24, "#000000")
   if usePort then -- Alt+L too
-    local lb = sc:button{id = "logbtn", x = 20, y = 560, w = 190, h = 54, r = {0, 27, 27, 0}, fill = PAL.normal.x, text = '{lc_logx == 1 ? "LOG - SHRINK" : "LOG - EXPAND"}',
-      color = "#000000", size = 26, weight = "700", align = "right", padX = 18, font = "Antonio", key = "alt+l", glow = 0.04}
-    lb:state("hover", {fill = lighten(PAL.normal.x)}, {dur = 0.1})
+    local lb = sc:button{id = "logbtn", x = 20, y = 560, w = 190, h = 54, r = {0, 27, 27, 0}, fill = S.pal.normal.x, text = '{lc_logx == 1 ? "LOG - SHRINK" : "LOG - EXPAND"}',
+      color = "#000000", size = 26, weight = "700", align = "right", padX = 18, font = S.font, key = "alt+l", glow = 0.04}
+    lb:state("hover", {fill = lighten(S.pal.normal.x)}, {dur = 0.1})
     lb:state("down", {scaleX = 0.96}, {dur = 0.06})
     T("x", lb, true)
     lb:on("click", function() L.toggle() end)
@@ -172,12 +182,12 @@ end
 local function joystick()
   local cx, cy = 1500, 750
   local g = sc:group{id = "joy", z = 20}
-  T("p", sc:circle{parent = g, id = "joybase", x = cx, y = cy, r = 66, fill = "#0b0f14", stroke = PAL.normal.p, strokeWidth = 4, glow = 0.15}, false, "stroke")
+  T("p", sc:circle{parent = g, id = "joybase", x = cx, y = cy, r = 66, fill = "#0b0f14", stroke = S.pal.normal.p, strokeWidth = 4, glow = 0.15}, false, "stroke")
   sc:circle{parent = g, x = cx, y = cy, r = 44, stroke = "#33404d", strokeWidth = 2, fill = "none"}
   sc:line{parent = g, x1 = cx - 64, y1 = cy, x2 = cx + 64, y2 = cy, stroke = "#33404d", strokeWidth = 2}
   sc:line{parent = g, x1 = cx, y1 = cy - 64, x2 = cx, y2 = cy + 64, stroke = "#33404d", strokeWidth = 2}
-  text(g, "joyhdg", cx, 652, "HDG {mod(atan2(js_x, -js_y) * 57.2958 + 360, 360)|%03d}  PWR {min(100, sqrt(js_x * js_x + js_y * js_y))|%3d}", 22, PAL.normal.k, "center")
-  text(g, "joyxy", cx, 682, "X {js_x|%+4d}  Y {js_y|%+4d}", 20, PAL.normal.x, "center")
+  text(g, "joyhdg", cx, 652, "HDG {mod(atan2(js_x, -js_y) * 57.2958 + 360, 360)|%03d}  PWR {min(100, sqrt(js_x * js_x + js_y * js_y))|%3d}", 22, S.pal.normal.k, "center")
+  text(g, "joyxy", cx, 682, "X {js_x|%+4d}  Y {js_y|%+4d}", 20, S.pal.normal.x, "center")
   local knob = sc:circle{parent = g, id = "joyknob", x = cx, y = cy, r = 28, fill = {type = "radial", cx = 0.35, cy = 0.3, r = 0.8, stops = {{0, "#fff2cc"}, {0.5, "#ff9900"}, {1, "#7a3d00"}}},
     glow = 0.5, shadow = {dy = 5, blur = 8, alpha = 0.7}, drag = {r = 44, home = true, vx = "js_x", vy = "js_y", scale = 100}}
   knob:state("down", {glow = 1.0}, {dur = 0.08})
@@ -212,7 +222,7 @@ local function ship(parent, id, i, color, y, hostile)
 end
 
 local function sensors(parent)
-  local P = PAL.normal
+  local P = S.pal.normal
   local vsg = sc:group{id = "vsg", parent = parent, x = 240, y = 130}
   local vs = sc:group{id = "vs", parent = vsg, clip = {0, 0, 800, 420}}
   sc:rect{parent = vs, id = "vsbg", w = 800, h = 420, fill = {type = "linear", angle = 180, stops = {{0, "#020611"}, {1, "#07142e"}}}}
@@ -225,23 +235,27 @@ local function sensors(parent)
   -- targeting reticle for the locked contact
   local ret = sc:circle{parent = vs, id = "reticle", x = 420, y = 230, r = 62, stroke = P.p, strokeWidth = 3, fill = "none", glow = 0.7, opacity = 0}
   ret:animate{scaleX = {from = 0.92, to = 1.1}, scaleY = {from = 0.92, to = 1.1}, dur = 0.8, ease = "inOutSine", loop = "inf", yoyo = true}
-  T("p", sc:rect{parent = vsg, id = "vsframe", x = 0, y = 0, w = 800, h = 420, r = 18, stroke = P.p, strokeWidth = 5, fill = "none", glow = 0.3}, false, "stroke")
+  if S.vsframe then S.vsframe(vsg) else
+    T("p", sc:rect{parent = vsg, id = "vsframe", x = 0, y = 0, w = 800, h = 420, r = R(18), stroke = P.p, strokeWidth = 5, fill = "none", glow = 0.3}, false, "stroke")
+  end
   text(vsg, "vslabel", 18, 22, "FORWARD VIEWSCREEN", 26, P.x)
   text(vsg, "vshead", 782, 22, "HEADING 000 MARK 000", 24, P.k, "right")
   -- radar dish
   local rdg = sc:group{id = "rdg", parent = parent, x = 1370, y = 330}
-  T("p", sc:arc{parent = rdg, id = "rdring", x = 0, y = 0, r0 = 214, r1 = 224, a0 = 0, a1 = 360, fill = P.p, glow = 0.35})
-  sc:radar{parent = rdg, id = "radar", x = 0, y = 0, r = 208, trail = 110, rings = 4, color = P.x, bg = "#03110a", glow = 0.7}
-  local rd = sc:get("radar")
-  rd:bind("sweep", "mod(time() * 80, 360)")
-  rd:bind("contacts", "lc_ct")
+  if S.radar then S.radar(rdg) else
+    T("p", sc:arc{parent = rdg, id = "rdring", x = 0, y = 0, r0 = 214, r1 = 224, a0 = 0, a1 = 360, fill = P.p, glow = 0.35})
+    sc:radar{parent = rdg, id = "radar", x = 0, y = 0, r = 208, trail = 110, rings = 4, color = P.x, bg = "#03110a", glow = 0.7}
+    local rd = sc:get("radar")
+    rd:bind("sweep", "mod(time() * 80, 360)")
+    rd:bind("contacts", "lc_ct")
+  end
   text(rdg, "rdlabel", 0, 242, "TACTICAL SENSOR ARRAY", 22, P.x, "center")
   -- contact list
   local ctg = sc:group{id = "ctg", parent = parent}
   for i = 1, 6 do
     local y = 640 + (i - 1) * 28
     local row = text(ctg, "ct" .. i, 1130, y, "{lc_n" .. i .. "|pad:-13} {lc_t" .. i .. "}  {lc_b" .. i .. "|%03d}  {lc_r" .. i .. "|%3d}", 24, P.k, "left",
-      {hit = true, font = "Antonio"})
+      {hit = true, font = S.font})
     row:state("hover", {fill = "#ffffff"}, {dur = 0.08})
     row:on("click", function() L.lock(i) end)
   end
@@ -250,19 +264,19 @@ end
 
 -- ------------------------------------------------------------------ engineering
 local function engineering(parent)
-  local P = PAL.normal
+  local P = S.pal.normal
   sc:shader{parent = parent, id = "core", x = 720, y = 120, w = 260, h = 420, shader = "warpcore",
     u = {uA = "#2a6bff", uB = "#bfe0ff", uSpeed = 1, uPower = 0.7}, glow = 0.8}
   sc:get("core"):bind("u.uPower", "lc_core / 100", 0.9)
-  T("p", sc:rect{parent = parent, id = "coreframe", x = 706, y = 110, w = 288, h = 440, r = 30, stroke = P.p, strokeWidth = 4, fill = "none", glow = 0.3}, false, "stroke")
+  T("p", sc:rect{parent = parent, id = "coreframe", x = 706, y = 110, w = 288, h = 440, r = R(30), stroke = P.p, strokeWidth = 4, fill = "none", glow = 0.3}, false, "stroke")
   text(parent, "coretitle", 850, 580, "WARP CORE ASSEMBLY", 28, P.x, "center")
   text(parent, "coretemp", 850, 620, "CORE TEMPERATURE {lc_core|%d}%", 28, P.s, "center")
   for i, s in ipairs(SYSTEMS) do
     local y = 150 + (i - 1) * 66
     local var = "lc_pw_" .. s[1]
     text(parent, "pl" .. i, 250, y, s[2], 28, P.k)
-    local track = sc:rect{parent = parent, id = "ptr" .. i, x = 250, y = y + 18, w = 380, h = 26, r = 13, fill = "#0e151d", hit = true}
-    local fill = sc:rect{parent = parent, id = "pf" .. i, x = 250, y = y + 18, w = 10, h = 26, r = 13, fill = P[s[3]], glow = 0.4}
+    local track = sc:rect{parent = parent, id = "ptr" .. i, x = 250, y = y + 18, w = 380, h = 26, r = R(13), fill = "#0e151d", hit = true}
+    local fill = sc:rect{parent = parent, id = "pf" .. i, x = 250, y = y + 18, w = 10, h = 26, r = R(13), fill = P[s[3]], glow = 0.4}
     T(s[3], fill)
     fill:bind("w", "max(10, " .. var .. " * 3.8)", 0.8)
     text(parent, "pv" .. i, 690, y + 31, "{" .. var .. "|%3d}", 28, P.s, "right")
@@ -287,7 +301,7 @@ end
 
 -- ------------------------------------------------------------------ tactical
 local function tactical(parent)
-  local P = PAL.normal
+  local P = S.pal.normal
   local cx, cy = 560, 360
   local sections = {{"FORE", 315, 45, "lc_pw_shields"}, {"STARBOARD", 45, 135, "lc_pw_shields"}, {"AFT", 135, 225, "lc_pw_shields"}, {"PORT", 225, 315, "lc_pw_shields"}}
   for i, s in ipairs(sections) do
@@ -306,7 +320,7 @@ local function tactical(parent)
     sizeStart = 12, sizeEnd = 2, colorStart = "#ffdd77", colorEnd = "#ff220000", glow = 1}
   local burst = 0
   local function weapon(id, y, label, role, n)
-    local b = sc:button{parent = parent, id = id, x = 900, y = y, w = 330, h = 64, pill = true, fill = P[role], text = label, color = "#000000", size = 32, font = "Antonio", glow = 0.2}
+    local b = sc:button{parent = parent, id = id, x = 900, y = y, w = 330, h = 64, pill = true, fill = P[role], text = label, color = "#000000", size = 32, font = S.font, glow = 0.2}
     b:state("hover", {fill = lighten(P[role]), scaleX = 1.04, scaleY = 1.04}, {dur = 0.1})
     b:state("down", {scaleX = 0.97, scaleY = 0.97}, {dur = 0.05})
     T(role, b, true)
@@ -319,7 +333,7 @@ local function tactical(parent)
   end
   weapon("phasers", 170, "FIRE PHASERS", "p", 60)
   weapon("torps", 252, "PHOTON TORPEDO", "x", 120)
-  local ra = sc:button{parent = parent, id = "ralert", x = 900, y = 360, w = 330, h = 90, pill = true, fill = "#cc2222", text = "RED ALERT", color = "#ffffff", size = 44, font = "Antonio", glow = 0.5}
+  local ra = sc:button{parent = parent, id = "ralert", x = 900, y = 360, w = 330, h = 90, pill = true, fill = "#cc2222", text = "RED ALERT", color = "#ffffff", size = 44, font = S.font, glow = 0.5}
   ra:state("hover", {scaleX = 1.04, scaleY = 1.04, glow = 0.9}, {dur = 0.1})
   ra:on("click", function() L.alert(alert == "red" and "off" or "red") end)
   text(parent, "tgl", 900, 490, "TARGET LOCK: {lc_lock}   (click a contact on SENSORS)", 24, P.k)
@@ -334,13 +348,13 @@ local GROUPS = {{"arrays", "ARRAYS", "p"}, {"cloak", "CLOAK", "q"}, {"fuel", "FU
   {"shields", "SHIELDS", "q"}, {"warp", "WARP", "p"}, {"weapons", "WEAPONS", "r"}}
 
 local function shipconsole(parent)
-  local P = PAL.normal
+  local P = S.pal.normal
   text(parent, "pt", 240, 130, "POWER OVERVIEW", 34, P.x)
   for i, g in ipairs(GROUPS) do
     local y = 170 + (i - 1) * 46
     text(parent, "pg" .. i, 240, y, g[2] .. " ({sh_pg_" .. g[1] .. "|%d}%)", 24, P.k)
-    local tr = sc:rect{parent = parent, id = "pgt" .. i, x = 240, y = y + 12, w = 430, h = 20, r = 10, fill = "#0e151d", hit = true}
-    T(g[3], sc:rect{parent = parent, id = "pgf" .. i, x = 240, y = y + 12, w = 10, h = 20, r = 10, fill = P[g[3]], glow = 0.3}):bind("w", "max(10, sh_pg_" .. g[1] .. " * 4.3)", 0.8)
+    local tr = sc:rect{parent = parent, id = "pgt" .. i, x = 240, y = y + 12, w = 430, h = 20, r = R(10), fill = "#0e151d", hit = true}
+    T(g[3], sc:rect{parent = parent, id = "pgf" .. i, x = 240, y = y + 12, w = 10, h = 20, r = R(10), fill = P[g[3]], glow = 0.3}):bind("w", "max(10, sh_pg_" .. g[1] .. " * 4.3)", 0.8)
     text(parent, "pgm" .. i, 680, y + 22, "{sh_pg_" .. g[1] .. " * sh_total / 100 / 1000|%.2f} GW", 22, P.s, "left")
     tr:on("click", function(_, e)   -- click a bar: ask the ship for that share (the game answers by changing the data)
       local pct = math.max(0, math.min(100, math.floor((e.x - 240) / 4.3 + 0.5)))
@@ -367,28 +381,28 @@ local function shipconsole(parent)
   for i, d in ipairs(dm) do
     local y = 424 + (i - 1) * 44
     text(parent, "dml" .. i, 900, y, d[1], 22, P.k)
-    sc:rect{parent = parent, id = "dmt" .. i, x = 1110, y = y - 11, w = 280, h = 22, r = 11, fill = "#0e151d"}
-    local f = sc:rect{parent = parent, id = "dmf" .. i, x = 1110, y = y - 11, w = 10, h = 22, r = 11, fill = "#66cc88", glow = 0.25}
+    sc:rect{parent = parent, id = "dmt" .. i, x = 1110, y = y - 11, w = 280, h = 22, r = R(11), fill = "#0e151d"}
+    local f = sc:rect{parent = parent, id = "dmf" .. i, x = 1110, y = y - 11, w = 10, h = 22, r = R(11), fill = "#66cc88", glow = 0.25}
     f:bind("w", "max(10, " .. d[2] .. " / " .. d[3] .. " * 280)", 0.8)
     f:bind("fill", "color(\"#ff4444\", \"#66cc88\", " .. d[2] .. " / " .. d[3] .. ")")
     text(parent, "dmv" .. i, 1560, y, "{" .. d[2] .. "|%.1f}", 20, P.s, "right")
   end
-  text(parent, "ft", 1130, 580, "FUEL STATUS", 28, P.x)
+  text(parent, "ft", 1110, 580, "FUEL STATUS", 28, P.x)
   local tanks = {{"DEUTERIUM", "sh_deut", 500000, "#66aaff"}, {"ANTIMATTER", "sh_anti", 300000, "#ff77cc"}}
   for i, t in ipairs(tanks) do
-    local x = 1130 + (i - 1) * 230
-    sc:rect{parent = parent, id = "tk" .. i, x = x, y = 610, w = 56, h = 190, r = 22, stroke = P.p, strokeWidth = 3, fill = "#0a0e12"}
-    local lvl = sc:rect{parent = parent, id = "tkl" .. i, x = x + 5, y = 790, w = 46, h = 4, r = 17, fill = t[4], glow = 0.5}
+    local x = 1110 + (i - 1) * 165
+    sc:rect{parent = parent, id = "tk" .. i, x = x, y = 610, w = 48, h = 190, r = R(22), stroke = P.p, strokeWidth = 3, fill = "#0a0e12"}
+    local lvl = sc:rect{parent = parent, id = "tkl" .. i, x = x + 5, y = 790, w = 38, h = 4, r = R(17), fill = t[4], glow = 0.5}
     lvl:bind("h", "max(4, " .. t[2] .. " / " .. t[3] .. " * 176)", 0.8)
     lvl:bind("y", "794 - max(4, " .. t[2] .. " / " .. t[3] .. " * 176)", 0.8)
-    text(parent, "tkn" .. i, x + 70, 640, t[1], 24, P.k)
-    text(parent, "tkv" .. i, x + 70, 676, "{" .. t[2] .. "|%.0f}", 22, P.s)
-    text(parent, "tkm" .. i, x + 70, 704, "OF " .. t[3], 20, P.x)
+    text(parent, "tkn" .. i, x + 58, 640, t[1], 18, P.k)
+    text(parent, "tkv" .. i, x + 58, 668, "{" .. t[2] .. "|%.0f}", 18, P.s)
+    text(parent, "tkm" .. i, x + 58, 692, "OF " .. t[3], 16, P.x)
   end
   text(parent, "wt", 240, 512, "WEAPONS", 26, P.x)
   text(parent, "wl", 240, 546, "1  FORE PHASER", 22, P.k)
-  sc:rect{parent = parent, id = "wch", x = 240, y = 562, w = 430, h = 22, r = 11, fill = "#0e151d"}
-  sc:rect{parent = parent, id = "wchf", x = 240, y = 562, w = 10, h = 22, r = 11, fill = "#ffcc66", glow = 0.4}:bind("w", "max(10, sh_charge / 35000 * 430)", 0.8)
+  sc:rect{parent = parent, id = "wch", x = 240, y = 562, w = 430, h = 22, r = R(11), fill = "#0e151d"}
+  sc:rect{parent = parent, id = "wchf", x = 240, y = 562, w = 10, h = 22, r = R(11), fill = "#ffcc66", glow = 0.4}:bind("w", "max(10, sh_charge / 35000 * 430)", 0.8)
   text(parent, "wcv", 680, 573, "{sh_charge|%d} / 35000", 22, P.s)
   text(parent, "dct", 240, 606, "DAMAGE CONTROL  TEAMS 1-5: 10 CREW EACH, ASSIGNED HULL", 20, P.k)
 end
@@ -401,6 +415,7 @@ end
 
 -- ------------------------------------------------------------------ control
 function L.lock(n)
+  L.endTour()
   sim.lock = (sim.lock == n) and 0 or n
   gfx.var("lc_lock", sim.lock)
   local ret = sc:get("reticle")
@@ -420,20 +435,25 @@ function L.alert(state)
   alert = state == "red" and "red" or "off"
   local P = pal()
   for _, t in ipairs(themed) do
-    t.obj:animate{[t.prop] = P[t.role], dur = 0.9, ease = "inOutSine"}
+    t.obj:animate{[t.prop] = P[t.role], dur = 0.9 + 1.5 * calm, ease = "inOutSine"}
     if t.interactive then
       t.obj:state("hover", {fill = lighten(P[t.role])}, {dur = 0.1})
     end
   end
-  sc:get("rdring"):animate{fill = P.p, dur = 0.9}
+  local rr = sc:get("rdring")
+  if rr then rr:animate{fill = P.p, dur = 0.9} end
   gfx.var("lc_alert", alert)
   local edge = sc:get("alert_edge")
-  if alert == "red" then
-    edge:animate{opacity = {from = 0.15, to = 0.95}, dur = 0.7, ease = "inOutSine", loop = "inf", yoyo = true}
-  else
-    edge:stop()
-    edge:animate{opacity = 0, dur = 0.5}
+  if edge then
+    edge:set{stroke = S.alertEdge or "#ff2a1f"}
+    if alert == "red" then -- calm makes it a slow, shallow pulse instead of a flash
+      edge:animate{opacity = {from = 0.15 * (1 - 0.6 * calm), to = 0.95 * (1 - 0.7 * calm)}, dur = 0.7 + 2.2 * calm, ease = "inOutSine", loop = "inf", yoyo = true}
+    else
+      edge:stop()
+      edge:animate{opacity = 0, dur = 0.5}
+    end
   end
+  if S.onAlert then S.onAlert(alert == "red") end
   gfx.var("lc_bg", P.bg)
   sc:open{bg = P.bg}
 end
@@ -463,6 +483,7 @@ local function layout(ex, instant)
       end
     end
   end
+  if S.layout then S.layout(ex, instant, mv) return end   -- a theme with its own layout policy (the bridge wall)
   local k = ex and 0.3 or 1
   mv(sc:get("vsg"), {scaleX = k, scaleY = k}, instant)
   mv(sc:get("rdg"), {scaleX = k, scaleY = k, x = ex and 1450 or 1370, y = ex and 205 or 330}, instant)
@@ -487,13 +508,14 @@ local function layout(ex, instant)
 end
 
 function L.toggle()
+  L.endTour()
   expanded = not expanded
   gfx.var("lc_logx", expanded and 1 or 0)
   layout(expanded, false)
 end
 
 local function minis()
-  local P = PAL.normal
+  local P = S.pal.normal
   local defs = {
     eng = "ENGINEERING   WARP {lc_pw_warp|%d}%   IMPULSE {lc_pw_impulse|%d}%   SHIELDS {lc_pw_shields|%d}%   CORE {lc_core|%d}%",
     tac = "TACTICAL   SHIELDS {lc_pw_shields|%d}%   WEAPONS {lc_pw_weapons|%d}%   TARGET LOCK {lc_lock}",
@@ -512,7 +534,7 @@ function L.show(name)
   for n, g in pairs(consoles) do
     if n == name then
       g:set{visible = true}
-      g:animate{opacity = {from = 0, to = 1}, y = {from = 14, to = 0}, dur = 0.45, ease = "outCubic"}
+      g:animate{opacity = {from = 0, to = 1}, y = {from = (S.conY or 0) + 14, to = S.conY or 0}, dur = 0.45, ease = "outCubic"}
     elseif n == current then
       g:animate{opacity = 0, dur = 0.25}
       local old = g
@@ -521,50 +543,94 @@ function L.show(name)
   end
   current = name
   layout(expanded, true)
-  sc:get("marker"):animate{y = 206 + (order[name] - 1) * 68, dur = 0.35, ease = "outBack"}
+  if S.mark then S.mark(order[name]) end
   gfx.var("lc_mode", name)
 end
 
-function L.start(console, alertState)
+local DEFAULT_BUILD = {sens = sensors, eng = engineering, tac = tactical, ship = shipconsole}
+
+function L.start(console, alertState, themeName)
   closed = false
   if timerId then squat.cancel(timerId) end
   sim = sim or newSim()
+  S = themes[themeName or curTheme] or themes.tng
+  curTheme = S.name
   themed, consoles = {}, {}
-  sc = gfx.scene("lcars", {w = W, h = H, bg = PAL.normal.bg, dock = dock, size = size, portNode = usePort and "textport" or "none", margin = {0, 0, 0, 0}, bloom = 0.55, fit = "contain"})
+  sc = gfx.scene("lcars", {w = W, h = H, bg = S.pal.normal.bg, dock = dock, size = size, portNode = usePort and "textport" or "none", margin = {0, 0, 0, 0}, bloom = S.bloom or 0.55, fit = "contain", calm = calm})
   sc:clear()
   sc:on_close(function() L.stop(true) end)
-  gfx.font("Antonio", "fonts/Antonio-VF.ttf")
+  for _, f in ipairs(S.fonts or {}) do gfx.font(f[1], f[2], f[3]) end
   sc:open{open = true}
   gfx.vars{lc_alert = alert}
-  frame()
-  nav()
+  S.frame()
+  S.nav()
   joystick()
-  for name, build in pairs{sens = sensors, eng = engineering, tac = tactical, ship = shipconsole} do
+  if usePort then sc:rect{id = "alert_edge", x = 6, y = 6, w = W - 12, h = H - 12, r = R(22), stroke = "#ff2a1f", strokeWidth = 8, fill = "none", opacity = 0, glow = 0.9, z = 50} end
+  for name, build in pairs(DEFAULT_BUILD) do
     consoles[name] = sc:group{id = "c_" .. name, visible = false}
-    build(sc:group{id = "m_" .. name, parent = consoles[name]})
+    local main = sc:group{id = "m_" .. name, parent = consoles[name]}
+    ;((S.consoles and S.consoles[name]) or build)(main)
+    if S.decor then S.decor(name, main) end
   end
   if usePort then minis() end
   gfx.vars{lc_logx = expanded and 1 or 0}
   push()
   current = nil
   L.show(console or "sens")
-  if alertState == "red" then L.alert("red") end
+  if alertState == "red" or alert == "red" then L.alert("red") end
   timerId = squat.timer{every = 1, fn = tick}
+end
+
+local tourTimer
+function L.endTour()
+  if tourTimer then squat.cancel(tourTimer) tourTimer = nil end
 end
 
 function L.stop(fromWindow)
   closed = true
+  L.endTour()
   if timerId then squat.cancel(timerId) timerId = nil end
   if sc and not fromWindow then sc:close() end   -- the window already closed it when fromWindow
 end
 
+function L.setCalm(v)
+  calm = math.max(0, math.min(1, v))
+  squat.var.set("lcars_calm", calm)
+  if sc then sc:open{calm = calm} end
+end
+
+function L.tour()
+  L.endTour()
+  local i = 0
+  local function nextTheme()
+    i = i % #themeOrder + 1
+    L.start(current or "sens", nil, themeOrder[i])
+  end
+  nextTheme()
+  tourTimer = squat.timer{every = 12, fn = function() if closed then L.endTour() else nextTheme() end end}
+end
+
+local ALIASES = {picard = "bridge", calm_theme = "soft"}
+
 function L.command(m)
-  if (m[1] or ""):match("^%s*stop") == nil and (m[1] or ""):match("^%s*off") == nil then
+  local raw = (m[1] or "")
+  if raw:match("^%s*stop") == nil and raw:match("^%s*off") == nil then
     if not gfx.ensure() then return end   -- an explicit command starts fresh: clears any earlier give-up
   end
-  local arg = (m[1] or ""):gsub("^%s+", ""):gsub("%s+$", "")
+  local arg = raw:gsub("^%s+", ""):gsub("%s+$", "")
   local first, rest = arg:match("^(%S*)%s*(.*)$")
+  first = ALIASES[first] or first
+  if first ~= "" and first ~= "stop" and first ~= "off" and first ~= "tour" then L.endTour() end
   if first == "stop" or first == "off" then L.stop()
+  elseif first == "themes" then
+    squat.echo("/lcars themes: " .. table.concat(themeOrder, ", ") .. "   (tng is the default; /lcars tour cycles them; /lcars calm on|off|0-100)")
+  elseif first == "tour" then L.tour()
+  elseif first == "calm" then
+    local v = rest == "on" and 0.7 or rest == "off" and 0 or tonumber(rest) and tonumber(rest) / 100
+    if not v then squat.echo("calm is " .. math.floor(calm * 100 + 0.5) .. "%   usage: /lcars calm on|off|0-100") return end
+    L.setCalm(v)
+  elseif themes[first] then
+    L.start(current or "sens", nil, first)
   elseif first == "alert" then if sc then L.alert(rest == "red" and "red" or "off") end
   elseif first == "full" then
     dock, size, usePort = "full", nil, true
@@ -579,11 +645,11 @@ function L.command(m)
   elseif first == "eng" or first == "tac" or first == "sens" or first == "ship" or first == "" then
     if sc and consoles[first == "" and "sens" or first] then
       closed = false
-      sc:open{dock = dock, size = size, portNode = usePort and "textport" or "none", open = true}   -- reopens after the close button / Escape / /lcars stop
+      sc:open{dock = dock, size = size, portNode = usePort and "textport" or "none", open = true, calm = calm}   -- reopens after the close button / Escape / /lcars stop
       if not timerId then timerId = squat.timer{every = 1, fn = tick} end
       L.show(first == "" and "sens" or first)
     else L.start(first ~= "" and first or "sens") end
-  else squat.echo("usage: /lcars [sens|eng|tac|ship|full|size N|log|alert red|off|stop]") end
+  else squat.echo("usage: /lcars [theme|sens|eng|tac|ship|themes|tour|calm N|full|size N|log|alert red|off|stop]") end
 end
 
 -- A game's GMCP feeds the same display: Ship.Status {Power = {Warp = 55, ...}, Fuel = {...}} becomes sh_* variables.
@@ -598,5 +664,67 @@ end)
 
 squat.alias{match = "^/lcars(?: (.*))?$", regex = true, fn = L.command}
 squat.alias{match = "^/lock (\\d)$", regex = true, fn = function(m) if sim then L.lock(tonumber(m[1])) end end}
+
+-- ------------------------------------------------------------------ themes
+local function register(t)
+  themes[t.name] = t
+  themeOrder[#themeOrder + 1] = t.name
+end
+
+register{
+  name = "tng", font = "Antonio", fonts = {{"Antonio", "fonts/Antonio-VF.ttf"}},
+  pal = {
+    normal = {p = "#ff9900", s = "#ffcc99", t = "#cc99cc", q = "#9999ff", x = "#ffcc66", r = "#cc6666", k = "#99ccff", bg = "#000000"},
+    red    = {p = "#ff2a1f", s = "#ff8a7a", t = "#b3202a", q = "#8a1622", x = "#ff5a44", r = "#ff2a1f", k = "#ffb0a0", bg = "#140000"},
+  },
+  frame = tng_frame, nav = tng_nav,
+  mark = function(i) sc:get("marker"):animate{y = 206 + (i - 1) * 68, dur = 0.35, ease = "outBack"} end,
+}
+
+E.register, E.T, E.text, E.lighten, E.R, E.L, E.gfx, E.PORT_C, E.W, E.H = register, T, text, lighten, R, L, gfx, PORT_C, W, H
+E.sc = function() return sc end
+E.S = function() return S end
+E.calm = function() return calm end
+
+-- the text port (an object the renderer animates, invisible) and the frame round it
+function E.port(o)
+  o = o or {}
+  local role = o.role or "p"
+  sc:rect{id = "textport", x = PORT_C[1], y = PORT_C[2], w = PORT_C[3], h = PORT_C[4], visible = false}
+  T(role, sc:rect{id = "portframe", x = PORT_C[1] - 8, y = PORT_C[2] - 8, w = PORT_C[3] + 16, h = PORT_C[4] + 16, r = o.r or R(14), stroke = S.pal.normal[role],
+    strokeWidth = o.width or 4, fill = "none", glow = o.glow or 0.2}, false, "stroke")
+end
+
+-- the LOG toggle pill (Alt+L too)
+function E.logbtn(o)
+  local role = o.role or "x"
+  local lb = sc:button{id = "logbtn", x = o.x, y = o.y, w = o.w, h = o.h, r = o.r or R(o.h / 2), fill = S.pal.normal[role],
+    text = '{lc_logx == 1 ? "' .. (o.shrink or "LOG - SHRINK") .. '" : "' .. (o.expand or "LOG - EXPAND") .. '"}', color = o.color or "#000000", size = o.size or 26,
+    weight = S.weight or "700", align = o.align or "center", padX = o.padX or 18, font = S.font, key = "alt+l", glow = o.glow or 0.04}
+  lb:state("hover", {fill = lighten(S.pal.normal[role])}, {dur = 0.1})
+  lb:state("down", {scaleX = 0.96}, {dur = 0.06})
+  T(role, lb, true)
+  lb:on("click", function() L.toggle() end)
+  return lb
+end
+
+-- console buttons nav1..: items {label, console, role}; o = {x, y, w, h, dx, dy, r, size, align, color}
+function E.navbtns(items, o)
+  for i, it in ipairs(items) do
+    local role = it[3] or "p"
+    local b = sc:button{id = "nav" .. i, x = o.x + (i - 1) * (o.dx or 0), y = o.y + (i - 1) * (o.dy or 0), w = o.w, h = o.h, r = o.r or R(o.h / 2), fill = S.pal.normal[role],
+      text = it[1], color = o.color or "#000000", size = o.size or 28, weight = S.weight or "700", align = o.align or "center", padX = o.padX or 16, font = S.font, glow = o.glow or 0.04}
+    b:state("hover", {fill = lighten(S.pal.normal[role])}, {dur = 0.1})
+    b:state("down", {scaleX = 0.96}, {dur = 0.06})
+    T(role, b, true)
+    if it[2] then b:on("click", function() L.endTour() L.show(it[2]) end) end
+  end
+end
+
+-- the theme files (each registers one theme through E)
+for _, name in ipairs{"theme_soft", "theme_romulan", "theme_klingon", "theme_tos", "theme_ferengi", "theme_bridge"} do
+  local ok, err = pcall(function() require(name)(E) end)
+  if not ok then squat.log("lcars: theme " .. name .. " failed to load: " .. tostring(err), "warn") end
+end
 
 return L

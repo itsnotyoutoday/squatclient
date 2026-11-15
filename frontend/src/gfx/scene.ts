@@ -309,8 +309,14 @@ export class Scene {
     const tracks: Track[] = Object.entries(tr).map(([prop, t]) => ({ prop, from: t.from, to: t.to }));
     if (tracks.length === 0) throw new Error('a tween needs at least one track');
     const id = typeof op.id === 'string' && op.id ? op.id : `#t${++this.tweenSeq}`;
-    // a new tween on the same properties replaces the old one (retargeting a button mid-animation)
-    this.tweens = this.tweens.filter((t) => !(t.id === id || ((t.target as { node?: GfxNode }).node === n && t.spec.tracks.every((x) => tracks.some((y) => y.prop === x.prop)))));
+    // a new tween takes over the properties it animates: old tweens on the same object lose those tracks (and go when empty)
+    const mine = new Set(tracks.map((x) => x.prop));
+    this.tweens = this.tweens.filter((t) => {
+      if (t.id === id) return false;
+      if ((t.target as { node?: GfxNode }).node !== n) return true;
+      t.spec.tracks = t.spec.tracks.filter((x) => !mine.has(x.prop));
+      return t.spec.tracks.length > 0;
+    });
     const spec: TweenSpec = {
       id, tracks, dur: Number(op.dur ?? 0.4), delay: Number(op.delay ?? 0), ease: String(op.ease ?? 'outCubic'),
       loop: Number(op.loop ?? 0), yoyo: op.yoyo === true, after: typeof op.after === 'string' ? op.after : undefined,

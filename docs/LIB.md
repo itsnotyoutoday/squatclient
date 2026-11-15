@@ -53,3 +53,8 @@ handling, the `detect_worldtype` guessing hook (the Worlds dialog chooses the ty
 lp logins; file shortcuts; `/gfx`, `/canvas` and `/worlds` reach the client; `watch`/`sync`/`autosync`; `/gfxdemo`
 end to end including a click running a TF command). `lua_test.go` runs the Lua module and the LCARS plugin on the
 real Lua runtime with a manual clock.
+
+## Fonts (lib/squat/fonts)
+
+All fonts are SIL Open Font License 1.1; each licence text sits beside its font. Antonio (TNG), Rajdhani (soft, Romulan, bridge),
+Teko (Klingon), Orbitron (TOS) and Cinzel (Ferengi) are from the Google Fonts repository (github.com/google/fonts, `ofl/`).
