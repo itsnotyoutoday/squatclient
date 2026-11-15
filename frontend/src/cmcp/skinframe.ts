@@ -154,22 +154,37 @@ export function navShapes(skin: Skin, pal: Pal, current: number, idp: string, av
   return out;
 }
 
-/** CMCP 2: the nav column shows the layouts the active context allows (the screen menu of 20.5), not a row of console tabs. A console is a
- * context with a layout; switching here is only a local view among the layouts the game allows for it. The skin supplies the slots and the roles. */
+/** CMCP 2: the nav column of a console frame lists the layouts the active context allows (the screen menu of 20.5). It looks exactly as in v1: the skin's own
+ * named tabs (OPERATIONS, TACTICAL, ...) in the skin's order and colours, found by the layout's screen name ("fspace-federation/operations" is the
+ * skin's operations tab); a layout the skin has no tab for follows, titled by its name. */
 export interface NavEntry { id: string; title: string; available: boolean; active: boolean }
+const screenName = (id: string): string => id.replace(/^.*[/.]/, '');
+/** the names a pack gives a screen, as the skin's tabs know them */
+const ALIAS: Record<string, string> = { navigation: 'helm', science: 'sensors', damage_control: 'damage', engineering: 'power' };
+const pretty = (n: string): string => n.replace(/[_-]+/g, ' ').toUpperCase();
 export function navShapesV2(skin: Skin, pal: Pal, entries: NavEntry[], idp: string): Prim[] {
   const b = skin.nav.button, out: Prim[] = [];
-  const shown = entries.filter((e) => e.available).slice(0, 8);
-  shown.forEach((e, i) => {
-    const role = skin.nav.items[i % Math.max(1, skin.nav.items.length)]?.role ?? 'p';
-    const nf = fitText((e.title || e.id).toUpperCase(), b.size * (skin.font.tscale ?? 1), b.w - 2 * (b.padX ?? 16) - Math.abs(b.skewX ?? 0), skin.font.family, skin.font.weight);
+  const slotOf = (id: string): number => { const n = screenName(id); return skin.nav.items.findIndex((it) => it.screens.includes(n) || it.screens.includes(ALIAS[n] ?? '')); };
+  // the skin's own tabs, one per slot, in the skin's order (as in v1); the screen being shown always has a tab, even when the skin has none for it
+  const bySlot = new Map<number, NavEntry>();
+  const extra: NavEntry[] = [];
+  for (const e of entries.filter((x) => x.available)) {
+    const slot = slotOf(e.id);
+    if (slot >= 0) { const old = bySlot.get(slot); if (!old || (e.active && !old.active)) bySlot.set(slot, e); } else if (e.active) extra.push(e);
+  }
+  const shown: { e: NavEntry; slot: number }[] = [...bySlot.entries()].sort((x, y) => x[0] - y[0]).map(([slot, e]) => ({ e, slot })).concat(extra.map((e) => ({ e, slot: -1 })));
+  shown.forEach(({ e, slot }, i) => {
+    const item = slot >= 0 ? skin.nav.items[slot] : undefined;
+    const label = item?.label ?? (e.title && e.title !== e.id ? e.title.toUpperCase() : pretty(screenName(e.id)));
+    const role = item?.role ?? 'p';
+    const nf = fitText(label, b.size * (skin.font.tscale ?? 1), b.w - 2 * (b.padX ?? 16) - Math.abs(b.skewX ?? 0), skin.font.family, skin.font.weight);
     out.push({
       id: `${idp}nav${i}`, type: 'button', events: ['click'], target: { path: '', event: '', special: 'nav', screen: e.id },
       props: { x: b.x + i * (b.dx ?? 0), y: b.y + i * (b.dy ?? 0), w: b.w, h: b.h, r: b.r ?? b.h / 2, fill: col(role, pal), text: nf.text, color: col(b.color, pal), size: nf.size, weight: skin.font.weight,
         align: b.align ?? 'center', padX: b.padX ?? 16, font: skin.font.family, glow: 0.04, key: `alt+${i + 1}`, skewX: b.skewX ?? 0, stroke: b.stroke ? col(b.stroke, pal) : undefined, strokeWidth: b.sw, opacity: e.active ? 1 : 0.8 },
     });
   });
-  const m = skin.nav.marker, cur = shown.findIndex((e) => e.active);
+  const m = skin.nav.marker, cur = shown.findIndex(({ e }) => e.active);
   if (m && cur >= 0) out.push({ id: `${idp}marker`, type: 'rect', props: { x: m.x, y: m.y + cur * (b.dy ?? 0), w: m.w, h: m.h, fill: col(m.fill, pal), glow: m.glow } });
   return out;
 }

@@ -1,115 +1,245 @@
-import { useEffect, useRef, useState } from 'react';
-import { useGfxRuntime } from '../gfx/GfxHost';
-import { useSessions } from '../state/stores';
-import { usePaneHost, type PaneInfo } from './panes';
+import { useEffect, useState } from 'react';
+import { useSessions, useUi } from '../state/stores';
+import { useCmcpDom } from './dom';
+import { TreeView } from './TreeView';
+import type { CmcpPane } from './types';
 
-// CMCP 2 panes (spec 20.14): the contexts a game wants on a panel, dock or float are drawn IN ADDITION to the main screen. SquatClient shows `dock`
-// and `panel` as a column beside the workspace (a panel can be folded), and `float` as a window over it that is dragged by its title bar. The
-// game's dock side, size and resizable are only hints; the player's arrangement (width, folded, position) is remembered per context type.
+// CMCP 2 contexts drawn as part of the page (not a scene): the main context when it is a place or a ship room is a card above the game text, with a
+// row of exit buttons below it when the room lists its exits; a context the game wants on a panel or dock is a column beside the workspace (foldable),
+// and a float is a window over it. The game's dock side, size and resizable are hints. The player's choices (folded, position) are remembered per type.
 
 const mem = {
-  get<T>(k: string, d: T): T { try { const v = localStorage.getItem(`cmcp-pane:${k}`); return v ? (JSON.parse(v) as T) : d; } catch { return d; } },
-  set(k: string, v: unknown): void { try { localStorage.setItem(`cmcp-pane:${k}`, JSON.stringify(v)); } catch { /* no storage: the arrangement is not remembered */ } },
+  get<T>(k: string, d: T): T {
+    try {
+      const v = localStorage.getItem(`cmcp-pane:${k}`);
+      return v ? (JSON.parse(v) as T) : d;
+    } catch {
+      return d;
+    }
+  },
+  set(k: string, v: unknown): void {
+    try {
+      localStorage.setItem(`cmcp-pane:${k}`, JSON.stringify(v));
+    } catch {
+      /* no storage: not remembered */
+    }
+  },
 };
 
-/** The canvas of one pane's scene: filled to its box, with the pointer reaching the scene's buttons. */
-function PaneScene({ session, info }: { session: string; info: PaneInfo }) {
-  const rt = useGfxRuntime(session);
-  const wrap = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const box = wrap.current;
-    if (!rt || !box) return;
-    const canvas = document.createElement('canvas');
-    box.insertBefore(canvas, box.firstChild);
-    if (rt.mount(info.scene, canvas)) { canvas.remove(); return; } // no WebGL2: the main screen says so; the pane stays empty
-    const slot = rt.slot(info.scene);
-    const size = (): void => rt.resize(info.scene, box.clientWidth, box.clientHeight, window.devicePixelRatio || 1);
-    const ro = new ResizeObserver(size);
-    ro.observe(box);
-    size();
-    const pt = (t: 'move' | 'down' | 'up') => (ev: PointerEvent): void => {
-      const r = box.getBoundingClientRect();
-      const inside = ev.clientX >= r.left && ev.clientX <= r.right && ev.clientY >= r.top && ev.clientY <= r.bottom;
-      if (!inside && !slot.drag) { if (slot.hover) rt.pointer(slot, 'leave', 0, 0); return; }
-      const n = rt.pointer(slot, t, ev.clientX, ev.clientY);
-      if (n && t === 'down') { ev.preventDefault(); ev.stopPropagation(); }
-    };
-    const handlers: [string, (e: PointerEvent) => void][] = [['pointermove', pt('move')], ['pointerdown', pt('down')], ['pointerup', pt('up')]];
-    for (const [n, f] of handlers) window.addEventListener(n, f as EventListener, true);
-    return () => {
-      for (const [n, f] of handlers) window.removeEventListener(n, f as EventListener, true);
-      ro.disconnect();
-      rt.unmount(info.scene);
-      canvas.remove();
-    };
-  }, [rt, info.scene, info.ready]);
-  return <div ref={wrap} className="cmcp-pane-scene gfx-scene" data-scene={info.scene} style={{ aspectRatio: `${info.w} / ${info.h}` }} />;
-}
-
-function Header({ info, folded, onFold, onClose }: { info: PaneInfo; folded?: boolean; onFold?: () => void; onClose: () => void }) {
+function Head({
+  title,
+  folded,
+  onFold,
+  onClose,
+}: {
+  title: string;
+  folded?: boolean;
+  onFold?: () => void;
+  onClose?: () => void;
+}) {
   return (
     <div className="cmcp-pane-head">
       {onFold && (
-        <button type="button" className="cmcp-pane-btn" aria-expanded={!folded} aria-label={folded ? `Open ${info.title}` : `Fold ${info.title}`} onClick={onFold}>
+        <button
+          type="button"
+          className="cmcp-pane-btn"
+          aria-expanded={!folded}
+          aria-label={`${folded ? 'Open' : 'Fold'} ${title}`}
+          onClick={onFold}
+        >
           {folded ? '▸' : '▾'}
         </button>
       )}
-      <span className="cmcp-pane-title">{info.title}</span>
-      <button type="button" className="cmcp-pane-btn" aria-label={`Hide ${info.title}`} title="Hide this pane for now" onClick={onClose}>&times;</button>
+      <span className="cmcp-pane-title">{title}</span>
+      {onClose && (
+        <button
+          type="button"
+          className="cmcp-pane-btn"
+          aria-label={`Hide ${title}`}
+          title="Hide for now"
+          onClick={onClose}
+        >
+          &times;
+        </button>
+      )}
     </div>
   );
 }
 
-function Docked({ session, info, hide }: { session: string; info: PaneInfo; hide: () => void }) {
-  const [folded, setFolded] = useState(() => mem.get(`${info.type}:folded`, false));
+function usePageSend(session: string) {
+  const engine = useUi((s) => s.engine);
+  const toast = useUi((s) => s.toast);
+  return {
+    event:
+      (pane: string | null) =>
+      (path: string, event: string, value?: unknown): void => {
+        const p =
+          pane === null
+            ? engine?.cmcpEvent(session, path, event, value)
+            : engine?.cmcpPaneEvent(session, pane, path, event, value);
+        void p
+          ?.then((r) => {
+            for (const er of r.errors ?? []) toast('error', er);
+          })
+          .catch((e: unknown) => toast('error', String(e instanceof Error ? e.message : e)));
+      },
+    say: (text: string): void => {
+      void engine?.input(session, text).catch(() => undefined);
+    },
+  };
+}
+
+function MainCard({ session }: { session: string }) {
+  const dom = useCmcpDom((s) => s.by[session]);
+  const send = usePageSend(session);
+  const type = dom?.main?.screen ?? '';
+  const [folded, setFolded] = useState(() => mem.get(`${type}:folded`, false));
+  useEffect(() => setFolded(mem.get(`${type}:folded`, false)), [type]);
+  if (!dom?.main) return null;
+  const title = dom.main.title || dom.title;
   return (
-    <section className={`cmcp-pane cmcp-${info.surface}`} aria-label={info.title}>
-      <Header info={info} folded={folded} onFold={() => { setFolded(!folded); mem.set(`${info.type}:folded`, !folded); }} onClose={hide} />
-      {!folded && (info.ready ? <PaneScene session={session} info={info} /> : <p className="hint cmcp-pane-wait">Loading...</p>)}
+    <section className="cmcp-card" aria-label={title}>
+      <Head
+        title={title}
+        folded={folded}
+        onFold={() => {
+          setFolded(!folded);
+          mem.set(`${type}:folded`, !folded);
+        }}
+      />
+      {!folded && (
+        <>
+          <TreeView tree={dom.main} readonly={dom.readonly} send={send.event(null)} />
+          {dom.exits.length > 0 && (
+            <div className="cmcp-exits" role="group" aria-label="Exits">
+              {dom.exits.map((e) => (
+                <button
+                  key={e.cmd}
+                  type="button"
+                  className="cmcp-btn tone-accent"
+                  onClick={() => send.say(e.cmd)}
+                >
+                  {e.name}
+                </button>
+              ))}
+            </div>
+          )}
+        </>
+      )}
     </section>
   );
 }
 
-function Floating({ session, info, hide }: { session: string; info: PaneInfo; hide: () => void }) {
-  const [pos, setPos] = useState(() => mem.get(`${info.type}:pos`, { x: 80, y: 80 }));
-  const drag = useRef<{ dx: number; dy: number } | null>(null);
-  const onDown = (e: React.PointerEvent): void => { drag.current = { dx: e.clientX - pos.x, dy: e.clientY - pos.y }; (e.target as HTMLElement).setPointerCapture?.(e.pointerId); };
-  const onMove = (e: React.PointerEvent): void => { if (drag.current) setPos({ x: Math.max(0, e.clientX - drag.current.dx), y: Math.max(0, e.clientY - drag.current.dy) }); };
-  const onUp = (): void => { if (drag.current) { drag.current = null; mem.set(`${info.type}:pos`, pos); } };
+function DockPane({ session, pane, hide }: { session: string; pane: CmcpPane; hide: () => void }) {
+  const send = usePageSend(session);
+  const [folded, setFolded] = useState(() => mem.get(`${pane.type}:folded`, false));
+  const title = pane.title || pane.name || pane.id || pane.type;
   return (
-    <section className="cmcp-pane cmcp-float" aria-label={info.title} style={{ left: pos.x, top: pos.y, width: info.w }}>
-      <div onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} className="cmcp-float-drag"><Header info={info} onClose={hide} /></div>
-      {info.ready ? <PaneScene session={session} info={info} /> : <p className="hint cmcp-pane-wait">Loading...</p>}
+    <section className={`cmcp-pane cmcp-${pane.surface}`} aria-label={title}>
+      <Head
+        title={title}
+        folded={folded}
+        onFold={() => {
+          setFolded(!folded);
+          mem.set(`${pane.type}:folded`, !folded);
+        }}
+        onClose={hide}
+      />
+      {!folded &&
+        (pane.tree ? (
+          <TreeView tree={pane.tree} readonly={pane.readonly} send={send.event(pane.key)} />
+        ) : (
+          <p className="hint cmcp-pane-wait">Loading...</p>
+        ))}
     </section>
   );
 }
 
-/** The panes of the foreground session. `children` is the workspace they sit beside. */
+function FloatPane({ session, pane, hide }: { session: string; pane: CmcpPane; hide: () => void }) {
+  const send = usePageSend(session);
+  const [pos, setPos] = useState(() => mem.get(`${pane.type}:pos`, { x: 80, y: 80 }));
+  const [drag, setDrag] = useState<{ dx: number; dy: number } | null>(null);
+  const title = pane.title || pane.name || pane.id || pane.type;
+  return (
+    <section
+      className="cmcp-pane cmcp-float"
+      aria-label={title}
+      style={{ left: pos.x, top: pos.y, width: Math.max(240, Number(pane.size?.w) || 320) }}
+    >
+      <div
+        className="cmcp-float-drag"
+        onPointerDown={(e) => {
+          setDrag({ dx: e.clientX - pos.x, dy: e.clientY - pos.y });
+          (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+        }}
+        onPointerMove={(e) => {
+          if (drag) setPos({ x: Math.max(0, e.clientX - drag.dx), y: Math.max(0, e.clientY - drag.dy) });
+        }}
+        onPointerUp={() => {
+          if (drag) {
+            setDrag(null);
+            mem.set(`${pane.type}:pos`, pos);
+          }
+        }}
+      >
+        <Head title={title} onClose={hide} />
+      </div>
+      {pane.tree ? (
+        <TreeView tree={pane.tree} readonly={pane.readonly} send={send.event(pane.key)} />
+      ) : (
+        <p className="hint cmcp-pane-wait">Loading...</p>
+      )}
+    </section>
+  );
+}
+
+/** The CMCP 2 surfaces of the foreground session around `children` (the workspace). */
 export function PaneHosts({ children }: { children: React.ReactNode }) {
   const fg = useSessions((s) => s.fg);
-  const panes = usePaneHost((s) => (fg ? s.by[fg] : undefined)) ?? [];
+  const dom = useCmcpDom((s) => (fg ? s.by[fg] : undefined));
   const [hidden, setHidden] = useState<Set<string>>(new Set());
-  useEffect(() => { // a context that left the stack and came back is shown again (hiding lasts for the visit)
-    setHidden((h) => { const keep = new Set([...h].filter((k) => panes.some((p) => p.key === k))); return keep.size === h.size ? h : keep; });
+  const panes = dom?.panes ?? [];
+  useEffect(() => {
+    // a context that left the stack and came back is shown again (hiding lasts for the visit)
+    setHidden((h) => {
+      const keep = new Set([...h].filter((k) => panes.some((p) => p.key === k)));
+      return keep.size === h.size ? h : keep;
+    });
   }, [panes]);
   const shown = panes.filter((p) => !hidden.has(p.key));
   const hide = (k: string) => () => setHidden((h) => new Set(h).add(k));
+  if (!fg || (!dom?.main && shown.length === 0)) return <>{children}</>;
   const side = shown.filter((p) => p.surface !== 'float');
   const floats = shown.filter((p) => p.surface === 'float');
-  if (!fg || shown.length === 0) return <>{children}</>;
-  const left = side.filter((p) => p.dock === 'left');
-  const right = side.filter((p) => p.dock !== 'left');
-  const col = (list: PaneInfo[], cls: string) => list.length > 0 && (
-    <aside className={`cmcp-dock ${cls}`} aria-label="Game panes" style={{ width: Math.max(...list.map((p) => p.w)) }}>
-      {list.map((p) => <Docked key={p.key} session={fg} info={p} hide={hide(p.key)} />)}
-    </aside>
-  );
+  const column = (list: CmcpPane[], cls: string) =>
+    list.length > 0 && (
+      <aside
+        className={`cmcp-dock ${cls}`}
+        aria-label="Game panes"
+        style={{ width: Math.max(...list.map((p) => Math.max(240, Number(p.size?.w) || 320))) }}
+      >
+        {list.map((p) => (
+          <DockPane key={p.key} session={fg} pane={p} hide={hide(p.key)} />
+        ))}
+      </aside>
+    );
   return (
     <div className="with-panes">
-      {col(left, 'cmcp-dock-left')}
-      <div className="with-panes-main">{children}</div>
-      {col(right, 'cmcp-dock-right')}
-      {floats.map((p) => <Floating key={p.key} session={fg} info={p} hide={hide(p.key)} />)}
+      {column(
+        side.filter((p) => p.dock === 'left'),
+        'cmcp-dock-left',
+      )}
+      <div className="with-panes-main">
+        <MainCard session={fg} />
+        {children}
+      </div>
+      {column(
+        side.filter((p) => p.dock !== 'left'),
+        'cmcp-dock-right',
+      )}
+      {floats.map((p) => (
+        <FloatPane key={p.key} session={fg} pane={p} hide={hide(p.key)} />
+      ))}
     </div>
   );
 }

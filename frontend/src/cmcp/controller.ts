@@ -16,7 +16,7 @@ import { skinFromTheme } from './skins/pack';
 import { setActiveCmcp, useAmbient, usePane, useScreenHelp, useThemeInUse } from './pane';
 import { useSettings } from '../state/stores';
 import { diffOps, PORT_ID, SCENE, sceneOp, type Ease } from './ops';
-import { PaneRenderer } from './panes';
+import { drawsAsPage, exitsOf, useCmcpDom } from './dom';
 import { drawSprite, type SpriteView } from './sprite';
 import type { CmcpNode, CmcpNote, CmcpPulse, CmcpTree, CmcpUI } from './types';
 import { useOverlays } from './overlays';
@@ -90,8 +90,6 @@ export class CmcpController {
   onError?: (text: string) => void;
 
   constructor(private engine: EngineAPI, private rtFor: (session: string) => GfxRuntime) {
-    this.panes = new PaneRenderer(engine, (session, ops) => this.rtFor(session).apply(ops));
-    this.panes.onError = (t) => this.onError?.(t);
     if (typeof matchMedia !== 'undefined') this.reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
   }
 
@@ -280,16 +278,19 @@ export class CmcpController {
   }
 
   /** the panel, dock and float contexts of a CMCP 2 session (each its own scene, drawn by the window's pane hosts) */
-  readonly panes: PaneRenderer;
 
   onUi(ui: CmcpUI): void {
     const s = this.state(ui.session);
-    this.panes.sync(ui);
+
     if (ui.rev === s.lastRev && s.tree && ui.tree && JSON.stringify(ui.tree.ui) === JSON.stringify(s.tree.ui) && ui.tree.packKey === s.tree.packKey && ui.tree.screen === s.tree.screen) {
       // the model did not change; the tree might have (data) so fall through
     }
     s.lastRev = ui.rev;
     s.ui = ui;
+    // CMCP 2: a place or a ship room is drawn with page elements (no scene); a ship console keeps the scene. Panes are always page elements.
+    const page = drawsAsPage(ui);
+    useCmcpDom.getState().set(ui.session, { main: page ? ui.tree : null, title: ui.ctx?.type ? (ui.tree?.title || ui.title || '') : '', readonly: ui.readonly, panes: ui.panes ?? [], exits: exitsOf(ui) });
+    if (page) { this.close(s); s.tree = null; usePane.getState().set(s.id, false, false); return; }
     { const d = `${ui.session} model state=${ui.state} screen=${ui.tree?.screen ?? 'none'} view=${ui.tree?.view?.state ?? '-'} readonly=${ui.readonly} console=${ui.console?.id ?? ''} notice=${ui.notice?.id ?? ''}`; if (d !== this.lastDbg) { this.lastDbg = d; this.dbg(d); } }
     // a refused close (the core's error notice) ends the wait at once: the screen is hidden locally
     if (s.closeScreen && ui.notice?.id === 'close' && ui.notice.kind === 'error') this.closeFallback(ui.session, s.closeScreen);
@@ -673,7 +674,6 @@ export class CmcpController {
 
   /** A pointer event from a scene. Returns true when the scene is CMCP's (consumed). */
   handleGfxEvent(session: string, e: GfxEventOut): boolean {
-    if (this.panes.handle(session, e)) return true;
     if (e.scene !== SCENE) return false;
     const s = this.state(session);
     if (e.event !== 'enter' && e.event !== 'leave' && e.event !== 'drag') this.dbg(`${session} scene event ${e.event} on ${e.id}${s.targets.get(e.id)?.special ? ' (' + s.targets.get(e.id)!.special + ')' : ''}`);

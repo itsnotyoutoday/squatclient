@@ -11,7 +11,7 @@ const same = (a: unknown, b: unknown): boolean => a === b || JSON.stringify(a) =
 /** Which changed properties glide instead of jumping: returns a duration in seconds, or 0. */
 export type Ease = (id: string, prop: string) => number;
 
-export function diffOps(prev: Map<string, Prim>, next: Prim[], ease?: Ease, scene: string = SCENE): { ops: GfxOp[]; map: Map<string, Prim> } {
+export function diffOps(prev: Map<string, Prim>, next: Prim[], ease?: Ease): { ops: GfxOp[]; map: Map<string, Prim> } {
   const ops: GfxOp[] = [];
   const map = new Map<string, Prim>();
   next.forEach((p, z) => {
@@ -20,10 +20,10 @@ export function diffOps(prev: Map<string, Prim>, next: Prim[], ease?: Ease, scen
     const old = prev.get(p.id);
     const evs = (a?: Prim): string => (a?.events ?? []).join(',');
     if (!old || old.type !== q.type || Object.keys(old.props).some((k) => !(k in q.props))) {
-      if (old) ops.push({ op: 'delete', scene, id: p.id });
-      ops.push({ op: 'create', scene, id: p.id, type: q.type, ...(q.parent ? { parent: q.parent } : {}), props: q.props });
-      for (const [prop, expr] of Object.entries(q.bind ?? {})) ops.push({ op: 'bind', scene, id: p.id, prop, expr });
-      if (q.events?.length) ops.push({ op: 'on', scene, id: p.id, events: q.events });
+      if (old) ops.push({ op: 'delete', scene: SCENE, id: p.id });
+      ops.push({ op: 'create', scene: SCENE, id: p.id, type: q.type, ...(q.parent ? { parent: q.parent } : {}), props: q.props });
+      for (const [prop, expr] of Object.entries(q.bind ?? {})) ops.push({ op: 'bind', scene: SCENE, id: p.id, prop, expr });
+      if (q.events?.length) ops.push({ op: 'on', scene: SCENE, id: p.id, events: q.events });
       return;
     }
     const ch: Record<string, unknown> = {};
@@ -34,22 +34,15 @@ export function diffOps(prev: Map<string, Prim>, next: Prim[], ease?: Ease, scen
       const d = ease ? ease(p.id, k) : 0;
       if (d > 0 && old.props[k] !== undefined && (typeof v === 'number' || typeof v === 'string')) { glide[k] = { to: v }; dur = Math.max(dur, d); } else ch[k] = v;
     }
-    if (Object.keys(ch).length) ops.push({ op: 'set', scene, id: p.id, props: ch });
-    if (Object.keys(glide).length) ops.push({ op: 'tween', scene, target: p.id, tracks: glide, dur, ease: 'inOutSine' });
-    if (evs(old) !== evs(q)) ops.push({ op: 'on', scene, id: p.id, events: q.events ?? [] });
+    if (Object.keys(ch).length) ops.push({ op: 'set', scene: SCENE, id: p.id, props: ch });
+    if (Object.keys(glide).length) ops.push({ op: 'tween', scene: SCENE, target: p.id, tracks: glide, dur, ease: 'inOutSine' });
+    if (evs(old) !== evs(q)) ops.push({ op: 'on', scene: SCENE, id: p.id, events: q.events ?? [] });
   });
-  for (const id of prev.keys()) if (!map.has(id)) ops.push({ op: 'delete', scene, id });
+  for (const id of prev.keys()) if (!map.has(id)) ops.push({ op: 'delete', scene: SCENE, id });
   return { ops, map };
 }
 
 /** The scene's own configuration: logical size, background, and the text port (the real game text shows through it). */
 export function sceneOp(w: number, h: number, bg: string, bloom: number): GfxOp {
   return { op: 'scene', scene: SCENE, open: true, w, h, bg, dock: 'full', fit: 'contain', margin: [0, 0, 0, 0], portNode: PORT_ID, bloom: { strength: bloom, radius: 0.5 } };
-}
-
-/** The configuration of a pane's scene (CMCP 2 panel, dock, float): its own scene next to the main one, drawn by the pane's host, no text port. */
-export const paneScene = (key: string): string => `cmcp.pane.${key}`;
-export const isPaneScene = (id: string): boolean => id.startsWith('cmcp.pane.');
-export function paneSceneOp(scene: string, w: number, h: number, bg: string): GfxOp {
-  return { op: 'scene', scene, open: true, w, h, bg, dock: 'full', fit: 'contain', margin: [0, 0, 0, 0] };
 }

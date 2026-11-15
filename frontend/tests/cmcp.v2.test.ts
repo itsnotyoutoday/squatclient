@@ -77,11 +77,9 @@ const run = (scope: string, type: string) => {
 };
 
 describe('CMCP 2 screens', () => {
-  it('draws a world-scope context plain, without the ship frame, nav column or alert pill', () => {
+  it('draws a world-scope context as a page, not in the scene (no frame, no nav column, no alert pill)', () => {
     const { ids } = run('world', 'world.place');
-    expect(ids.has('cmcp.port')).toBe(true); // the text port is there
-    expect(ids.has('alertbtn')).toBe(false);
-    expect([...ids].some((i) => String(i).startsWith('nv.'))).toBe(false);
+    expect(ids.size).toBe(0); // nothing is drawn in the scene: the window shows the page
   });
 
   it('keeps the ship frame for a ship-scope context', () => {
@@ -91,29 +89,28 @@ describe('CMCP 2 screens', () => {
 });
 
 describe('CMCP 2 nav column', () => {
-  it('lists the layouts the context allows (not console tabs), marks the active one and switches by layout id', async () => {
+  it("shows the skin's own named tabs, as in v1: the layouts the context allows are matched to them by screen name", async () => {
     const { navShapesV2 } = await import('../src/cmcp/skinframe');
     const { SKINS } = await import('../src/cmcp/skins');
     const skin = SKINS.tng;
-    const prims = navShapesV2(
-      skin,
-      skin.pal.normal,
-      [
-        { id: 'fspace-klingon/navigation', title: 'Navigation', available: true, active: true },
-        { id: 'fspace-klingon/helm', title: 'Helm', available: true, active: false },
-        { id: 'fspace-klingon/off', title: 'Hidden', available: false, active: false },
-      ],
-      'nv.',
-    );
+    const prims = navShapesV2(skin, skin.pal.normal, [
+      { id: 'fspace-federation/operations', title: 'fspace-federation/operations', available: true, active: true },
+      { id: 'fspace-federation/tactical', title: '', available: true, active: false },
+      { id: 'fspace-federation/damage', title: '', available: true, active: false },
+      { id: 'fspace-federation/engineering', title: '', available: true, active: false },
+      { id: 'fspace-federation/security', title: '', available: true, active: false }, // the skin has no tab for it and it is not shown
+      { id: 'fspace-federation/off', title: '', available: false, active: false },
+    ], 'nv.');
     const buttons = prims.filter((p) => p.type === 'button');
-    const texts = buttons.map((b) => (b.props as { text: string }).text);
-    expect(texts).toHaveLength(2); // the unavailable one is not listed
-    expect(texts[0]).toMatch(/^NAVIGAT/);
-    expect(texts[1]).toBe('HELM');
-    expect(buttons.map((b) => b.target?.screen)).toEqual([
-      'fspace-klingon/navigation',
-      'fspace-klingon/helm',
-    ]);
+    expect(buttons.map((b) => (b.props as { text: string }).text)).toEqual(['POWER', 'TACTICAL', 'DAMAGE', 'OPS']); // the skin's order and names, never the layout ids
+    expect(buttons.at(-1)?.target?.screen).toBe('fspace-federation/operations');
     expect(prims.some((p) => p.id === 'nv.marker')).toBe(true);
+  });
+
+  it('a screen the skin has no tab for still gets one while it is shown', async () => {
+    const { navShapesV2 } = await import('../src/cmcp/skinframe');
+    const { SKINS } = await import('../src/cmcp/skins');
+    const prims = navShapesV2(SKINS.tng, SKINS.tng.pal.normal, [{ id: 'fspace-federation/command', title: 'Command Console', available: true, active: true }], 'nv.');
+    expect(prims.filter((p) => p.type === 'button').map((b) => (b.props as { text: string }).text)).toEqual(['COMMAND CONSOLE']);
   });
 });

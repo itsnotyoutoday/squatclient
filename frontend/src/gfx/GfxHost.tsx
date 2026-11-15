@@ -37,11 +37,6 @@ interface GfxCtx { get(session: string): SessionGfx; peek(session: string): Sess
 const GfxContext = createContext<GfxCtx | null>(null);
 
 /** The output area (the layout's text) subscribes to follow the port: it is moved by direct style writes, every frame. */
-/** The graphics runtime of a session (the pane hosts of CMCP 2 mount their scenes in it). */
-export function useGfxRuntime(session: string): GfxRuntime | null {
-  return useContext(GfxContext)?.get(session).rt ?? null;
-}
-
 export function useGfxPortStore(session: string): PortStore | null {
   return useContext(GfxContext)?.get(session).store ?? null;
 }
@@ -342,8 +337,7 @@ export function GfxPane({ sessionId }: { sessionId: string }) {
   const pane = usePane((st) => st.by[sessionId]);
   if (!g) return null;
   const { store } = g;
-  // a pane's scene (CMCP 2 panel, dock, float) belongs to its own host, not to the output area
-  const open = [...g.rt.slots.values()].filter((s) => s.scene.cfg.open && !s.scene.id.startsWith('cmcp.pane.'));
+  const open = [...g.rt.slots.values()].filter((s) => s.scene.cfg.open);
   if (open.length === 0) {
     return pane?.has && pane.off ? (
       <button type="button" className="cmcp-reopen" aria-label="Show the console screen" title="Show the console screen (Alt+S)" onClick={() => getActiveCmcp()?.setOff(sessionId, false)}>
