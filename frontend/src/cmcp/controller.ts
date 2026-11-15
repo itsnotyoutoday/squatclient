@@ -67,6 +67,8 @@ interface SessionState {
   lastW?: number;
   skinned: boolean;
   noticeId?: string;
+  closeWatch?: number;
+  closeScreen?: string;
   page?: number;
   pageFor?: string;
   pageCount?: number;
@@ -186,7 +188,28 @@ export class CmcpController {
   /** The X of the console window: Cobra.Context.Close for the active context (reason user). The screen stays until the game's update (the pop, or
    * Cobra.Console null) takes it away; a refusal or a missing answer arrives as a notice from the core. */
   requestClose(session: string): void {
+    const s = this.sess.get(session);
     void this.engine.cmcpClose(session, 'user').catch((e: unknown) => this.onError?.(String(e).replace(/^Error: /, '')));
+    if (!s?.tree) return;
+    // The game decides, but the player must never be stuck in a console layout: when the game refuses (the core posts an error notice "close"), does not
+    // answer (the core gives up after 5 s) or ignores the request, the screen is put away LOCALLY (the text gets the area; Alt+S or the Console button
+    // brings it back). A pop or Cobra.Console null from the game takes the screen away on its own before that.
+    const screen = s.tree.screen;
+    window.clearTimeout(s.closeWatch);
+    s.closeScreen = screen;
+    s.closeWatch = window.setTimeout(() => this.closeFallback(session, screen), 6500);
+  }
+
+  private closeFallback(session: string, screen: string): void {
+    const s = this.sess.get(session);
+    if (!s) return;
+    window.clearTimeout(s.closeWatch);
+    s.closeWatch = undefined;
+    s.closeScreen = undefined;
+    if (s.tree && s.tree.screen === screen && s.viewState !== 'off') {
+      this.setOff(session, true);
+      this.onHint?.('The game did not close this screen, so it is hidden here: the text has the whole window. Alt+S or the Console button brings it back.');
+    }
   }
 
   /** the widget column's pages (screens too big for one readable column): Alt+PageUp / Alt+PageDown or the pager buttons */
@@ -248,7 +271,10 @@ export class CmcpController {
     }
     s.lastRev = ui.rev;
     s.ui = ui;
+    // a refused close (the core's error notice) ends the wait at once: the screen is hidden locally
+    if (s.closeScreen && ui.notice?.id === 'close' && ui.notice.kind === 'error') this.closeFallback(ui.session, s.closeScreen);
     const t = ui.tree;
+    if (!t || (s.closeScreen && t.screen !== s.closeScreen)) { window.clearTimeout(s.closeWatch); s.closeWatch = undefined; s.closeScreen = undefined; }
     if (!t) { this.close(s); s.tree = null; usePane.getState().set(s.id, false, s.off); return; }
     s.viewState = t.view?.state ?? 'default';
     s.log = s.viewState === 'expanded';

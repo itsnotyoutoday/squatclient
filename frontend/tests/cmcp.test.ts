@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { GfxRuntime } from '../src/gfx/runtime';
 import { MockEngine } from '../src/api/mock';
@@ -185,6 +185,40 @@ describe('the controller', () => {
     // the game popped the context (Cobra.Console null): no tree, the scene goes away
     engine.pushCmcp({ ...ui, rev: ui.rev + 2, tree: null, console: undefined });
     expect(rtFor('s1').slot(SCENE).scene.cfg.open).toBe(false);
+  });
+  describe('the X never traps the player', () => {
+    beforeEach(() => vi.useFakeTimers());
+    afterEach(() => vi.useRealTimers());
+    const viewEvents = (engine: { cmcpCalls: { fn: string; args: unknown[] }[] }): unknown[][] => engine.cmcpCalls.filter((c) => c.fn === 'cmcpViewEvent').map((c) => c.args);
+    it('a game that never answers: after 6.5 s the console is put away locally', () => {
+      const { engine, ctl } = setup();
+      const hints: string[] = [];
+      ctl.onHint = (t) => hints.push(t);
+      engine.pushCmcp({ ...fx('damage'), session: 's1' });
+      ctl.handleGfxEvent('s1', { scene: SCENE, id: '#scene', event: 'close', x: 0, y: 0 });
+      vi.advanceTimersByTime(6000);
+      expect(viewEvents(engine)).toHaveLength(0); // the game still has time to answer
+      vi.advanceTimersByTime(600);
+      expect(viewEvents(engine).at(-1)).toContain('screen_toggle');
+      expect(hints.at(-1)).toMatch(/did not close this screen/);
+    });
+    it('a refusal (the core\'s error notice) puts it away at once', () => {
+      const { engine, ctl } = setup();
+      const ui = { ...fx('damage'), session: 's1' };
+      engine.pushCmcp(ui);
+      ctl.handleGfxEvent('s1', { scene: SCENE, id: '#scene', event: 'close', x: 0, y: 0 });
+      engine.pushCmcp({ ...ui, rev: ui.rev + 1, notice: { id: 'close', kind: 'error', state: 'done', text: 'The captain has the console' } });
+      expect(viewEvents(engine).at(-1)).toContain('screen_toggle');
+    });
+    it('a pop from the game before the wait ends needs no local hiding', () => {
+      const { engine, ctl } = setup();
+      const ui = { ...fx('damage'), session: 's1' };
+      engine.pushCmcp(ui);
+      ctl.handleGfxEvent('s1', { scene: SCENE, id: '#scene', event: 'close', x: 0, y: 0 });
+      engine.pushCmcp({ ...ui, rev: ui.rev + 1, tree: null, console: undefined });
+      vi.advanceTimersByTime(8000);
+      expect(viewEvents(engine)).toHaveLength(0);
+    });
   });
   it('a failed close request is reported', async () => {
     const { engine, ctl } = setup();
