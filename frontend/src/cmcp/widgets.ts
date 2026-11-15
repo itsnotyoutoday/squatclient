@@ -88,14 +88,76 @@ const frac = (v: unknown, max: unknown, dmax = 100): number | null => {
 
 type Draw = (p: Placed, ctx: Ctx, out: Prim[]) => void;
 
+/** Chamfered outline points of a rectangle (cut corners). */
+function chamfer(r: Rect, c: number): number[] {
+  return [r.x + c, r.y, r.x + r.w - c, r.y, r.x + r.w, r.y + c, r.x + r.w, r.y + r.h - c, r.x + r.w - c, r.y + r.h, r.x + c, r.y + r.h, r.x, r.y + r.h - c, r.x, r.y + c, r.x + c, r.y];
+}
+
+/** The frame of a widget group in the look of the theme (the Lua themes' families: tng LCARS, soft, klingon, romulan, tos, ferengi, ops).
+ * Decoration only: it is drawn behind the content and never takes events. Returns the inner content rectangle. */
 function panel(p: Placed, ctx: Ctx, out: Prim[], id: string, title?: string): Rect {
-  const r = p.rect;
-  out.push(rect(`${id}.bg`, r, tok(ctx, 'color.panel'), { r: radius(ctx), stroke: tok(ctx, 'color.dim'), strokeWidth: 1, opacity: 0.9 }));
-  if (title) {
-    out.push(text(`${id}.t`, r.x + 10, r.y + 14, title.toUpperCase(), 14, tok(ctx, 'color.accent'), { font: font(ctx, true), weight: '700', letterSpacing: 1 }));
-    return { x: r.x + 8, y: r.y + 28, w: r.w - 16, h: r.h - 34 };
+  const r = p.rect, th = ctx.tree.theme, acc = tok(ctx, 'color.accent'), pan = tok(ctx, 'color.panel'), dim = tok(ctx, 'color.dim'), a2 = tok(ctx, 'color.accent2');
+  const head = (x: number, y: number, col: string, size = 14, o: Record<string, unknown> = {}): void => {
+    if (title) out.push(text(`${id}.t`, x, y, title.toUpperCase(), size, col, { font: font(ctx, true), weight: '700', letterSpacing: 1, ...o }));
+  };
+  let inner: Rect = { x: r.x + 8, y: r.y + (title ? 28 : 8), w: r.w - 16, h: r.h - (title ? 34 : 16) };
+  switch (th) {
+    case 'klingon': {
+      out.push({ id: `${id}.bg`, type: 'polygon', props: { points: chamfer(r, 14).slice(0, -2), fill: pan, opacity: 0.95 } });
+      out.push({ id: `${id}.ln`, type: 'polyline', props: { points: chamfer(r, 14), stroke: acc, strokeWidth: 2, glow: 0.25 } });
+      out.push({ id: `${id}.spike`, type: 'polygon', props: { points: [r.x + 14, r.y + 24, r.x + 40, r.y + 24, r.x + 14, r.y + 44], fill: acc, opacity: 0.8 } });
+      head(r.x + 52, r.y + 14, acc, 15);
+      inner = { x: r.x + 12, y: r.y + (title ? 32 : 12), w: r.w - 24, h: r.h - (title ? 38 : 20) };
+      break;
+    }
+    case 'romulan': {
+      out.push({ id: `${id}.bg`, type: 'polygon', props: { points: chamfer(r, 8).slice(0, -2), fill: tok(ctx, 'color.bg'), opacity: 0.6 } });
+      out.push({ id: `${id}.ln`, type: 'polyline', props: { points: chamfer(r, 8), stroke: acc, strokeWidth: 1, glow: 0.6 } });
+      out.push({ id: `${id}.tick`, type: 'line', props: { x1: r.x + 8, y1: r.y + 26, x2: r.x + r.w - 8, y2: r.y + 26, stroke: a2, strokeWidth: 1, opacity: 0.5 } });
+      head(r.x + 12, r.y + 14, acc, 13, { letterSpacing: 3 });
+      break;
+    }
+    case 'tos': {
+      out.push(rect(`${id}.bg`, r, pan, { r: 10, opacity: 0.9 }));
+      out.push(rect(`${id}.band`, { x: r.x, y: r.y, w: r.w, h: 24 }, acc, { r: [10, 10, 0, 0] }));
+      head(r.x + 12, r.y + 13, tok(ctx, 'color.bg'), 14);
+      inner = { x: r.x + 8, y: r.y + 30, w: r.w - 16, h: r.h - 36 };
+      break;
+    }
+    case 'soft': {
+      out.push(rect(`${id}.bg`, r, tok(ctx, 'color.bg'), { r: 8, stroke: dim, strokeWidth: 1, opacity: 0.55 }));
+      if (title) {
+        head(r.x + 14, r.y + 15, acc, 14, { weight: '600' });
+        out.push(rect(`${id}.r1`, { x: r.x + 14, y: r.y + 26, w: Math.min(190, r.w - 28), h: 2 }, acc, { opacity: 0.9 }));
+        out.push(rect(`${id}.r2`, { x: r.x + 14, y: r.y + 31, w: Math.min(150, r.w - 28), h: 1.5 }, acc, { opacity: 0.55 }));
+      }
+      inner = { x: r.x + 12, y: r.y + (title ? 38 : 10), w: r.w - 24, h: r.h - (title ? 44 : 20) };
+      break;
+    }
+    case 'ferengi': {
+      out.push(rect(`${id}.bg`, r, pan, { r: 14, stroke: acc, strokeWidth: 2, opacity: 0.95 }));
+      out.push(rect(`${id}.in`, { x: r.x + 5, y: r.y + 5, w: r.w - 10, h: r.h - 10 }, '#00000000', { r: 10, stroke: dim, strokeWidth: 1 }));
+      for (const [cx, cy] of [[r.x + 10, r.y + 10], [r.x + r.w - 10, r.y + 10], [r.x + 10, r.y + r.h - 10], [r.x + r.w - 10, r.y + r.h - 10]]) out.push({ id: `${id}.o${cx}.${cy}`, type: 'circle', props: { x: cx, y: cy, r: 3, fill: acc, glow: 0.3 } });
+      head(r.x + r.w / 2, r.y + 17, acc, 15, { align: 'center' });
+      inner = { x: r.x + 12, y: r.y + (title ? 32 : 12), w: r.w - 24, h: r.h - (title ? 40 : 24) };
+      break;
+    }
+    case 'ops': {
+      out.push({ id: `${id}.bg`, type: 'polygon', props: { points: chamfer(r, 6).slice(0, -2), fill: pan, opacity: 0.92 } });
+      out.push({ id: `${id}.ln`, type: 'polyline', props: { points: chamfer(r, 6), stroke: dim, strokeWidth: 2 } });
+      out.push(rect(`${id}.stripe`, { x: r.x + 6, y: r.y, w: r.w - 12, h: 5 }, acc, { glow: 0.3 }));
+      head(r.x + 12, r.y + 18, tok(ctx, 'color.text'), 14);
+      inner = { x: r.x + 10, y: r.y + (title ? 30 : 12), w: r.w - 20, h: r.h - (title ? 36 : 22) };
+      break;
+    }
+    default: { // tng: LCARS rounded block with an accent elbow cap at the left
+      out.push(rect(`${id}.bg`, r, pan, { r: radius(ctx) * 1.5, stroke: dim, strokeWidth: 1, opacity: 0.9 }));
+      out.push({ id: `${id}.cap`, type: 'elbow', props: { x: r.x, y: r.y, w: 46, h: 26, corner: 'tl', ro: 14, ri: 5, bar: 8, side: 12, fill: acc } });
+      head(r.x + 54, r.y + 14, acc, 14);
+      inner = { x: r.x + 8, y: r.y + (title ? 30 : 8), w: r.w - 16, h: r.h - (title ? 36 : 16) };
+    }
   }
-  return { x: r.x + 6, y: r.y + 6, w: r.w - 12, h: r.h - 12 };
+  return inner;
 }
 
 const label: Draw = (p, ctx, out) => {
@@ -126,12 +188,13 @@ const barList: Draw = (p, ctx, out) => {
   const inner = panel(p, ctx, out, id, str(pr.label));
   const rows = entries(pr.rows);
   const rh = 26, nameW = Math.min(inner.w * 0.4, 190);
+  const tail = rows.some(([, v]) => typeof ((v ?? {}) as Record<string, unknown>).state === 'string') ? 150 : 64;
   rows.slice(0, Math.max(0, Math.floor(inner.h / rh))).forEach(([k, v], i) => {
     const y = inner.y + i * rh, o = (v ?? {}) as Record<string, unknown>;
     const pc = typeof o.pct === 'number' ? o.pct : typeof o.charge_pct === 'number' ? o.charge_pct : undefined;
     const f = pc !== undefined ? Math.max(0, Math.min(1, pc / 100)) : frac(o.cur, o.max);
     out.push(text(`${id}.r${k}.n`, inner.x + 4, y + rh / 2, k.replace(/_/g, ' ').toUpperCase(), 13, tok(ctx, 'color.text'), { font: font(ctx), weight: '600', maxWidth: nameW }));
-    const tr: Rect = { x: inner.x + nameW + 6, y: y + 5, w: inner.w - nameW - 150, h: rh - 10 };
+    const tr: Rect = { x: inner.x + nameW + 6, y: y + 5, w: Math.max(24, inner.w - nameW - tail), h: rh - 10 };
     out.push(rect(`${id}.r${k}.tr`, tr, tok(ctx, 'color.bg'), { r: 2, stroke: tok(ctx, 'color.dim'), strokeWidth: 1 }));
     if (f !== null) out.push(rect(`${id}.r${k}.f`, { ...tr, w: tr.w * f }, f < 0.35 ? tok(ctx, 'color.alert') : f < 0.7 ? tok(ctx, 'color.warn') : tone(ctx, undefined), { r: 2, glow: 0.1 }));
     const val = pc !== undefined ? `${Math.round(pc)}%` : typeof o.cur === 'number' ? `${cell(o.cur)}` : '-';
