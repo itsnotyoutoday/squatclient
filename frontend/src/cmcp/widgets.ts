@@ -125,13 +125,15 @@ const barList: Draw = (p, ctx, out) => {
   const rh = 26, nameW = Math.min(inner.w * 0.4, 190);
   rows.slice(0, Math.max(0, Math.floor(inner.h / rh))).forEach(([k, v], i) => {
     const y = inner.y + i * rh, o = (v ?? {}) as Record<string, unknown>;
-    const f = typeof o.pct === 'number' ? Math.max(0, Math.min(1, o.pct / 100)) : frac(o.cur, o.max);
+    const pc = typeof o.pct === 'number' ? o.pct : typeof o.charge_pct === 'number' ? o.charge_pct : undefined;
+    const f = pc !== undefined ? Math.max(0, Math.min(1, pc / 100)) : frac(o.cur, o.max);
     out.push(text(`${id}.r${k}.n`, inner.x + 4, y + rh / 2, k.replace(/_/g, ' ').toUpperCase(), 13, tok(ctx, 'color.text'), { font: font(ctx), weight: '600', maxWidth: nameW }));
-    const tr: Rect = { x: inner.x + nameW + 6, y: y + 5, w: inner.w - nameW - 70, h: rh - 10 };
+    const tr: Rect = { x: inner.x + nameW + 6, y: y + 5, w: inner.w - nameW - 150, h: rh - 10 };
     out.push(rect(`${id}.r${k}.tr`, tr, tok(ctx, 'color.bg'), { r: 2, stroke: tok(ctx, 'color.dim'), strokeWidth: 1 }));
     if (f !== null) out.push(rect(`${id}.r${k}.f`, { ...tr, w: tr.w * f }, f < 0.35 ? tok(ctx, 'color.alert') : f < 0.7 ? tok(ctx, 'color.warn') : tone(ctx, undefined), { r: 2, glow: 0.1 }));
-    const val = typeof o.pct === 'number' ? `${Math.round(o.pct)}%` : typeof o.cur === 'number' ? `${cell(o.cur)}` : '-';
-    out.push(text(`${id}.r${k}.v`, inner.x + inner.w - 4, y + rh / 2, val, 13, tok(ctx, 'color.dim'), { align: 'right', font: font(ctx) }));
+    const val = pc !== undefined ? `${Math.round(pc)}%` : typeof o.cur === 'number' ? `${cell(o.cur)}` : '-';
+    const st = typeof o.state === 'string' ? o.state : '';
+    out.push(text(`${id}.r${k}.v`, inner.x + inner.w - 4, y + rh / 2, st ? `${val} ${st}` : val, 13, tok(ctx, 'color.dim'), { align: 'right', font: font(ctx) }));
     if (pr.selectable === true && p.node.events?.includes('select')) {
       out.push({ id: `${id}.r${k}.hit`, type: 'rect', props: { x: inner.x, y, w: inner.w, h: rh, fill: '#00000000' }, events: ['click'], target: { path: p.node.path, event: 'select', value: k } });
     }
@@ -152,6 +154,8 @@ const table: Draw = (p, ctx, out) => {
   if (picker && cols.length === 0) cols = [{ key: 'cid', title: 'CID' }, { key: 'name', title: 'NAME' }, { key: 'distance_text', title: 'DIST' }];
   if (cols.length === 0) cols = [{ key: 'name', title: 'NAME' }];
   const rows = entries(pr.rows ?? pr.contacts);
+  // rows of a keyed map (facings, groups, components) are named by their key: show it unless a column already names the row
+  if (!Array.isArray(pr.rows) && !cols.some((c) => c.key === 'name' || c.key === 'cid' || c.key === '_key')) cols = [{ key: '_key', title: '' }, ...cols];
   const rh = 22, cw = inner.w / cols.length;
   cols.forEach((c, i) => out.push(text(`${id}.h${i}`, inner.x + i * cw + 4, inner.y + 10, c.title.toUpperCase(), 12, tok(ctx, 'color.dim'), { font: font(ctx), weight: '700', maxWidth: cw - 6 })));
   const selected = pr.selected === undefined || pr.selected === null ? null : String(pr.selected);
