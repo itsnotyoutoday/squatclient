@@ -23,6 +23,12 @@ import (
 //go:embed all:frontend/dist
 var assets embed.FS
 
+// the build stamp, set by the Makefile with -ldflags (git commit, dirty flag and build time)
+var (
+	buildCommit = "unknown"
+	buildTime   = "unknown"
+)
+
 // The window icon on Linux (Windows and macOS take theirs from the executable and the app bundle,
 // which are built from the same file).
 //

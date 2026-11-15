@@ -11,8 +11,10 @@ dev:
 	$(WAILS) dev
 
 # Frontend first (so //go:embed all:frontend/dist is real), then the app bundle.
+BUILD_COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)$(shell git diff --quiet 2>/dev/null || echo -dirty)
+BUILD_TIME := $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 build: frontend
-	$(WAILS) build
+	$(WAILS) build -ldflags "-X main.buildCommit=$(BUILD_COMMIT) -X main.buildTime=$(BUILD_TIME)"
 
 frontend: $(FRONTEND)/node_modules
 	cd $(FRONTEND) && npm run build

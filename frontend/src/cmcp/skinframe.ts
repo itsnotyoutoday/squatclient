@@ -74,13 +74,15 @@ const lockText = (v: unknown): string => {
 
 /** values for the skin's text templates, from the protocol (Space.Ship.Status, the ship and the console) */
 export function templateVars(ui: CmcpUI, modeLabel: string): Record<string, string> {
+  // the "No ship" sentinel (ship id none) is the absence of a ship: it never becomes a ship name
+  if (ui.ship?.id === 'none') ui = { ...ui, ship: undefined };
   const st = (ui.status ?? ui.docs?.['Space.Ship.Status'] ?? {}) as Record<string, unknown>; // the pushed model carries `status`, a pulled one `docs`
   const hull = (st.hull ?? {}) as { cur?: number; max?: number };
   const pct = hull.max ? Math.round(((hull.cur ?? 0) / hull.max) * 100) : 0;
   const alert = String(st.alert ?? ui.alert ?? 'green');
   return {
     // the ship now: the console's own ship, then the live status, then the welcome's (which names the ship at login: "No ship" when none)
-    ship: (ui.ship?.name || String(st.name ?? '') || (ui.welcome?.ship && ui.welcome.ship.id !== 'none' ? ui.welcome.ship.name : '') || ui.ship?.class || ui.ship?.id || 'UNNAMED SHIP').toUpperCase(),
+    ship: (ui.ship?.name || String(st.name ?? '') || (ui.welcome?.ship && ui.welcome.ship.id !== 'none' && ui.welcome.ship.name !== 'No ship' ? ui.welcome.ship.name : '') || ui.ship?.class || ui.ship?.id || 'UNNAMED SHIP').toUpperCase(),
     class: (ui.ship?.class || String(st.class ?? '') || (ui.welcome?.ship && ui.welcome.ship.id !== 'none' ? ui.welcome.ship.class : '') || '').toUpperCase(),
     // the game's own name only: the server software's name (server.server) is never shown
     game: (ui.server?.game ?? '').toUpperCase(),

@@ -201,6 +201,7 @@ export class WailsEngine implements EngineAPI {
   soundMuteState = (session: string) => call<'' | 'global' | 'world'>('SoundMuteState', session);
   cmcpClose = (session: string, reason: 'user' | 'client') => call<void>('CmcpClose', session, reason);
   clientLog = (line: string) => call<void>('ClientLog', line);
+  buildInfo = () => call<{ commit: string; time: string }>('BuildInfo');
   audioSelfTestDir = () => call<string>('AudioSelfTestDir');
   audioSelfTestLive = () => call<string>('AudioSelfTestLive');
   cmcpReducedMotion = (on: boolean) => call<void>('CmcpReducedMotion', on);

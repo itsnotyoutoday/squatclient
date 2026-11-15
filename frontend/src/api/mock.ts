@@ -675,6 +675,9 @@ export class MockEngine implements EngineAPI {
   async clientLog(line: string): Promise<void> {
     this.clientLogs.push(line);
   }
+  async buildInfo(): Promise<{ commit: string; time: string }> {
+    return { commit: 'mock', time: 'mock' };
+  }
   async audioSelfTestDir(): Promise<string> {
     return '';
   }

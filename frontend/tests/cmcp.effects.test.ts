@@ -115,3 +115,16 @@ describe('the game name in the frame', () => {
     expect(templateVars(ui, 'X').game).toBe('');
   });
 });
+
+describe('the "No ship" sentinel', () => {
+  it('is never a ship name in the status strip', () => {
+    const ui = fx('sensors');
+    ui.ship = { id: 'none', name: 'No ship', epoch: 4 } as CmcpUI['ship'];
+    ui.status = undefined;
+    ui.docs = {};
+    ui.welcome = { ship: { id: 'none', name: 'No ship' } };
+    expect(templateVars(ui, 'X').ship).not.toMatch(/NO SHIP/);
+    ui.status = { name: 'ACS Resolute' } as never;
+    expect(templateVars(ui, 'X').ship).toBe('ACS RESOLUTE');
+  });
+});

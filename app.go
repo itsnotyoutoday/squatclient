@@ -59,6 +59,7 @@ func (a *App) startup(ctx context.Context) {
 		slog.Error("startup failed", "err", err)
 		return
 	}
+	svc.ClientLog("start: build " + buildCommit + " " + buildTime)
 	svc.Start()
 }
 
@@ -495,4 +496,9 @@ func tfRestrictFromEnv() tfengine.Restrict {
 		return tfengine.RestrictShell // a typo must not loosen the policy
 	}
 	return r
+}
+
+// BuildInfo says which build is running (git commit, dirty flag, build time), for Settings > About and the first line of client.log.
+func (a *App) BuildInfo() map[string]string {
+	return map[string]string{"commit": buildCommit, "time": buildTime}
 }

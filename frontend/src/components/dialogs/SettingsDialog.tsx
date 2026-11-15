@@ -10,6 +10,15 @@ import { useThemeInUse } from '../../cmcp/pane';
 import { useSoundMute } from '../../state/soundMute';
 import { getAudioEngine, useAudioStats } from '../../cmcp/audio';
 
+/** Settings > About: which build is running (git commit and build time). */
+function BuildStamp() {
+  const engine = useUi((s) => s.engine);
+  const [b, setB] = useState<{ commit: string; time: string } | null>(null);
+  useEffect(() => { void engine?.buildInfo().then(setB).catch(() => undefined); }, [engine]);
+  if (!b) return null;
+  return <p className="hint" aria-label="Build">About: build {b.commit}, built {b.time}</p>;
+}
+
 /** Which console theme is drawn now and where it came from: built in, downloaded from the game, or plain. */
 function ThemeInUse() {
   const t = useThemeInUse();
@@ -335,6 +344,7 @@ export function SettingsDialog() {
           </select>
         </Field>
         <ThemeInUse />
+        <BuildStamp />
         <SoundDiagnostics />
         <Field label="Sound era" hint="Which set of sounds to use for your own recordings. Empty = what the game or the ship's theme suggests.">
           <select aria-label="Sound era" value={settings.soundEra} onChange={(e) => update({ soundEra: e.target.value })}>

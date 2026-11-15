@@ -676,6 +676,8 @@ export interface EngineAPI {
   cmcpReducedMotion(on: boolean): Promise<void>;
   /** a line of the web view's own diagnostics for client.log in the config folder */
   clientLog(line: string): Promise<void>;
+  /** which build is running: git commit ("-dirty" with uncommitted changes) and build time */
+  buildInfo(): Promise<{ commit: string; time: string }>;
   /** the developer sound self-test folder ("" in a normal run) */
   audioSelfTestDir(): Promise<string>;
   /** developer live self-test script ("host:port|command|command"), "" in a normal run */
