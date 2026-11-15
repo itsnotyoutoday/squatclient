@@ -5,7 +5,7 @@ import (
 	"math"
 	"sync/atomic"
 
-	"github.com/itsnotyoutoday/cmcp/audio"
+	"github.com/itsnotyoutoday/cmcp/go/audio"
 )
 
 // A recipe (spec 9.6) with every parameter mapping evaluated by the shared core and the `vary` ranges drawn from mulberry32, so

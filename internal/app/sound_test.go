@@ -1,7 +1,7 @@
 package app
 
 import (
-	"github.com/itsnotyoutoday/cmcp/audio"
+	"github.com/itsnotyoutoday/cmcp/go/audio"
 	"net/http"
 	"net/http/httptest"
 	"os"

@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/itsnotyoutoday/cmcp/msg"
-	cs "github.com/itsnotyoutoday/cmcp/session"
+	"github.com/itsnotyoutoday/cmcp/go/msg"
+	cs "github.com/itsnotyoutoday/cmcp/go/session"
 	"github.com/itsnotyoutoday/squatClientDaemon/pkg/engine"
 	"github.com/itsnotyoutoday/squatclient/internal/config"
 )

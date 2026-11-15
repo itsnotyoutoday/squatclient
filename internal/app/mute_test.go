@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/itsnotyoutoday/cmcp/msg"
+	"github.com/itsnotyoutoday/cmcp/go/msg"
 	"github.com/itsnotyoutoday/squatClientDaemon/pkg/testutil/fakemush"
 
 	"github.com/itsnotyoutoday/squatclient/internal/config"

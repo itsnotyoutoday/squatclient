@@ -15,8 +15,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/itsnotyoutoday/cmcp/audio"
-	"github.com/itsnotyoutoday/cmcp/msg"
+	"github.com/itsnotyoutoday/cmcp/go/audio"
+	"github.com/itsnotyoutoday/cmcp/go/msg"
 	"github.com/itsnotyoutoday/squatClientDaemon/pkg/engine"
 )
 
