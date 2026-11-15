@@ -33,6 +33,8 @@ type World struct {
 	// GameType overrides detection of the kind of game (see engine.GameKinds: pennmush, cobramush,
 	// circlemud, evennia, lambdamoo...; "other" = something else). Empty means detect.
 	GameType string `json:"gameType,omitempty"`
+	// SoundMuted mutes this world's sound (the speaker button, the tab menu); the global soundMuted setting mutes every world.
+	SoundMuted bool `json:"soundMuted,omitempty"`
 }
 
 // Squatter is a remote daemon entry (stored now, used when squatter

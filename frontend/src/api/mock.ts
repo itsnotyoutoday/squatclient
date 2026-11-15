@@ -657,6 +657,17 @@ export class MockEngine implements EngineAPI {
   async cmcpViewport(session: string, widthPx: number, scale: number, monoPx: number): Promise<void> {
     this.cmcpCall('cmcpViewport', session, widthPx, scale, monoPx);
   }
+  /** per-session world mutes of the mock (the global one is the soundMuted setting) */
+  worldMuted: Record<string, boolean> = {};
+  async setWorldSoundMuted(session: string, muted: boolean): Promise<void> {
+    this.worldMuted[session] = muted;
+    this.cmcpCall('setWorldSoundMuted', session, muted);
+    this.emit('sound-mute', { session, muted: await this.soundMuteState(session) });
+  }
+  async soundMuteState(session: string): Promise<'' | 'global' | 'world'> {
+    if (this.settings.soundMuted) return 'global';
+    return this.worldMuted[session] ? 'world' : '';
+  }
   async cmcpReducedMotion(on: boolean): Promise<void> {
     this.cmcpCall('cmcpReducedMotion', String(on));
   }

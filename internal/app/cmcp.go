@@ -33,6 +33,9 @@ func (s *Service) version() string { return "dev" }
 // applyCmcpSettings (re)configures the engine from the settings; called at start and after SaveSettings.
 func (s *Service) applyCmcpSettings() {
 	st := s.cfg.Settings()
+	if s.mutedSeen.Swap(st.SoundMuted) != st.SoundMuted {
+		defer s.soundMuteChanged("") // the global mute changed: every session stops, or resumes its loops
+	}
 	if s.snd != nil {
 		s.snd.configure(st.SoundFolder)
 	}

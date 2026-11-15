@@ -1,3 +1,4 @@
+import { GlobalMuteButton } from '../SoundButtons';
 import { openHelp } from '../../help/command';
 import { toggleEditorView } from '../../lib/editor/view';
 import { useState } from 'react';
@@ -127,6 +128,7 @@ export function TabBar() {
         />
       )}
       <span className="grow" />
+      <GlobalMuteButton />
       <button
         type="button"
         className="tabadd"

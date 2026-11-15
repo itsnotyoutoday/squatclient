@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import type { KeyboardEvent } from 'react';
 import type { SessionInfo } from '../../api/types';
 import { useUi } from '../../state/stores';
+import { setWorldMuted, useSoundMute } from '../../state/soundMute';
 
 export interface TabMenuProps {
   session: SessionInfo;
@@ -48,6 +49,10 @@ export function TabMenu({ session: s, x, y, onClose, onCloseSession }: TabMenuPr
           },
         ]
       : [{ label: 'Save as world...', run: () => ui.openSessionSettings(s.id) }]),
+    {
+      label: useSoundMute.getState().by[s.id] === 'world' ? 'Unmute sound for this world' : 'Mute sound for this world',
+      run: () => void setWorldMuted(ui.engine, s.id, useSoundMute.getState().by[s.id] !== 'world', (m) => ui.toast('error', m)),
+    },
     'sep',
     { label: ended ? 'Dismiss' : 'Disconnect', run: () => onCloseSession(s.id) },
   ];

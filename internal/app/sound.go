@@ -34,6 +34,10 @@ const (
 type soundSvc struct {
 	s *Service
 
+	muteMu    sync.Mutex
+	quickMute map[string]bool                      // sessions without a saved world: muted for this run only
+	loops     map[string]map[string]*msg.SoundPlay // session -> key -> the looping sound that is meant to be playing (resumed when unmuted)
+
 	mu     sync.Mutex
 	folder string
 	files  map[string]bool    // relative paths (slash separated) of the local sound folder
@@ -43,7 +47,7 @@ type soundSvc struct {
 }
 
 func newSoundSvc(s *Service) *soundSvc {
-	ss := &soundSvc{s: s, eras: map[string]*audio.EraMap{}}
+	ss := &soundSvc{s: s, eras: map[string]*audio.EraMap{}, quickMute: map[string]bool{}, loops: map[string]map[string]*msg.SoundPlay{}}
 	if b, err := eraFS.ReadFile("sounddata/index.json"); err == nil {
 		if idx, err := audio.ParseEraIndex(b); err == nil {
 			ss.idx = *idx
@@ -300,8 +304,18 @@ func (s *Service) handleSoundNotes(session string, notes []engine.CmcpNote) {
 		}
 		switch {
 		case n.StopAll:
+			if s.snd != nil {
+				s.snd.noteLoop(session, nil, true, "")
+			}
 			s.emit("cmcp-audio", SoundMsg{Session: session, Op: "stopall", FadeMS: n.FadeMS})
 		case n.Stop != nil:
+			if s.snd != nil {
+				k := n.Stop.Key
+				if k == "" {
+					k = n.Stop.Event
+				}
+				s.snd.noteLoop(session, nil, true, k)
+			}
 			s.emit("cmcp-audio", SoundMsg{Session: session, Op: "stop", Key: n.Stop.Key, Event: n.Stop.Event, FadeMS: n.Stop.FadeMS})
 			if n.Stop.All {
 				s.emit("cmcp-audio", SoundMsg{Session: session, Op: "stopall", FadeMS: n.Stop.FadeMS})
@@ -317,6 +331,10 @@ func (s *Service) handleSoundNotes(session string, notes []engine.CmcpNote) {
 func (s *Service) playSound(session string, p *msg.SoundPlay) {
 	if s.snd == nil {
 		return
+	}
+	s.snd.noteLoop(session, p, false, "") // a loop is remembered even while muted: unmuting resumes it
+	if s.MuteState(session) != "" {
+		return // muted (globally or for this world): nothing is resolved and nothing plays
 	}
 	res := s.snd.resolve(session, p)
 	if res == nil || res.Kind == "silence" {
@@ -428,4 +446,115 @@ func (ss *soundSvc) recipeAlt(sid string, p *msg.SoundPlay) *Instr {
 		return in
 	}
 	return nil
+}
+
+// ---- mute: global (the soundMuted setting) or per world (World.SoundMuted; a connection without a saved world mutes for this run only)
+
+// MuteState says what mutes a session's sound: "global", "world" or "" (audible). Global wins when both are set.
+func (s *Service) MuteState(session string) string {
+	if s.cfg.Settings().SoundMuted {
+		return "global"
+	}
+	if s.sessionWorldMuted(session) {
+		return "world"
+	}
+	return ""
+}
+
+func (s *Service) sessionWorldMuted(session string) bool {
+	if si, err := s.eng.Session(session); err == nil && si.WorldID != "" {
+		if w, err := s.cfg.World(si.WorldID); err == nil {
+			return w.SoundMuted
+		}
+	}
+	if s.snd == nil {
+		return false
+	}
+	s.snd.muteMu.Lock()
+	defer s.snd.muteMu.Unlock()
+	return s.snd.quickMute[session]
+}
+
+// SetWorldSoundMuted mutes or unmutes one session's world: persisted on the saved world, else for this connection. Anything that
+// loops stops at once; unmuting resumes the loops that were meant to be playing (a red alert that is still on).
+func (s *Service) SetWorldSoundMuted(session string, muted bool) error {
+	si, err := s.eng.Session(session)
+	if err != nil {
+		return err
+	}
+	if si.WorldID != "" {
+		if w, err := s.cfg.World(si.WorldID); err == nil {
+			w.SoundMuted = muted
+			if _, err := s.cfg.SaveWorld(w); err != nil {
+				return err
+			}
+			s.syncWorlds()
+			s.soundMuteChanged(session)
+			return nil
+		}
+	}
+	if s.snd != nil {
+		s.snd.muteMu.Lock()
+		s.snd.quickMute[session] = muted
+		s.snd.muteMu.Unlock()
+	}
+	s.soundMuteChanged(session)
+	return nil
+}
+
+// soundMuteChanged applies the effective mute of one session (or every session when session is ""): stops its sounds when muted, resumes
+// the loops that are still meant to play when audible, and tells the web view.
+func (s *Service) soundMuteChanged(session string) {
+	ids := []string{session}
+	if session == "" {
+		ids = nil
+		for _, si := range s.eng.Sessions() {
+			ids = append(ids, si.ID)
+		}
+	}
+	for _, id := range ids {
+		st := s.MuteState(id)
+		s.emit("sound-mute", map[string]any{"session": id, "muted": st})
+		if st != "" {
+			s.emit("cmcp-audio", SoundMsg{Session: id, Op: "stopall", FadeMS: 100})
+			continue
+		}
+		if s.snd == nil {
+			continue
+		}
+		s.snd.muteMu.Lock()
+		var again []*msg.SoundPlay
+		for _, p := range s.snd.loops[id] {
+			again = append(again, p)
+		}
+		s.snd.muteMu.Unlock()
+		for _, p := range again {
+			s.playSound(id, p)
+		}
+	}
+}
+
+// noteLoop keeps track of the loops a session's game started and has not stopped (so unmuting can resume them).
+func (ss *soundSvc) noteLoop(session string, p *msg.SoundPlay, stop bool, key string) {
+	ss.muteMu.Lock()
+	defer ss.muteMu.Unlock()
+	if stop {
+		if key == "" {
+			delete(ss.loops, session)
+		} else if m := ss.loops[session]; m != nil {
+			delete(m, key)
+		}
+		return
+	}
+	if p == nil || !p.Loop {
+		return
+	}
+	k := p.Key
+	if k == "" {
+		k = p.Event
+	}
+	if ss.loops[session] == nil {
+		ss.loops[session] = map[string]*msg.SoundPlay{}
+	}
+	ss.loops[session][k] = p
 }

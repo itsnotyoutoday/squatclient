@@ -143,3 +143,21 @@ func (a *App) CmcpViewport(session string, widthPx, scale, monoPx float64) error
 	}
 	return s.CmcpViewport(session, widthPx, scale, monoPx)
 }
+
+// SetWorldSoundMuted mutes or unmutes the sound of one session's world (persisted on a saved world).
+func (a *App) SetWorldSoundMuted(session string, muted bool) error {
+	s, err := a.service()
+	if err != nil {
+		return err
+	}
+	return s.SetWorldSoundMuted(session, muted)
+}
+
+// SoundMuteState says what mutes a session: "global", "world" or "" (audible).
+func (a *App) SoundMuteState(session string) (string, error) {
+	s, err := a.service()
+	if err != nil {
+		return "", err
+	}
+	return s.MuteState(session), nil
+}

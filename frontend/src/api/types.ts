@@ -91,6 +91,8 @@ export interface WorldLogin {
 }
 
 export interface WorldConfig {
+  /** this world's sound is muted (the speaker button, the tab menu); the global soundMuted setting mutes every world */
+  soundMuted?: boolean;
   id: string;
   name: string;
   group?: string;
@@ -297,6 +299,7 @@ export interface EngineEvents {
   /** CMCP sounds, events and replies of a session (never coalesced). */
   'cmcp-notes': { session: string; notes: CmcpNote[] };
   'cmcp-pulse': CmcpPulse;
+  'sound-mute': { session: string; muted: '' | 'global' | 'world' };
   line: Line;
   session: SessionInfo;
   status: { session: string; fields: StatusField[] };
@@ -669,6 +672,10 @@ export interface EngineAPI {
   cmcpPackConsent(session: string, packId: string, allow: boolean): Promise<void>;
   cmcpThemeDoc(session: string, themeId: string): Promise<Record<string, unknown>>;
   cmcpReducedMotion(on: boolean): Promise<void>;
+  /** mute or unmute one session's world (persisted on a saved world, else for this connection) */
+  setWorldSoundMuted(session: string, muted: boolean): Promise<void>;
+  /** what mutes a session: 'global', 'world' or '' */
+  soundMuteState(session: string): Promise<'' | 'global' | 'world'>;
   cmcpViewport(session: string, widthPx: number, scale: number, monoPx: number): Promise<void>;
   /** A widget wrote a screen UI key ($ui.team). */
   cmcpSetUi(session: string, key: string, value: unknown): Promise<void>;

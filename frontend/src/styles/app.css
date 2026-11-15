@@ -1696,3 +1696,10 @@ h3.lay-panel-title {
 .cmcp-field[aria-invalid='true'] { border-color: #f55; }
 .gfx-close { position: absolute; top: 4px; right: 8px; pointer-events: auto; background: rgba(0, 0, 0, 0.55); color: #fc9; border: 1px solid #fc9; border-radius: 4px; width: 26px; height: 26px; cursor: pointer; z-index: 2; }
 .gfx-msg { position: absolute; left: 12px; top: 12px; padding: 8px 12px; background: #200; color: #fcc; border: 1px solid #a44; border-radius: 4px; pointer-events: auto; }
+
+/* sound mute buttons: the global speaker in the tab strip, the world's speaker next to the connection state */
+.soundbtn { display: inline-flex; align-items: center; justify-content: center; }
+.soundbtn.muted { color: var(--danger, #e5534b); }
+.statusbar button.seg.soundbtn { background: transparent; border: 0; padding: 0 6px; color: inherit; cursor: pointer; }
+.statusbar button.seg.soundbtn.globalmuted { opacity: 0.55; }
+.statusbar button.seg.soundbtn:focus-visible, .soundbtn:focus-visible { outline: 2px solid var(--accent, #4aa3ff); outline-offset: 1px; }

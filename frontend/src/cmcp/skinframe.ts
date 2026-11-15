@@ -6,6 +6,13 @@ const ROLES = new Set(['p', 's', 't', 'q', 'x', 'r', 'k', 'bg']);
 /** palette role or literal colour */
 export const col = (c: Colour | string | undefined, pal: Pal): string => (c === undefined ? '#00000000' : c === 'none' ? '#00000000' : ROLES.has(c) ? pal[c as Role] : c);
 
+/** the lock may be a contact id, a name or an object ({cid, name}) */
+const lockText = (v: unknown): string => {
+  if (!v) return '0';
+  if (typeof v === 'object') { const o = v as { name?: unknown; cid?: unknown; id?: unknown }; return String(o.name ?? o.cid ?? o.id ?? '0'); }
+  return String(v);
+};
+
 /** values for the skin's text templates, from the protocol (Space.Ship.Status, the ship and the console) */
 export function templateVars(ui: CmcpUI, modeLabel: string): Record<string, string> {
   const st = (ui.status ?? ui.docs?.['Space.Ship.Status'] ?? {}) as Record<string, unknown>; // the pushed model carries `status`, a pulled one `docs`
@@ -20,7 +27,7 @@ export function templateVars(ui: CmcpUI, modeLabel: string): Record<string, stri
     title: (ui.console?.name ?? ui.title ?? '').toUpperCase(),
     hull: String(pct),
     core: String(Math.round(Number(st.core_pct ?? 0))),
-    lock: st.lock ? String(st.lock) : '0',
+    lock: lockText(st.lock),
     alert: alert === 'green' ? 'OFF' : alert.toUpperCase(),
   };
 }

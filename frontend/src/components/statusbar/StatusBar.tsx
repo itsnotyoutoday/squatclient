@@ -1,4 +1,5 @@
 import { useSessions, useSettings, useUi } from '../../state/stores';
+import { WorldMuteButton } from '../SoundButtons';
 import { formatClock } from '../../lib/humanize';
 import {
   PRESETS,
@@ -46,6 +47,7 @@ export function StatusBar() {
     <footer className="statusbar" role="status" aria-label="Status">
       <span className="seg world">{cur ? cur.name : 'No session'}</span>
       {cur && <span className={`seg state ${cur.state}`}>{STATE_LABEL[cur.state]}</span>}
+      {cur && cur.state !== 'ended' && <WorldMuteButton session={cur.id} />}
       {cur?.link && cur.link !== 'attached' && (
         <span className={`seg link ${cur.link}`} title="State of the connection to the squatter">
           {LINK_LABEL[cur.link]}

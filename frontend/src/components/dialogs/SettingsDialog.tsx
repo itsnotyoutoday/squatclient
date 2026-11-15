@@ -7,6 +7,7 @@ import { DEFAULT_FONT } from '../../api/types';
 import { allThemes, parseThemeJson, useThemeVersion } from '../../themes';
 import { Dialog, Field } from './Dialog';
 import { useThemeInUse } from '../../cmcp/pane';
+import { useSoundMute } from '../../state/soundMute';
 import { getAudioEngine, useAudioStats } from '../../cmcp/audio';
 
 /** Which console theme is drawn now and where it came from: built in, downloaded from the game, or plain. */
@@ -20,13 +21,17 @@ function ThemeInUse() {
 /** "Sound: N played, last: event [source: file]", the audio context and the last problem, with a Test sound button. */
 function SoundDiagnostics() {
   const st = useAudioStats();
+  const fg = useSessions((x) => x.fg);
+  const mute = useSoundMute((x) => (fg ? x.by[fg] ?? '' : ''));
+  const globalMuted = useSettings((x) => x.settings.soundMuted);
+  const why = globalMuted ? 'global' : mute;
   const [res, setRes] = useState('');
   return (
     <div className="hint" aria-label="Sound diagnostics">
       <button type="button" onClick={() => setRes(getAudioEngine()?.test() ?? 'no sound engine (open a console first)')}>Test sound</button>
       {res && <span> {res === 'running' ? 'audio is running: you should hear a two-tone chirp' : `audio: ${res}`}</span>}
       <p>
-        Sound: {st.played} played{st.last ? `, last: ${st.last}` : ''} (audio {st.ctx}){st.failed ? `; ${st.failed} failed, last: ${st.lastError}` : ''}
+        Sound: {why ? `muted (${why}), ` : ''}{st.played} played{st.last ? `, last: ${st.last}` : ''} (audio {st.ctx}){st.failed ? `; ${st.failed} failed, last: ${st.lastError}` : ''}
         {st.dropped ? `; ${st.dropped} not played, last: ${st.lastDrop}` : ''}
       </p>
     </div>
