@@ -175,7 +175,7 @@ func (s *Service) Start() {
 	auto := func(via bool) {
 		for _, w := range s.cfg.Worlds() {
 			if w.AutoConnect && (w.Via != "" && w.Via != "direct") == via {
-				if _, err := s.Connect(ConnectTarget{WorldID: w.ID}); err != nil {
+				if _, err := s.Connect(ConnectTarget{WorldID: w.ID, NoFocus: true}); err != nil {
 					s.emit("notice", Notice{Level: "error", Text: fmt.Sprintf("auto-connect %s: %v", w.Name, err)})
 				}
 			}

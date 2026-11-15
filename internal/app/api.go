@@ -23,6 +23,8 @@ type ConnectTarget struct {
 	TLSVerify string `json:"tlsVerify,omitempty"`
 	Encoding  string `json:"encoding,omitempty"`
 	Via       string `json:"via,omitempty"` // "" / direct, or a squatter id
+	// NoFocus keeps the foreground where it is (the startup auto-connect uses it); by default a connection the user starts becomes the active tab.
+	NoFocus bool `json:"noFocus,omitempty"`
 }
 
 // ScrollbackOpts is `{beforeSeq?, limit}`.
@@ -135,7 +137,15 @@ func (s *Service) SaveSettings(in config.Settings) error {
 // Connect opens a session to a world (login automation + keychain password)
 // or to an ad-hoc host:port. It returns once the session exists; progress
 // arrives as `session` events.
-func (s *Service) Connect(t ConnectTarget) (si engine.SessionInfo, err error) {
+func (s *Service) Connect(t ConnectTarget) (engine.SessionInfo, error) {
+	si, err := s.connect(t)
+	if err == nil && !t.NoFocus {
+		_ = s.eng.SetForeground(si.ID) // a connection you start becomes the active tab (a session that merely appears, or an auto-connect, does not)
+	}
+	return si, err
+}
+
+func (s *Service) connect(t ConnectTarget) (si engine.SessionInfo, err error) {
 	s.dlog("net", "", "dial requested: world=%q host=%s port=%d tls=%v via=%q", t.WorldID, t.Host, t.Port, t.TLS, t.Via)
 	defer func() {
 		if err != nil {
