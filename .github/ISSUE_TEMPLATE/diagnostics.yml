@@ -1,0 +1,76 @@
+name: Bug report with diagnostics
+description: Report a problem. Help > Send Diagnostics Log... in SquatClient fills in the grey fields for you.
+title: "[alpha] "
+labels:
+  - bug
+  - alpha
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for testing SquatClient. **This repository is public: everything you write here, and every file you attach, can be read by anyone.**
+        The diagnostics log can contain text the game sent you. Open the zip and look before you attach it. If you would rather not attach it here, tick the box at the bottom.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you do, and what did SquatClient do?
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+    validations:
+      required: false
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: What to click or type, in order. Which game (and which kind of screen) it happened in.
+      placeholder: |
+        1. Connect to ...
+        2. ...
+    validations:
+      required: false
+  - type: input
+    id: build
+    attributes:
+      label: Build (filled in by SquatClient, leave as is)
+      description: The build stamp from Help > About.
+    validations:
+      required: false
+  - type: input
+    id: os
+    attributes:
+      label: Operating system (filled in by SquatClient, leave as is)
+    validations:
+      required: false
+  - type: input
+    id: mode
+    attributes:
+      label: Diagnostics mode and world type (filled in by SquatClient, leave as is)
+    validations:
+      required: false
+  - type: textarea
+    id: summary
+    attributes:
+      label: What SquatClient saw (filled in by SquatClient, leave as is)
+      description: The last error lines of the app's own log, with passwords and keys removed.
+      render: text
+    validations:
+      required: false
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: "Diagnostics log: drag the zip here (check it first: it can contain game text)"
+      description: The zip SquatClient saved for you (squatclient-diagnostics-...zip). Drag it into this box. Leave it empty if you would rather share it privately.
+    validations:
+      required: false
+  - type: checkboxes
+    id: private
+    attributes:
+      label: Private delivery
+      options:
+        - label: "I would rather share the diagnostics log privately (leave the file out; I can contact Nveid at startrekkin.net port 1701 to arrange another private way to deliver it)"
+          required: false

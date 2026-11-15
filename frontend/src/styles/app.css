@@ -1706,3 +1706,54 @@ h3.lay-panel-title {
 
 /* the ship-wide alert look when no console screen is up: an edge and a soft glow around the window, never over text or input */
 .alert-ambient { position: fixed; inset: 0; pointer-events: none; z-index: 40; transition: box-shadow 0.06s linear; }
+
+/* Send Diagnostics Log (docs/DIAGNOSTICS.md) */
+.diaglog-box {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin: 8px 0;
+}
+.diaglog-sizes {
+  border-collapse: collapse;
+  margin: 4px 0;
+}
+.diaglog-sizes td {
+  padding: 2px 14px 2px 0;
+}
+.diaglog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 8px 0;
+}
+.diaglog-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  list-style: none;
+  padding: 0;
+  margin: 0 0 12px;
+}
+.diaglog-steps li.on {
+  font-weight: 600;
+}
+.diaglog-steps li:not(.on) {
+  opacity: 0.65;
+}
+.diaglog-warn {
+  border-left: 3px solid var(--warn, #c9a227);
+  padding: 4px 10px;
+  margin: 10px 0;
+}
+.diaglog-note {
+  display: block;
+  margin-top: 8px;
+}
+.diaglog-note textarea {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 4px;
+}

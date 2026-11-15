@@ -1,3 +1,4 @@
+import { diagLog } from '../lib/diaglog';
 import { create } from 'zustand';
 import { DEFAULT_SETTINGS } from '../api/types';
 import type {
@@ -113,6 +114,7 @@ export type DialogId =
   | 'session'
   | 'about'
   | 'diagnostics'
+  | 'diaglog'
   | 'layouts'
   | 'tfworlds'
   | 'tfscripts'
@@ -153,6 +155,11 @@ export interface UiState {
   setSessionLayout(sessionId: string, layout: string): void;
   setView(v: AppView): void;
   openDialog(d: DialogId): void;
+  /** open Quick connect with the host and port filled in (nothing connects until the player presses Connect) */
+  openQuick(host: string, port: number): void;
+  quickPrefill: { host: string; port: number } | null;
+  /** the diagnostics log is part of this build (false when compiled out): the Help menu entry is hidden otherwise */
+  diagAvailable: boolean;
   setSearch(open: boolean): void;
   setWorlds(w: WorldConfig[]): void;
   setSquatters(s: SquatterConfig[]): void;
@@ -193,7 +200,16 @@ export const useUi = create<UiState>((set) => ({
       return { sessionLayouts: layout ? { ...rest, [id]: layout } : rest };
     }),
   setView: (view) => set({ view }),
-  openDialog: (dialog) => set({ dialog }),
+  quickPrefill: null,
+  diagAvailable: true,
+  openDialog: (dialog) => {
+    diagLog('ui', `dialog ${dialog ?? 'closed'}`);
+    set({ dialog });
+  },
+  openQuick: (host, port) => {
+    diagLog('ui', `dialog quick (prefilled ${host}:${port})`);
+    set({ quickPrefill: { host, port }, dialog: 'quick' });
+  },
   setSearch: (searchOpen) => set({ searchOpen }),
   setWorlds: (worlds) => set({ worlds }),
   setSquatters: (squatters) => set({ squatters }),

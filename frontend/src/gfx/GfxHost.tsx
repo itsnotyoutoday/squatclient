@@ -1,3 +1,4 @@
+import { diagLog, registerDiagProvider } from '../lib/diaglog';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { EngineAPI } from '../api/types';
@@ -186,7 +187,8 @@ export function GfxProvider({ engine, children }: { engine: EngineAPI; children:
     // sound: the Go side resolved what to play; this plays it, for the session in front only
     const audio = new CmcpAudio(new WebAudioBackend());
     setAudioEngine(audio);
-    audio.sink = (line) => { void engine.clientLog(line).catch(() => undefined); };
+    audio.sink = (line, session) => diagLog('web-audio', line, session ?? '');
+    const offProv = registerDiagProvider('audio', () => audio.snapshotLines());
     audio.onProblem = (text) => useUi.getState().toast('error', text);
     void engine.audioSelfTestLive().then((script) => { if (script) void runLiveSelfTest(engine, script); }).catch(() => undefined);
     void engine.audioSelfTestDir().then((dir) => { if (dir) void runAudioSelfTest(engine, ['red_alert.wav', 'red_alert.ogg', 'phaser.ogg', '/cmcp-audio/local/redalertandklaxons/tng_red_alert3.mp3']); }).catch(() => undefined);
@@ -204,7 +206,7 @@ export function GfxProvider({ engine, children }: { engine: EngineAPI; children:
     const offSet = useSettings.subscribe(applySettings);
     const offFg = useSessions.subscribe((st, prev) => { if (st.fg !== prev.fg) audio.setForeground(st.fg ?? ''); });
     void engine.listSessions().then((ss) => ss.forEach((x) => void c.sync(x.id))).catch(() => undefined);
-    return () => { off(); offAudio(); offSet(); offFg(); audio.stopAll(50); setAudioEngine(null); window.removeEventListener('pointerdown', unlock, true); window.removeEventListener('keydown', unlock, true); cmcp.current = null; };
+    return () => { off(); offProv(); offAudio(); offSet(); offFg(); audio.stopAll(50); setAudioEngine(null); window.removeEventListener('pointerdown', unlock, true); window.removeEventListener('keydown', unlock, true); cmcp.current = null; };
   }, [engine, get]);
   const peek = useCallback((session: string) => all.get(session), [all]);
   const drop = useCallback((session: string): void => {

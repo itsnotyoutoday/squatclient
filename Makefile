@@ -13,8 +13,16 @@ dev:
 # Frontend first (so //go:embed all:frontend/dist is real), then the app bundle.
 BUILD_COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)$(shell git diff --quiet 2>/dev/null || echo -dirty)
 BUILD_TIME := $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
+# Diagnostics policy (docs/DIAGNOSTICS.md): always (alpha default: logging is on from the first start) | optin | off (compiled out).
+# The repository and the private-delivery contact can be overridden too: make build REPO_SLUG=owner/name
+DIAG_MODE    ?= always
+REPO_SLUG    ?= itsnotyoutoday/squatclient
+CONTACT_NAME ?= Nveid
+CONTACT_HOST ?= startrekkin.net
+CONTACT_PORT ?= 1701
+BUILD_LDFLAGS = -X main.buildCommit=$(BUILD_COMMIT) -X main.buildTime=$(BUILD_TIME) -X main.diagnosticsMode=$(DIAG_MODE) -X main.repoSlug=$(REPO_SLUG) -X main.contactName=$(CONTACT_NAME) -X main.contactHost=$(CONTACT_HOST) -X main.contactPort=$(CONTACT_PORT)
 build: frontend
-	$(WAILS) build -ldflags "-X main.buildCommit=$(BUILD_COMMIT) -X main.buildTime=$(BUILD_TIME)"
+	$(WAILS) build -ldflags "$(BUILD_LDFLAGS)"
 
 frontend: $(FRONTEND)/node_modules
 	cd $(FRONTEND) && npm run build

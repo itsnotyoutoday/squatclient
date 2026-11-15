@@ -58,8 +58,10 @@ func (s *Service) SaveWorld(w config.World) (config.World, error) {
 	}
 	out, err := s.cfg.SaveWorld(w)
 	if err != nil {
+		s.dlog("error", "", "world save failed: %v", err)
 		return config.World{}, err
 	}
+	s.dlog("ui", "", "world saved: id=%s name=%q host=%s:%d tls=%v new=%v", out.ID, out.Name, out.Host, out.Port, out.TLS, old == nil)
 	s.syncWorlds()
 	s.afterSaveWorld(old, out) // a world routed through TinyFugue is a TinyFugue world record too
 	if old != nil && old.Name != out.Name {
@@ -78,6 +80,7 @@ func (s *Service) DeleteWorld(id string) error {
 	if err := s.cfg.DeleteWorld(id); err != nil {
 		return err
 	}
+	s.dlog("ui", "", "world deleted: id=%s name=%q", id, gone.Name)
 	if err := s.sec.Delete(secrets.WorldKey(id)); err != nil {
 		s.log.Warn("delete secret", "world", id, "err", err)
 	}
@@ -113,9 +116,12 @@ func (s *Service) GetSettings() (config.Settings, error) { return s.cfg.Settings
 // change at runtime (advertised capabilities). scrollbackLines applies to
 // sessions opened after the next app start.
 func (s *Service) SaveSettings(in config.Settings) error {
+	before := s.cfg.Settings()
 	if err := s.cfg.SaveSettings(in); err != nil {
+		s.dlog("error", "", "settings save failed: %v", err)
 		return err
 	}
+	s.logSettingsChange(before, s.cfg.Settings())
 	s.eng.SetCaps(capsFor(s.cfg.Settings()))
 	s.eng.SetAutoReconnectSquatters(s.cfg.Settings().AutoReconnectSquatters)
 	s.eng.SetShowGagged(s.cfg.Settings().ShowGagged)
@@ -129,7 +135,15 @@ func (s *Service) SaveSettings(in config.Settings) error {
 // Connect opens a session to a world (login automation + keychain password)
 // or to an ad-hoc host:port. It returns once the session exists; progress
 // arrives as `session` events.
-func (s *Service) Connect(t ConnectTarget) (engine.SessionInfo, error) {
+func (s *Service) Connect(t ConnectTarget) (si engine.SessionInfo, err error) {
+	s.dlog("net", "", "dial requested: world=%q host=%s port=%d tls=%v via=%q", t.WorldID, t.Host, t.Port, t.TLS, t.Via)
+	defer func() {
+		if err != nil {
+			s.dlog("error", "", "dial failed: %v", err)
+		} else {
+			s.dlog("net", si.ID, "dial: session %s opened for %q", si.ID, si.Name)
+		}
+	}()
 	if t.WorldID != "" {
 		w, err := s.cfg.World(t.WorldID)
 		if err != nil {
@@ -177,10 +191,16 @@ func (s *Service) Connect(t ConnectTarget) (engine.SessionInfo, error) {
 }
 
 // Disconnect closes a session's connection (it stays listed, ended).
-func (s *Service) Disconnect(id string) error { return s.eng.Disconnect(id) }
+func (s *Service) Disconnect(id string) error {
+	s.dlog("ui", id, "disconnect requested")
+	return s.eng.Disconnect(id)
+}
 
 // Dismiss removes a session (a `session-removed` event follows).
-func (s *Service) Dismiss(id string) error { return s.eng.Dismiss(id) }
+func (s *Service) Dismiss(id string) error {
+	s.dlog("ui", id, "session dismissed (tab closed)")
+	return s.eng.Dismiss(id)
+}
 
 // ListSessions returns all sessions.
 func (s *Service) ListSessions() ([]engine.SessionInfo, error) { return s.eng.Sessions(), nil }
@@ -189,6 +209,8 @@ func (s *Service) ListSessions() ([]engine.SessionInfo, error) { return s.eng.Se
 func (s *Service) Foreground(id string) error {
 	s.fgMu.Lock()
 	prev := s.uiFg
+	s.dlog("ui", id, "tab switch: foreground %s (%q) -> %s (%q)", prev, s.worldName(prev), id, s.worldName(id))
+	defer s.snapshotSoon("tab switch")
 	s.uiFg = id // events for this id are the UI's own choice: not echoed back
 	s.fgMu.Unlock()
 	err := s.eng.SetForeground(id)

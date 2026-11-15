@@ -1,3 +1,5 @@
+import { installDiagHooks, logEnvironment, logPageSnapshot, registerDiagProvider, setDiagEngine } from '../lib/diaglog';
+import { muteOf } from './soundMute';
 import type { EngineAPI, Line, SessionInfo } from '../api/types';
 import { getBuffer, dropBuffer, setBufferCap, useSessions, useSettings, useUi } from './stores';
 import { recordProblem } from '../lib/problems';
@@ -88,6 +90,23 @@ export async function startController(
   };
 
   const offs: (() => void)[] = [];
+  // the diagnostics log: the page's errors, its environment and its part of every snapshot (docs/DIAGNOSTICS.md)
+  try {
+    const info = await engine.diagInfo();
+    setDiagEngine(engine, info.available && info.enabled);
+    useUi.setState({ diagAvailable: info.available });
+    if (info.available) {
+      offs.push(installDiagHooks());
+      offs.push(registerDiagProvider('tabs', () => {
+        const s = useSessions.getState();
+        return [`fg=${s.fg ?? '(none)'} tabs=[${s.order.map((id) => `${id}:${JSON.stringify(s.sessions[id]?.name ?? '')}:${s.sessions[id]?.state ?? '?'}:mute=${muteOf(id) || 'audible'}`).join(', ')}] globalMute=${useSettings.getState().settings.soundMuted} dialog=${useUi.getState().dialog ?? 'none'}`];
+      }));
+      offs.push(engine.on('diag-snapshot', ({ why }) => logPageSnapshot(why)));
+      logEnvironment();
+    }
+  } catch {
+    setDiagEngine(null, false);
+  }
   offs.push(
     engine.on('line', (l) => {
       const arr = pending.get(l.session);
@@ -308,6 +327,9 @@ export function handleMenuAction(action: string, controller: Controller): void {
       break;
     case 'diagnostics':
       u.openDialog('diagnostics');
+      break;
+    case 'diaglog':
+      u.openDialog('diaglog');
       break;
     case 'layouts':
       u.openDialog('layouts');

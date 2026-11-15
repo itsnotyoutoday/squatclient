@@ -5,9 +5,13 @@ import { Dialog, Field } from './Dialog';
 
 export function QuickConnect() {
   const engine = useUi((s) => s.engine);
-  const close = (): void => useUi.getState().openDialog(null);
-  const [host, setHost] = useState('');
-  const [port, setPort] = useState('4201');
+  const close = (): void => {
+    useUi.setState({ quickPrefill: null });
+    useUi.getState().openDialog(null);
+  };
+  const prefill = useUi.getState().quickPrefill;
+  const [host, setHost] = useState(prefill?.host ?? '');
+  const [port, setPort] = useState(prefill ? String(prefill.port) : '4201');
   const [tls, setTls] = useState(false);
   const [err, setErr] = useState('');
   const portNum = Number(port);

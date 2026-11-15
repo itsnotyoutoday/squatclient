@@ -27,6 +27,7 @@ var assets embed.FS
 var (
 	buildCommit = "unknown"
 	buildTime   = "unknown"
+	version     = "0.1.0" // the release workflow sets it with -X main.version=...
 )
 
 // The window icon on Linux (Windows and macOS take theirs from the executable and the app bundle,
@@ -37,7 +38,6 @@ var appIcon []byte
 
 const (
 	appName = "SquatClient"
-	version = "0.1.0"
 	// bg matches --bg in frontend/src/styles/app.css (no white flash on start).
 	bgR, bgG, bgB = 20, 22, 26
 )

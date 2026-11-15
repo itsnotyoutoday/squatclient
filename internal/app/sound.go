@@ -154,6 +154,7 @@ type Instr struct {
 
 // SoundMsg is the "cmcp-audio" window event.
 type SoundMsg struct {
+	EvID     string  `json:"evId,omitempty"` // follows one Sound.Play through the diagnostics log
 	Session  string  `json:"session"`
 	Op       string  `json:"op"` // play stop stopall
 	Key      string  `json:"key,omitempty"`
@@ -346,21 +347,23 @@ func (s *Service) playSound(session string, p *msg.SoundPlay) {
 	if ev == "" {
 		ev = p.Sound
 	}
+	eid := fmt.Sprintf("e%d", s.d.soundEv.Add(1)) // one id follows this sound from the wire to the web view's "ended"
+	s.dlog("sound", session, "ev=%s wire Sound.Play event=%q key=%q loop=%v", eid, ev, p.Key, p.Loop)
 	if !s.eng.CmcpAboard(session) && (ev == "red_alert" || ev == "yellow_alert" || ev == "alert") {
-		s.soundLog("Sound.Play %q not played: the player is not aboard a ship", ev)
+		s.soundLog(eid, "Sound.Play %q not played: the player is not aboard a ship", ev)
 		return // the red-alert loop belongs to a ship the player is on (the core keeps no alert-sound state)
 	}
 	if st := s.MuteState(session); st != "" {
-		s.soundLog("Sound.Play %q not played: muted (%s)", ev, st)
+		s.soundLog(eid, "Sound.Play %q not played: muted (%s)", ev, st)
 		return // muted (globally or for this world): nothing is resolved and nothing plays
 	}
 	res := s.snd.resolve(session, p)
 	if res == nil || res.Kind == "silence" {
-		s.soundLog("Sound.Play %q resolved to nothing (no local file in %q, no pack sample or recipe, no bell)", ev, s.cfg.Settings().SoundFolder)
+		s.soundLog(eid, "Sound.Play %q resolved to nothing (no local file in %q, no pack sample or recipe, no bell)", ev, s.cfg.Settings().SoundFolder)
 		return
 	}
-	s.soundLog("Sound.Play %q -> %s", ev, describeInstr(res))
-	m := SoundMsg{Session: session, Op: "play", Key: p.Key, Event: ev, Category: categoryOf(ev), Volume: 1, Priority: 5, FadeMS: p.FadeMS, Loop: p.Loop, Res: res}
+	s.dlog("sound", session, "ev=%s resolved %q -> %s", eid, ev, describeInstr(res))
+	m := SoundMsg{EvID: eid, Session: session, Op: "play", Key: p.Key, Event: ev, Category: categoryOf(ev), Volume: 1, Priority: 5, FadeMS: p.FadeMS, Loop: p.Loop, Res: res}
 	if p.Volume != nil {
 		m.Volume = *p.Volume
 	}
@@ -370,7 +373,7 @@ func (s *Service) playSound(session string, p *msg.SoundPlay) {
 	if p.Priority != nil {
 		m.Priority = *p.Priority
 	}
-	s.soundLog("emitted cmcp-audio play session=%q key=%q event=%q", session, m.Key, ev)
+	s.dlog("sound", session, "ev=%s emitted cmcp-audio play key=%q event=%q volume=%.2f loop=%v", eid, m.Key, ev, m.Volume, m.Loop)
 	s.emit("cmcp-audio", m)
 }
 
@@ -391,7 +394,7 @@ func (s *Service) AudioHandler() http.Handler {
 			name, _ := url.PathUnescape(parts[1])
 			b, ct, err := s.eng.CmcpSample(sid, name)
 			if err != nil {
-				s.soundLog("sample %q of session %q could not be served: %v", name, sid, err)
+				s.soundLog("", "sample %q of session %q could not be served: %v", name, sid, err)
 				http.Error(w, err.Error(), http.StatusNotFound)
 				return
 			}
@@ -411,17 +414,6 @@ func (s *Service) AudioHandler() http.Handler {
 			http.NotFound(w, r)
 		}
 	})
-}
-
-// ClientLog appends a line of the web view's own diagnostics (a sound that could not play, the self-test) to client.log in the config folder, so a
-// problem inside the real WKWebView can be read without a web inspector.
-func (s *Service) ClientLog(line string) {
-	f, err := os.OpenFile(filepath.Join(s.cfg.Dir(), "client.log"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
-	if err != nil {
-		return
-	}
-	defer f.Close()
-	_, _ = f.WriteString(time.Now().Format("2006-01-02 15:04:05 ") + strings.ReplaceAll(strings.TrimSpace(line), "\n", " | ") + "\n")
 }
 
 // AudioSelfTestDir is the developer sound self-test folder (SQUATCLIENT_AUDIO_SELFTEST_DIR), "" in a normal run.
@@ -558,6 +550,12 @@ func (s *Service) soundMuteChanged(session string) {
 	}
 	for _, id := range ids {
 		st := s.MuteState(id)
+		eff := st
+		if eff == "" {
+			eff = "audible"
+		}
+		s.ClientLog(fmt.Sprintf("mute: session %s is now %s (global=%v)", id, eff, s.cfg.Settings().SoundMuted))
+		s.snapshotSoon("mute change")
 		s.emit("sound-mute", map[string]any{"session": id, "muted": st})
 		if st != "" {
 			s.emit("cmcp-audio", SoundMsg{Session: id, Op: "stopall", FadeMS: 100})
@@ -619,12 +617,40 @@ func (ss *soundSvc) wavSibling(sid, name string) string {
 	return ""
 }
 
-// soundLog writes a line of the sound path's decisions to client.log (at most 300 lines per run), so a silent client can be diagnosed from the file.
-func (s *Service) soundLog(format string, a ...any) {
-	if s.soundLines.Add(1) > 300 {
+// soundLog writes a line of the sound path's decisions to client.log. It never hides a CHANGE: an identical line (same event, same decision) is written at most
+// once per 10 s, with a count of the ones held back, so a busy game cannot fill the log and a mute, an unmute or a new decision always shows. State
+// changes (mutes, packs, the audio trace) do not go through here at all.
+func (s *Service) soundLog(eid, format string, a ...any) {
+	line := fmt.Sprintf(format, a...)
+	now := time.Now()
+	s.soundSeenMu.Lock()
+	if s.soundSeen == nil {
+		s.soundSeen = map[string]*soundSeen{}
+	}
+	e := s.soundSeen[line]
+	if e != nil && now.Sub(e.at) < 10*time.Second {
+		e.held++
+		s.soundSeenMu.Unlock()
 		return
 	}
-	s.ClientLog("sound: " + fmt.Sprintf(format, a...))
+	held := 0
+	if e != nil {
+		held = e.held
+	}
+	s.soundSeen[line] = &soundSeen{at: now}
+	if len(s.soundSeen) > 2000 { // bounded: forget the old ones
+		s.soundSeen = map[string]*soundSeen{line: {at: now}}
+	}
+	s.soundSeenMu.Unlock()
+	if held > 0 {
+		line = fmt.Sprintf("%s (+%d like it in the last 10 s)", line, held)
+	}
+	s.dlog("sound", "", "ev=%s %s", eid, line)
+}
+
+type soundSeen struct {
+	at   time.Time
+	held int
 }
 
 func describeInstr(in *Instr) string {

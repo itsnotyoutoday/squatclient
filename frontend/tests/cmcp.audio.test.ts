@@ -180,19 +180,39 @@ describe('sound diagnostics and the recipe fallback', () => {
   });
 });
 
-describe('the audio path is traced for client.log', () => {
-  it('writes what arrived, the foreground session and why a sound was not played', () => {
+describe('the audio path is traced for the diagnostics log', () => {
+  it('follows one event id from received to playing, and says why a sound was dropped with the compared values', () => {
+    const lines: string[] = [];
+    const sessions: (string | undefined)[] = [];
+    const { audio } = rig();
+    audio.sink = (l, s) => { lines.push(l); sessions.push(s); };
+    audio.setForeground('s1');
+    const recipe = { duration: 1, gain: 1, pan: 0, detuneCents: 0, voices: [] };
+    audio.handle({ evId: 'e7', session: 's2', op: 'play', event: 'red_alert', category: 'alert', volume: 1, priority: 5, res: { kind: 'recipe', recipe } }); // another session: dropped
+    audio.handle({ evId: 'e8', session: 's1', op: 'play', event: 'phaser_fire', category: 'weapon', volume: 1, priority: 5, res: { kind: 'recipe', recipe } });
+    const text = lines.join('\n');
+    expect(text).toMatch(/ev=e7 received play red_alert session=s2 fg=s1/);
+    expect(text).toMatch(/ev=e7 dropped red_alert: not the foreground session \(session=s2 fg=s1\)/);
+    expect(text).toMatch(/ev=e8 received play phaser_fire/);
+    expect(text).toMatch(/ev=e8 playing phaser_fire/);
+    expect(sessions).toContain('s2');
+  });
+
+  it('has no cap: every line of a long run is kept', () => {
     const lines: string[] = [];
     const { audio } = rig();
     audio.sink = (l) => lines.push(l);
     audio.setForeground('s1');
     const recipe = { duration: 1, gain: 1, pan: 0, detuneCents: 0, voices: [] };
-    audio.handle({ session: 's2', op: 'play', event: 'red_alert', category: 'alert', volume: 1, priority: 5, res: { kind: 'recipe', recipe } }); // another session: dropped
-    audio.handle({ session: 's1', op: 'play', event: 'phaser_fire', category: 'weapon', volume: 1, priority: 5, res: { kind: 'recipe', recipe } });
-    const text = lines.join('\n');
-    expect(text).toMatch(/audio: received play red_alert session=s2 fg=s1/);
-    expect(text).toMatch(/audio: NOT played red_alert: not the foreground session/);
-    expect(text).toMatch(/audio: playing phaser_fire/);
+    for (let i = 0; i < 400; i++) audio.handle({ evId: `e${i}`, session: 's2', op: 'play', event: 'x', category: 'weapon', volume: 1, priority: 5, res: { kind: 'recipe', recipe } });
+    expect(lines.filter((l) => l.includes('received')).length).toBe(400);
+    expect(lines.some((l) => l.startsWith('ev=e399 dropped'))).toBe(true);
+  });
+
+  it('describes its state for a snapshot', () => {
+    const { audio } = rig();
+    audio.setForeground('s1');
+    expect(audio.snapshotLines()[0]).toMatch(/^audio ctx=.* fg=s1 muted=false volume=\d+ voices=0\[\] loopsRemembered=\[\]$/);
   });
 });
 
@@ -203,5 +223,68 @@ describe('a session id of a gtf squatter ("sq1:fake")', () => {
     const recipe = { duration: 1, gain: 1, pan: 0, detuneCents: 0, voices: [] };
     audio.handle({ session: 'sq1:fake', op: 'play', event: 'red_alert', category: 'alert', volume: 1, priority: 5, res: { kind: 'recipe', recipe } });
     expect(played.some((p) => p.recipe)).toBe(true);
+  });
+});
+
+describe('mute, switching tabs and unmuting', () => {
+  const recipe = { duration: 1, gain: 1, pan: 0, detuneCents: 0, voices: [] };
+  const alert = (session: string): SoundMsg => ({ session, op: 'play', event: 'red_alert', key: 'alert', category: 'alert', loop: true, volume: 1, priority: 5, res: { kind: 'recipe', recipe, loop: true } });
+  const shot = (session: string): SoundMsg => ({ session, op: 'play', event: 'phaser_fire', category: 'weapon', volume: 1, priority: 5, res: { kind: 'recipe', recipe } });
+
+  it('a klaxon on tab A goes on when the player comes back to A (the game starts it only once)', () => {
+    const { audio, played } = rig();
+    audio.setForeground('A');
+    audio.handle(alert('A'));
+    expect(played).toHaveLength(1);
+    audio.setForeground('B'); // another world's tab: A's voices end
+    expect(audio.active).toBe(0);
+    audio.handle(alert('A')); // the game repeats nothing; but a re-send while away is dropped by the foreground rule
+    audio.setForeground('A');
+    expect(audio.active).toBe(1); // resumed
+    expect(played.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('a one-shot that arrived while away is not replayed, a loop the game stopped is not resumed', () => {
+    const { audio, played } = rig();
+    audio.setForeground('A');
+    audio.handle(alert('A'));
+    audio.setForeground('B');
+    audio.handle(shot('A')); // dropped (not in front)
+    audio.handle({ session: 'A', op: 'stop', key: 'alert', event: 'red_alert', volume: 1, priority: 5 }); // the game ended the alert meanwhile
+    const before = played.length;
+    audio.setForeground('A');
+    expect(played.length).toBe(before); // nothing resumes
+    expect(audio.active).toBe(0);
+  });
+
+  it('global mute then unmute: the alert that is still on sounds again; with the mute on nothing plays', () => {
+    const { audio, played } = rig();
+    audio.setForeground('A');
+    audio.handle(alert('A'));
+    audio.setSettings({ volume: 70, muted: true, categories: {} });
+    expect(audio.active).toBe(0);
+    audio.handle(shot('A'));
+    expect(played).toHaveLength(1); // muted: the shot did not play
+    audio.setSettings({ volume: 70, muted: false, categories: {} });
+    expect(audio.active).toBe(1); // the klaxon is back
+    audio.handle(shot('A'));
+    expect(played.length).toBeGreaterThanOrEqual(3); // and new sounds play
+  });
+
+  it('muting B does not touch A: the engine mutes per session (a stopall for B ends only B)', () => {
+    const { audio } = rig();
+    audio.setForeground('A');
+    audio.handle(alert('A'));
+    audio.handle({ session: 'B', op: 'stopall', volume: 1, priority: 5 });
+    expect(audio.active).toBe(1);
+  });
+
+  it('tab switches alone (no mute) keep the audio context usable: a sound plays after returning', () => {
+    const { audio, played } = rig();
+    audio.setForeground('A');
+    audio.setForeground('B');
+    audio.setForeground('A');
+    audio.handle(shot('A'));
+    expect(played).toHaveLength(1);
   });
 });

@@ -1,3 +1,4 @@
+import { diagLog } from '../lib/diaglog';
 import { create } from 'zustand';
 import type { EngineAPI } from '../api/types';
 
@@ -17,9 +18,12 @@ export const muteOf = (session: string | null | undefined): MuteState => (sessio
 export async function setWorldMuted(engine: EngineAPI | null, session: string, muted: boolean, onError: (e: string) => void): Promise<void> {
   if (!engine) return;
   try {
+    const before = muteOf(session) || 'audible';
     await engine.setWorldSoundMuted(session, muted);
     useSoundMute.getState().set(session, await engine.soundMuteState(session));
+    diagLog('ui', `world mute click: want ${muted ? 'muted' : 'audible'}, before=${before} after=${muteOf(session) || 'audible'}`, session);
   } catch (e) {
+    diagLog('error', `world mute click failed: ${String(e)}`, session);
     onError(String(e instanceof Error ? e.message : e));
   }
 }

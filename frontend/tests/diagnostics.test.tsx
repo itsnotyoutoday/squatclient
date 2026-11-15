@@ -236,7 +236,7 @@ describe('Diagnostics dialog', () => {
     await waitFor(() => expect(useSettings.getState().loaded).toBe(true));
     act(() => useUi.getState().openDialog(null));
     await userEvent.click(await screen.findByRole('menuitem', { name: 'Help' }));
-    await userEvent.click(screen.getByRole('menuitem', { name: /Diagnostics/ }));
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Diagnostics...' }));
     expect(await screen.findByRole('dialog', { name: 'Diagnostics' })).toBeInTheDocument();
     const box = (await screen.findByLabelText('Diagnostics report')) as HTMLTextAreaElement;
     await waitFor(() => expect(box.value).toContain('== Platform'));

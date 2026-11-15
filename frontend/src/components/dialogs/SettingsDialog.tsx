@@ -35,10 +35,16 @@ function SoundDiagnostics() {
   const globalMuted = useSettings((x) => x.settings.soundMuted);
   const why = globalMuted ? 'global' : mute;
   const [res, setRes] = useState('');
+  const diagAvailable = useUi((x) => x.diagAvailable);
   return (
     <div className="hint" aria-label="Sound diagnostics">
       <button type="button" onClick={() => setRes(getAudioEngine()?.test() ?? 'no sound engine (open a console first)')}>Test sound</button>
       {res && <span> {res === 'running' ? 'audio is running: you should hear a two-tone chirp' : `audio: ${res}`}</span>}
+      {diagAvailable && (
+        <button type="button" onClick={() => useUi.getState().openDialog('diaglog')}>
+          Diagnostics log...
+        </button>
+      )}
       <p>
         Sound: {why ? `muted (${why}), ` : ''}{st.played} played{st.last ? `, last: ${st.last}` : ''} (audio {st.ctx}){st.failed ? `; ${st.failed} failed, last: ${st.lastError}` : ''}
         {st.dropped ? `; ${st.dropped} not played, last: ${st.lastDrop}` : ''}

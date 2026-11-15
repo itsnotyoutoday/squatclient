@@ -59,7 +59,6 @@ func (a *App) startup(ctx context.Context) {
 		slog.Error("startup failed", "err", err)
 		return
 	}
-	svc.ClientLog("start: build " + buildCommit + " " + buildTime)
 	svc.Start()
 }
 
@@ -113,6 +112,7 @@ func (a *App) build(ctx context.Context) (*app.Service, *config.Store, error) {
 	}
 	libDirs = append(libDirs, work)
 	svc, err := app.New(app.Options{
+		Diag:    diagSetup(),
 		Config:  cfg,
 		Secrets: secrets.Keychain{},
 		Emit:    func(name string, payload any) { wailsruntime.EventsEmit(ctx, name, payload) },

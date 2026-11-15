@@ -23,6 +23,8 @@ export interface Instr {
   alt?: Instr;
 }
 export interface SoundMsg {
+  /** follows one Sound.Play through the diagnostics log (set by the Go side) */
+  evId?: string;
   session: string; op: 'play' | 'stop' | 'stopall'; key?: string; event?: string; category?: string;
   volume: number; pan?: number; priority: number; fadeMs?: number; loop?: boolean; res?: Instr;
 }
@@ -67,10 +69,30 @@ export class CmcpAudio {
 
   constructor(private be: Backend, private clock: Clock = realClock) {}
 
+  /** the loops the game started and has not stopped (a red-alert klaxon): per session, by key or event. A loop dropped because its session was not in front, or cut
+   * by a mute, is resumed when the session comes to the front again or the sound is unmuted: the game only starts it once. */
+  private loops = new Map<string, Map<string, SoundMsg>>();
+  private loopKey = (m: SoundMsg): string => m.key || m.event || '';
+  private isLoop = (m: SoundMsg): boolean => !!(m.loop || m.res?.loop || (m.res?.kind === 'staged' && m.res.stages?.some((x) => x.loop)));
+  private forget(session?: string, key?: string): void {
+    if (!session) { this.loops.clear(); return; }
+    if (!key) { this.loops.delete(session); return; }
+    this.loops.get(session)?.delete(key);
+  }
+  private resume(session: string): void {
+    if (this.settings.muted || this.settings.volume <= 0) return;
+    for (const m of [...(this.loops.get(session)?.values() ?? [])]) {
+      const k = this.loopKey(m);
+      if (![...this.voices.values()].some((v) => v.session === session && (v.key === k || v.event === k))) { this.trace(`resuming the loop ${k} of ${session}`); this.play(m); }
+    }
+  }
+
   setSettings(s: AudioSettings): void {
+    const was = !this.settings.muted && this.settings.volume > 0;
     this.settings = s;
     for (const v of this.voices.values()) v.handle?.setGain(this.gain(v));
     if (s.muted || s.volume <= 0) this.stopAll(100);
+    else if (!was && this.fg) this.resume(this.fg); // unmuted: the alert that is still on sounds again
   }
 
   /** Only the session in front makes sound; the others' voices end with a short fade. */
@@ -78,27 +100,35 @@ export class CmcpAudio {
     this.trace(`foreground session is now ${session || '(none)'}`);
     this.fg = session;
     for (const v of [...this.voices.values()]) if (v.session !== session) this.end(v, 200, false);
+    if (session) this.resume(session); // back on this tab: its loops go on
   }
 
   private catVol(c: string): number { const v = this.settings.categories[c]; return v === undefined ? 1 : Math.max(0, Math.min(1, v / 100)); }
   private gain(v: Voice): number { return v.base * (this.settings.volume / 100) * this.catVol(v.category); }
   get active(): number { return this.voices.size; }
+  /** the audio engine's state for a diagnostics snapshot: context state, foreground, mute and volume, the voices playing and the loops remembered per session */
+  snapshotLines(): string[] {
+    const voices = [...this.voices.values()].map((v) => `${v.session}:${v.event || v.key}${v.msg.loop || v.msg.res?.loop ? '(loop)' : ''}`).join(',');
+    const loops = [...this.loops.entries()].map(([s, m]) => `${s}:${[...m.keys()].join('|')}`).join(',');
+    return [`audio ctx=${this.be.state?.() ?? '?'} fg=${this.fg || '(none)'} muted=${this.settings.muted} volume=${this.settings.volume} voices=${this.voices.size}[${voices}] loopsRemembered=[${loops}]`];
+  }
   has(key: string): boolean { return [...this.voices.values()].some((v) => v.key === key || (!v.key && v.event === key)); }
 
   handle(m: SoundMsg): void {
-    this.trace(`received ${m.op} ${m.event ?? ''} session=${m.session} fg=${this.fg || '(none)'} kind=${m.res?.kind ?? '-'} ${this.describe(m.res)} vol=${this.settings.volume} muted=${this.settings.muted} ctx=${this.be.state?.() ?? '?'}`);
-    if (m.op === 'stopall') { this.stopAll(m.fadeMs ?? 150, m.session); return; }
-    if (m.op === 'stop') { this.stop(m.session, m.key ?? '', m.event ?? '', m.fadeMs ?? 120); return; }
+    this.trace(`received ${m.op} ${m.event ?? ''} session=${m.session} fg=${this.fg || '(none)'} kind=${m.res?.kind ?? '-'} ${this.describe(m.res)} vol=${this.settings.volume} muted=${this.settings.muted} ctx=${this.be.state?.() ?? '?'}`, m);
+    if (m.op === 'stopall') { this.forget(m.session); this.stopAll(m.fadeMs ?? 150, m.session); return; }
+    if (m.op === 'stop') { this.forget(m.session, m.key || m.event); this.stop(m.session, m.key ?? '', m.event ?? '', m.fadeMs ?? 120); return; }
+    if (this.isLoop(m)) { if (!this.loops.has(m.session)) this.loops.set(m.session, new Map()); this.loops.get(m.session)!.set(this.loopKey(m), m); }
     this.play(m);
   }
 
   play(m: SoundMsg): void {
     const res = m.res;
     if (!res || res.kind === 'silence') return;
-    if (m.session !== this.fg && this.fg !== '') { this.drop2(m, 'not the foreground session'); return; }
-    if (this.settings.muted || this.settings.volume <= 0) { this.drop2(m, 'sound is muted or the volume is 0'); return; }
+    if (m.session !== this.fg && this.fg !== '') { this.drop2(m, `not the foreground session (session=${m.session} fg=${this.fg})`); return; }
+    if (this.settings.muted || this.settings.volume <= 0) { this.drop2(m, `sound is muted or the volume is 0 (muted=${this.settings.muted} volume=${this.settings.volume})`); return; }
     const cat = m.category || 'system';
-    if (this.catVol(cat) <= 0) { this.drop2(m, `category ${cat} is off`); return; }
+    if (this.catVol(cat) <= 0) { this.drop2(m, `category ${cat} is off (volume ${this.settings.categories[cat] ?? 'default'})`); return; }
     if (res.kind === 'bell') { this.be.bell(); this.played(m, 'bell'); return; }
     const key = m.key ?? '';
     // the same key (or the same looped event) replaces what plays
@@ -107,7 +137,7 @@ export class CmcpAudio {
     }
     if (this.voices.size >= MAX_VOICES) {
       const worst = [...this.voices.values()].sort((a, b) => a.priority - b.priority || a.started - b.started)[0];
-      if (m.priority < worst.priority) { this.drop2(m, 'below every playing voice'); return; }
+      if (m.priority < worst.priority) { this.drop2(m, `below every playing voice (priority ${m.priority}, ${this.voices.size} voices)`); return; }
       this.end(worst, 30, false);
     }
     const v: Voice = { id: ++this.seq, session: m.session, key, event: m.event ?? '', category: cat, priority: m.priority, started: this.clock.now(), base: 1, handle: null, timers: [], onStop: res.onStop, stopping: false, msg: m };
@@ -129,29 +159,28 @@ export class CmcpAudio {
     return r.kind;
   }
   private played(m: SoundMsg, _kind: string): void {
-    this.trace(`playing ${m.event} (${this.describe(m.res)}) ctx=${this.be.state?.() ?? '?'}`);
+    this.trace(`playing ${m.event} (${this.describe(m.res)}) ctx=${this.be.state?.() ?? '?'}`, m);
     if (this.be.state?.() === 'suspended') this.problem('suspended', 'Sound failed: the web view keeps audio suspended until you click or press a key in the window');
     const st = useAudioStats.getState();
     st.set({ played: st.played + 1, last: `${m.event ?? '?'} [${this.describe(m.res)}]`, ctx: this.be.state?.() ?? st.ctx });
   }
   private drop2(m: SoundMsg, why: string): void {
     this.log.push(`drop ${m.event}: ${why}`);
-    this.trace(`NOT played ${m.event}: ${why}`);
+    this.trace(`dropped ${m.event}: ${why}`, m);
     const st = useAudioStats.getState();
     st.set({ dropped: st.dropped + 1, lastDrop: `${m.event ?? '?'}: ${why}` });
   }
   /** a file could not be loaded: say so, and play the pack's recipe for the event instead when there is one */
   /** told once with the exact reason when a sound cannot play ("Sound failed: ..."); also written to the app's client.log */
   onProblem?: (text: string) => void;
-  sink?: (line: string) => void;
+  sink?: (line: string, session?: string) => void;
   private told = new Set<string>();
-  private traced = 0;
-  /** one line of the audio path for client.log (at most 300 per run): what arrived, what was decided, how each file fared */
-  trace(line: string): void {
-    if (this.traced++ < 300) this.sink?.(`audio: ${line}`);
+  /** one line of the audio path for the diagnostics log (no cap: the log rolls over and has a size budget): what arrived, what was decided, how each file fared; ev= is the id the Go side gave this Sound.Play */
+  trace(line: string, m?: SoundMsg): void {
+    this.sink?.(`${m?.evId ? `ev=${m.evId} ` : ''}${line}`, m?.session);
   }
   private problem(key: string, text: string): void {
-    this.sink?.(text);
+    this.sink?.(`problem: ${text}`);
     if (this.told.has(key)) return;
     this.told.add(key);
     this.onProblem?.(text);
@@ -194,9 +223,9 @@ export class CmcpAudio {
     while (i.kind === 'url' && i.alt && /\.ogg(\?|$)/i.test(i.url ?? '') && this.be.canDecode && !this.be.canDecode('ogg')) i = i.alt;
     v.base = this.instrBase(m, i);
     const g = this.gain(v);
-    const onEnd = (): void => { if (!i.loop && !m.loop) this.drop(v); };
+    const onEnd = (): void => { if (!i.loop && !m.loop) { this.trace(`ended ${m.event ?? ''}`, m); this.drop(v); } };
     let h: Handle | null = null;
-    if (i.kind === 'url' && i.url) h = this.be.playUrl(i.url, { gain: fadeMs > 0 ? 0 : g, loop: !!(i.loop || m.loop), crossfadeMs: i.crossfadeMs ?? 0, pan: m.pan ?? 0, onEnd, onFail: (why) => this.failedUrl(v, i, m, why), trace: (l) => this.trace(l) });
+    if (i.kind === 'url' && i.url) h = this.be.playUrl(i.url, { gain: fadeMs > 0 ? 0 : g, loop: !!(i.loop || m.loop), crossfadeMs: i.crossfadeMs ?? 0, pan: m.pan ?? 0, onEnd, onFail: (why) => this.failedUrl(v, i, m, why), trace: (l) => this.trace(l, m) });
     else if (i.kind === 'recipe' && i.recipe) h = this.be.playRecipe(i.recipe, { gain: fadeMs > 0 ? 0 : g, pan: m.pan ?? 0, onEnd });
     if (h && fadeMs > 0) h.fadeIn(fadeMs, g);
     v.handle = h;
@@ -217,9 +246,9 @@ export class CmcpAudio {
       v.base = this.instrBase(m, st);
       const g = this.gain(v);
       const loop = st.loop ?? false;
-      const onEnd = (): void => { if (idx === stages.length - 1 && !loop) this.drop(v); };
+      const onEnd = (): void => { if (idx === stages.length - 1 && !loop) { this.trace(`ended ${m.event ?? ''} (stage ${idx + 1}/${stages.length})`, m); this.drop(v); } };
       let h: Handle | null = null;
-      if (st.kind === 'url' && st.url) h = this.be.playUrl(st.url, { gain: xf > 0 ? 0 : g, loop, crossfadeMs: st.crossfadeMs ?? 0, pan: m.pan ?? 0, onEnd, trace: (l) => this.trace(l) });
+      if (st.kind === 'url' && st.url) h = this.be.playUrl(st.url, { gain: xf > 0 ? 0 : g, loop, crossfadeMs: st.crossfadeMs ?? 0, pan: m.pan ?? 0, onEnd, trace: (l) => this.trace(l, m) });
       else if (st.kind === 'recipe' && st.recipe) h = this.be.playRecipe(st.recipe, { gain: xf > 0 ? 0 : g, pan: m.pan ?? 0, onEnd });
       else if (st.kind === 'bell') this.be.bell();
       if (h && xf > 0) h.fadeIn(xf, g);

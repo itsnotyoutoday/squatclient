@@ -2,6 +2,7 @@ package app
 
 import (
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/itsnotyoutoday/cmcp/go/msg"
@@ -153,5 +154,117 @@ func TestServiceHasAPackStore(t *testing.T) {
 	f := newFixture(t)
 	if !f.svc.Engine().HasCmcpPacks() {
 		t.Fatal("the service must give the engine a pack store (SetCmcpPacks)")
+	}
+}
+
+// The sound log never hides a change: a repeated identical decision is held back (counted), but a mute, an unmute or a different decision always shows.
+func TestSoundLogNeverHidesAChange(t *testing.T) {
+	f := newFixture(t)
+	read := func() string {
+		return f.diagText()
+	}
+	for i := 0; i < 500; i++ {
+		f.svc.soundLog("e1", "Sound.Play %q not played: muted (world)", "hail_incoming")
+	}
+	if n := strings.Count(read(), "not played: muted (world)"); n != 1 {
+		t.Fatalf("500 identical decisions should be one line, got %d", n)
+	}
+	// a different decision shows at once, however many came before
+	f.svc.dlog("sound", "", "ev=e2 resolved %q -> %s", "hail_incoming", "url /cmcp-audio/sample/s1/comm_beep.ogg")
+	if !strings.Contains(read(), "-> url /cmcp-audio/sample/s1/comm_beep.ogg") {
+		t.Fatal("the decision after an unmute is missing from the log")
+	}
+	// a mute transition always shows (it is not rate limited)
+	w, _ := f.svc.SaveWorld(config.World{Name: "A", Host: "127.0.0.1", Port: 1})
+	_ = w
+	f.svc.soundMuteChanged("")
+	f.svc.soundMuteChanged("")
+}
+
+// Two world tabs: muting A, looking at B, coming back to A and unmuting A makes A audible again with nothing stale; muting B never touches A; the global
+// mute wins and is lifted cleanly. Every change is in client.log.
+func TestMuteSequenceTwoWorlds(t *testing.T) {
+	f := newFixture(t)
+	srvA, srvB := fakemush.New(t), fakemush.New(t)
+	wa, _ := f.svc.SaveWorld(config.World{Name: "A", Host: srvA.Host(), Port: srvA.Port()})
+	wb, _ := f.svc.SaveWorld(config.World{Name: "B", Host: srvB.Host(), Port: srvB.Port()})
+	a, err := f.svc.Connect(ConnectTarget{WorldID: wa.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := f.svc.Connect(ConnectTarget{WorldID: wb.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.waitConnected(a.ID)
+	f.waitConnected(b.ID)
+	lib := filepath.Join(t.TempDir(), "lib")
+	writeFile(t, filepath.Join(lib, "a.mp3"), "x")
+	writeFile(t, filepath.Join(lib, "era-maps", "tng.json"), `{"format":1,"id":"tng","events":{"phaser_fire":[{"file":"a.mp3"}]}}`)
+	cur := f.cfg.Settings()
+	cur.SoundFolder = lib
+	if err := f.svc.SaveSettings(cur); err != nil {
+		t.Fatal(err)
+	}
+	plays := func(session string) int {
+		n := 0
+		for _, e := range f.events("cmcp-audio") {
+			if m, ok := e.Payload.(SoundMsg); ok && m.Op == "play" && m.Session == session {
+				n++
+			}
+		}
+		return n
+	}
+	play := func(session string) { f.svc.playSound(session, &msg.SoundPlay{Event: "phaser_fire"}) }
+	state := func(session string) string { return f.svc.MuteState(session) }
+
+	play(a.ID)
+	play(b.ID)
+	if plays(a.ID) != 1 || plays(b.ID) != 1 {
+		t.Fatalf("both audible: A %d B %d", plays(a.ID), plays(b.ID))
+	}
+	// mute A; B unaffected
+	if err := f.svc.SetWorldSoundMuted(a.ID, true); err != nil {
+		t.Fatal(err)
+	}
+	play(a.ID)
+	play(b.ID)
+	if state(a.ID) != "world" || state(b.ID) != "" || plays(a.ID) != 1 || plays(b.ID) != 2 {
+		t.Fatalf("muting A: A=%q B=%q plays A %d B %d", state(a.ID), state(b.ID), plays(a.ID), plays(b.ID))
+	}
+	// (the player looks at B and comes back to A: nothing in the engine changes) then unmutes A
+	if err := f.svc.SetWorldSoundMuted(a.ID, false); err != nil {
+		t.Fatal(err)
+	}
+	play(a.ID)
+	if state(a.ID) != "" || plays(a.ID) != 2 {
+		t.Fatalf("unmuting A: state %q plays %d", state(a.ID), plays(a.ID))
+	}
+	if w, _ := f.cfg.World(wa.ID); w.SoundMuted {
+		t.Fatal("the unmute must be stored on the world")
+	}
+	// global mute and back
+	st := f.cfg.Settings()
+	st.SoundMuted = true
+	if err := f.svc.SaveSettings(st); err != nil {
+		t.Fatal(err)
+	}
+	play(a.ID)
+	if state(a.ID) != "global" || state(b.ID) != "global" || plays(a.ID) != 2 {
+		t.Fatalf("global mute: A=%q B=%q plays %d", state(a.ID), state(b.ID), plays(a.ID))
+	}
+	st.SoundMuted = false
+	if err := f.svc.SaveSettings(st); err != nil {
+		t.Fatal(err)
+	}
+	play(a.ID)
+	if state(a.ID) != "" || plays(a.ID) != 3 {
+		t.Fatalf("after the global unmute: %q plays %d", state(a.ID), plays(a.ID))
+	}
+	logb := []byte(f.diagText())
+	for _, want := range []string{"mute: session " + a.ID + " is now world", "mute: session " + a.ID + " is now audible", "mute: session " + a.ID + " is now global"} {
+		if !strings.Contains(string(logb), want) {
+			t.Errorf("the diagnostics log lacks %q", want)
+		}
 	}
 }

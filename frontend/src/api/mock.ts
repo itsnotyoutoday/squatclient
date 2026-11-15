@@ -2,6 +2,10 @@ import type { CmcpEventResult, CmcpNote, CmcpPulse, CmcpUI } from '../cmcp/types
 import { DEFAULT_SETTINGS } from './types';
 import { GAME_TYPES } from '../lib/modules';
 import type {
+  DiagInfo,
+  DiagStatus,
+  DiagZipOptions,
+  DiagZipResult,
   ConnectTarget,
   LayoutBundle,
   LayoutInfo,
@@ -674,6 +678,46 @@ export class MockEngine implements EngineAPI {
   clientLogs: string[] = [];
   async clientLog(line: string): Promise<void> {
     this.clientLogs.push(line);
+  }
+  diagState = { enabled: true, mode: 'always' as 'always' | 'optin' | 'off', lines: [] as string[], zips: [] as string[], opened: [] as string[], cleared: 0 };
+  async diagInfo(): Promise<DiagInfo> {
+    return { mode: this.diagState.mode, available: this.diagState.mode !== 'off', enabled: this.diagState.enabled, build: 'mock-build', version: '0.0.0', os: 'darwin', arch: 'arm64', repoSlug: 'owner/repo', contactName: 'Someone', contactHost: 'mud.example.org', contactPort: 1701, folder: '/tmp/diagnostics' };
+  }
+  async diagStatus(): Promise<DiagStatus> {
+    const bytes = this.diagState.lines.join('\n').length;
+    return { info: await this.diagInfo(), log: { enabled: this.diagState.enabled, session: 's-now', sessions: [{ id: 's-now', current: true, bytes, segments: 1, redactions: 2 }, { id: 's-prev', current: false, bytes: 2048, segments: 2, redactions: 0 }], dropped: 0, budget: 100 << 20 }, redactions: 2 };
+  }
+  async diagSetEnabled(on: boolean): Promise<void> {
+    this.diagState.enabled = on;
+  }
+  async diagClear(): Promise<void> {
+    this.diagState.lines = [];
+    this.diagState.cleared++;
+  }
+  async diagView(n: number, filter: string): Promise<string[]> {
+    return this.diagState.lines.filter((l) => !filter || l.toLowerCase().includes(filter.toLowerCase())).slice(-n);
+  }
+  async diagLog(layer: string, session: string, text: string): Promise<void> {
+    if (this.diagState.enabled) this.diagState.lines.push(`[${layer}] ${session} ${text}`);
+  }
+  async diagSnapshot(): Promise<void> {
+    this.diagState.lines.push('[snapshot] now');
+  }
+  async diagSummary(): Promise<string[]> {
+    return ['2026-11-15 12:00:00.000 [error] boom'];
+  }
+  async diagBuildZip(o: DiagZipOptions, saveAs: boolean): Promise<DiagZipResult | null> {
+    if (saveAs && this.diagState.zips.includes('cancel')) return null;
+    const path = o.dest || '/Users/me/Downloads/squatclient-diagnostics-mock-build-2026-11-15.zip';
+    this.diagState.zips.push(path);
+    return { path, size: 4096, files: [{ name: 'README.txt', bytes: 10 }], redactions: 0 };
+  }
+  async diagReveal(_path: string): Promise<void> {}
+  async diagDeleteZip(path: string): Promise<void> {
+    this.diagState.zips = this.diagState.zips.filter((p) => p !== path);
+  }
+  async diagOpenUrl(url: string): Promise<void> {
+    this.diagState.opened.push(url);
   }
   async buildInfo(): Promise<{ commit: string; time: string }> {
     return { commit: 'mock', time: 'mock' };

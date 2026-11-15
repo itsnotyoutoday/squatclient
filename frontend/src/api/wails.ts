@@ -6,6 +6,10 @@ import type {
   LayoutStarter,
   ThemeFile,
   DiagReport,
+  DiagInfo,
+  DiagStatus,
+  DiagZipOptions,
+  DiagZipResult,
   EditAttrFlagResult,
   EditAttrLockResult,
   EditAttrOwnerResult,
@@ -201,6 +205,18 @@ export class WailsEngine implements EngineAPI {
   soundMuteState = (session: string) => call<'' | 'global' | 'world'>('SoundMuteState', session);
   cmcpClose = (session: string, reason: 'user' | 'client') => call<void>('CmcpClose', session, reason);
   clientLog = (line: string) => call<void>('ClientLog', line);
+  diagInfo = () => call<DiagInfo>('DiagLogInfo');
+  diagStatus = () => call<DiagStatus>('DiagLogStatus');
+  diagSetEnabled = (on: boolean) => call<void>('DiagLogSetEnabled', on);
+  diagClear = () => call<void>('DiagLogClear');
+  diagView = (n: number, filter: string) => call<string[]>('DiagLogView', n, filter).then((l) => l ?? []);
+  diagLog = (layer: string, session: string, text: string) => call<void>('DiagLogLine', layer, session, text);
+  diagSnapshot = () => call<void>('DiagLogSnapshot');
+  diagSummary = () => call<string[]>('DiagLogSummary').then((l) => l ?? []);
+  diagBuildZip = (o: DiagZipOptions, saveAs: boolean) => call<DiagZipResult | null>('DiagLogBuildZip', o, saveAs);
+  diagReveal = (path: string) => call<void>('DiagLogReveal', path);
+  diagDeleteZip = (path: string) => call<void>('DiagLogDeleteZip', path);
+  diagOpenUrl = (url: string) => call<void>('DiagLogOpenURL', url);
   buildInfo = () => call<{ commit: string; time: string }>('BuildInfo');
   audioSelfTestDir = () => call<string>('AudioSelfTestDir');
   audioSelfTestLive = () => call<string>('AudioSelfTestLive');

@@ -42,14 +42,17 @@ type Options struct {
 	OnWindow func(action string)
 	// FlushInterval batches event delivery (default 12ms).
 	FlushInterval time.Duration
+	// Diag is the build's diagnostics policy and project constants.
+	Diag DiagSetup
 }
 
 // Service implements the bound methods.
 type Service struct {
-	soundLines    atomic.Int64 // lines the sound path wrote to client.log this run
-	lastSoundCfg  atomic.Value // the last sound settings line written to client.log (string)
-	mutedSeen     atomic.Bool  // the last soundMuted setting applied (to notice a change)
-	reducedMotion atomic.Bool  // the web view's prefers-reduced-motion (CmcpReducedMotion)
+	soundSeenMu   sync.Mutex
+	soundSeen     map[string]*soundSeen // sound decisions already logged (see soundLog)
+	lastSoundCfg  atomic.Value          // the last sound settings line written to client.log (string)
+	mutedSeen     atomic.Bool           // the last soundMuted setting applied (to notice a change)
+	reducedMotion atomic.Bool           // the web view's prefers-reduced-motion (CmcpReducedMotion)
 	cfg           *config.Store
 	sec           secrets.Store
 	emit          Emitter
@@ -58,6 +61,7 @@ type Service struct {
 	quit          func()
 	win           func(string)
 	flush         time.Duration
+	d             diagState // the diagnostics log (diaglog.go)
 
 	ctx        context.Context
 	cancel     context.CancelFunc // stops squatter connects at shutdown
@@ -131,6 +135,7 @@ func New(o Options) (*Service, error) {
 	s.eng = engine.New(eo)
 	s.snd = newSoundSvc(s)
 	s.eng.SetCmcpLog(func(l string) { s.ClientLog(l) })
+	s.initDiag(o.Diag)
 	// the pack store: announced layout packs, themes and sound packs are fetched, verified and cached here (without it nothing a game announces is ever
 	// fetched and a client with no local sound folder is silent)
 	if ps, err := engine.OpenPackStore(filepath.Join(o.Config.Dir(), "packs")); err != nil {
@@ -156,6 +161,9 @@ func (s *Service) Engine() *engine.Engine { return s.eng }
 // Start subscribes to the engine, starts event delivery, loads scripts and
 // connects autoConnect worlds.
 func (s *Service) Start() {
+	s.logHeader()
+	s.DiagSnapshot("start")
+	s.startDiagSnapshots()
 	s.watchLayouts()
 	s.watchThemes()
 	ch, unsub := s.eng.Subscribe()
@@ -218,6 +226,7 @@ func (s *Service) Shutdown() {
 			s.unsub()
 			<-s.pumpDone
 		}
+		s.closeDiag()
 	})
 }
 
@@ -277,6 +286,7 @@ type statusPayload struct {
 // the lines of that batch (so unread counts are never ahead of the text).
 func (s *Service) pump(ch <-chan engine.Event) {
 	defer close(s.pumpDone)
+	defer s.recoverLog("event pump")
 	const maxBatch = 512
 	for first := range ch {
 		batch := []engine.Event{first}
@@ -322,6 +332,7 @@ func (s *Service) deliver(batch []engine.Event) {
 		case engine.EvGmcp:
 			s.emit("gmcp", gmcpPayload{Session: ev.Session, Package: ev.Gmcp.Package, Data: ev.Gmcp.Data})
 		case engine.EvSession:
+			s.noteSession(ev.Info)
 			if _, ok := pendInfo[ev.Session]; !ok {
 				order = append(order, "s:"+ev.Session)
 			}
@@ -336,6 +347,7 @@ func (s *Service) deliver(batch []engine.Event) {
 			}
 			pendStatus[ev.Session] = statusPayload{Session: ev.Session, Fields: f}
 		case engine.EvSessionRemoved:
+			s.dlog("session", ev.Session, "session removed")
 			s.dropGfx(ev.Session)        // a closed session's scenes go with it
 			delete(pendInfo, ev.Session) // never resurrect a removed session
 			delete(pendStatus, ev.Session)
@@ -343,6 +355,7 @@ func (s *Service) deliver(batch []engine.Event) {
 		case engine.EvForeground:
 			flush() // the session must be known to the UI before it is selected
 			s.fgMu.Lock()
+			s.dlog("ui", ev.Session, "foreground (engine) -> %s (ui had %s)", ev.Session, s.uiFg)
 			echo := s.uiFg == ev.Session // the UI's own choice coming back: do not bounce it
 			s.uiFg = ev.Session
 			s.fgMu.Unlock()

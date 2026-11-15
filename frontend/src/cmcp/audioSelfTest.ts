@@ -1,7 +1,7 @@
 import type { EngineAPI } from '../api/types';
 import { useAudioStats } from './audio';
 import { useSoundMute } from '../state/soundMute';
-import { useSettings } from '../state/stores';
+import { useSessions, useSettings } from '../state/stores';
 
 /** Developer self-test of the sound path inside the REAL web view (SQUATCLIENT_AUDIO_SELFTEST_DIR=<folder with wav/ogg samples> on a run of the app):
  * the audio context, which formats the view can decode, and for each file fetch + decodeAudioData through the app's own audio handler. Every line
@@ -49,26 +49,56 @@ export async function runAudioSelfTest(engine: EngineAPI, files: string[]): Prom
   window.addEventListener('keydown', onGesture, true);
 }
 
-/** The live self-test: connect to a game, run its commands, and log what the sound engine did (SQUATCLIENT_AUDIO_SELFTEST_LIVE="host:port|cmd|cmd..."). */
+/** The live self-test: connect to a game, run its commands, and log what the sound engine did (SQUATCLIENT_AUDIO_SELFTEST_LIVE="host:port|cmd|cmd...").
+ * Steps beginning with "!" drive the real UI: `!open host:port` (another session, in front), `!fg N` (the N-th session's tab), `!mute` / `!unmute` (the world
+ * speaker button of the status bar), `!global` (the toolbar speaker), `!wait N` (seconds), `!stats` (log the sound state of every session). */
 export async function runLiveSelfTest(engine: EngineAPI, script: string): Promise<void> {
   const log = (l: string): void => { void engine.clientLog(`selftest-live: ${l}`).catch(() => undefined); };
   const [addr, ...cmds] = script.split('|');
-  const [host, port] = addr.split(':');
   const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
+  const sessions: string[] = [];
+  const click = (label: string): boolean => {
+    const b = document.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`);
+    b?.click();
+    return !!b;
+  };
+  const stats = (tag: string): void => {
+    const st = useAudioStats.getState();
+    const fg = useSessions.getState().fg;
+    const mutes = sessions.map((id) => `${id}=${useSoundMute.getState().by[id] || 'audible'}`).join(' ');
+    log(`${tag}: played=${st.played} failed=${st.failed} dropped=${st.dropped} last="${st.last}" lastDrop="${st.lastDrop}" ctx=${st.ctx} fg=${fg} mute[${mutes}] global=${useSettings.getState().settings.soundMuted}`);
+  };
+  const open = async (a: string): Promise<string> => {
+    // "world:Name@host:port" saves a world first and connects through it (a saved world has an id: the mute is stored on it)
+    const m = /^world:([^@]+)@(.+)$/.exec(a);
+    const [host, port] = (m ? m[2] : a).split(':');
+    let target: { host: string; port: number; tls: boolean; worldId?: string } = { host, port: Number(port), tls: false };
+    if (m) {
+      const w = await engine.saveWorld({ id: '', name: m[1], host, port: Number(port), tls: false, tlsVerify: 'strict', encoding: 'utf-8', via: 'direct' } as never);
+      target = { ...target, worldId: w.id };
+    }
+    const si = await engine.connect(target as never);
+    sessions.push(si.id);
+    useSessions.getState().setFg(si.id);
+    log(`opened session ${si.id} (${a})`);
+    return si.id;
+  };
   try {
-    const si = await engine.connect({ host, port: Number(port), tls: false });
-    log(`connected session ${si.id}`);
+    await open(addr);
     await sleep(2500);
     for (const c of cmds) {
-      await engine.input(si.id, c);
-      log(`sent "${c}"`);
+      if (c.startsWith('!open ')) { await open(c.slice(6)); await sleep(2500); continue; }
+      if (c.startsWith('!fg ')) { const id = sessions[Number(c.slice(4))]; useSessions.getState().setFg(id); log(`!fg ${id}`); await sleep(800); stats('after fg'); continue; }
+      if (c === '!mute' || c === '!unmute') { log(`${c}: button ${click(c === '!mute' ? 'Mute sound for this world' : 'Unmute sound for this world') ? 'clicked' : 'NOT FOUND'}`); await sleep(1200); stats(`after ${c}`); continue; }
+      if (c === '!global') { log(`!global: button ${click('Mute all sound') || click('Unmute all sound') ? 'clicked' : 'NOT FOUND'}`); await sleep(1200); stats('after global'); continue; }
+      if (c.startsWith('!wait ')) { await sleep(Number(c.slice(6)) * 1000); stats('wait'); continue; }
+      if (c === '!stats') { stats('stats'); continue; }
+      const id = useSessions.getState().fg ?? sessions[0];
+      await engine.input(id, c);
+      log(`sent to ${id}: "${c}"`);
       await sleep(2000);
     }
-    for (let i = 0; i < 6; i++) {
-      await sleep(2500);
-      const st = useAudioStats.getState();
-      log(`sound stats: played=${st.played} failed=${st.failed} dropped=${st.dropped} last="${st.last}" lastError="${st.lastError}" lastDrop="${st.lastDrop}" ctx=${st.ctx} muteState="${useSoundMute.getState().by[si.id] ?? ''}" settings.muted=${useSettings.getState().settings.soundMuted} volume=${useSettings.getState().settings.soundVolume} folder=${useSettings.getState().settings.soundFolder}`);
-    }
+    stats('end');
   } catch (e) {
     log(`failed: ${String(e)}`);
   }

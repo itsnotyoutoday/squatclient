@@ -1,3 +1,4 @@
+import { diagLog } from '../lib/diaglog';
 import type { EngineAPI, GfxOp } from '../api/types';
 import type { GfxEventOut } from '../gfx/types';
 import type { GfxRuntime } from '../gfx/runtime';
@@ -80,8 +81,6 @@ interface SessionState {
 
 /** Draws the Go engine's bound CMCP screen trees into each session's graphics runtime and sends widget events back.
  * It evaluates nothing: bindings, fallbacks, enabled flags and actions all come from the shared core through the engine. */
-/** the debug trail is off unless localStorage 'squat-debug' is '1' (or the client runs with SQUAT_DEBUG=1: the core's own lines) */
-const dbgOn = (): boolean => { try { return localStorage.getItem('squat-debug') === '1'; } catch { return false; } };
 
 export class CmcpController {
   private sess = new Map<string, SessionState>();
@@ -107,7 +106,7 @@ export class CmcpController {
 
   private lastDbg = '';
   /** a line of the web view's debug trail for client.log (what the player did and what the view decided), next to the core's wire lines */
-  private dbg(msg: string): void { if (!dbgOn()) return; void this.engine.clientLog(`dbg ui: ${msg}`).catch(() => undefined); }
+  private dbg(msg: string): void { diagLog('ui', msg, msg.split(' ', 1)[0]); }
 
   /** The text view's state comes from the shared core through the engine (LOG and screen-off are its state machine); these ask it to toggle. */
   private viewEvent(session: string, ev: 'log_toggle' | 'screen_toggle'): void {
@@ -126,7 +125,7 @@ export class CmcpController {
   /** LOG: the text grows to about 80% of the height and the other panels fold into a summary strip, and back (animated). */
   toggleLog(session: string): void { this.viewEvent(session, 'log_toggle'); }
   /** Alt+] / Alt+[ : the next or previous screen of the console */
-  cycleScreen(session: string, dir: number): void { void this.engine.cmcpCycleScreen(session, dir).catch((err: unknown) => this.onError?.(String(err).replace(/^Error: /, ''))); }
+  cycleScreen(session: string, dir: number): void { this.dbg(`${session} screen cycle ${dir > 0 ? 'next' : 'previous'}`); void this.engine.cmcpCycleScreen(session, dir).catch((err: unknown) => this.onError?.(String(err).replace(/^Error: /, ''))); }
   /** The menu: only the screens this console can show, then a "more..." entry that opens the list of every screen (never a non-screen entry). */
   private menuList(s: SessionState): { id: string; title: string; available: boolean; active: boolean; hintCmd?: string; reason?: string }[] {
     const own = (s.ui?.screens ?? []).filter((o) => o.available && o.state !== 'locked');
@@ -174,7 +173,7 @@ export class CmcpController {
     else if (key === 'Enter') {
       const o = menu[s.menu.idx];
       if (o?.id === '#more') { s.menu.open = false; useScreenHelp.getState().show(this.allScreens(s)); }
-      else if (o) { s.menu.open = false; void this.engine.cmcpShowScreen(session, o.id).catch((e: unknown) => this.onError?.(String(e).replace(/^Error: /, ''))); }
+      else if (o) { s.menu.open = false; this.dbg(`${session} screen menu choice ${o.id}`); void this.engine.cmcpShowScreen(session, o.id).catch((e: unknown) => this.onError?.(String(e).replace(/^Error: /, ''))); }
     } else return false;
     this.render(s);
     return true;
@@ -671,6 +670,7 @@ export class CmcpController {
     if (tg.special === 'page') { this.turnPage(session, tg.dir ?? 1); return true; }
     if (tg.special === 'off') { this.toggleOff(session); return true; }
     if (tg.special === 'nav' && tg.screen) { // the console-switch column: another screen of this console, shown locally
+      this.dbg(`${session} screen button ${tg.screen}`);
       void this.engine.cmcpShowScreen(session, tg.screen).catch((err: unknown) => this.onError?.(`${tg.screen!.replace('std.', '')}: ${String(err).replace(/^Error: /, '')}`));
       return true;
     }

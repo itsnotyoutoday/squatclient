@@ -1,3 +1,4 @@
+import { diagLog } from '../lib/diaglog';
 import { useEffect } from 'react';
 import { useSessions, useSettings, useUi } from '../state/stores';
 import { setWorldMuted, useSoundMute } from '../state/soundMute';
@@ -36,6 +37,7 @@ export function GlobalMuteButton() {
   useMuteSync();
   const toggle = (): void => {
     const next = { ...useSettings.getState().settings, soundMuted: !useSettings.getState().settings.soundMuted };
+    diagLog('ui', `global mute click: before=${useSettings.getState().settings.soundMuted} after=${next.soundMuted}`);
     useSettings.getState().set(next);
     void engine?.saveSettings(next).catch((e: unknown) => useUi.getState().toast('error', String(e instanceof Error ? e.message : e)));
   };

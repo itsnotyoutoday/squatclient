@@ -42,6 +42,11 @@ func newFixture(t *testing.T) *fixture { return newFixtureAt(t, t.TempDir(), sec
 // newFixtureAt builds a service on an existing directory and keychain (to
 // model an app restart).
 func newFixtureAt(t *testing.T, dir string, sec *secrets.Memory) *fixture {
+	return newFixtureMode(t, dir, sec, "always")
+}
+
+// newFixtureMode is newFixtureAt with a diagnostics compile-time mode.
+func newFixtureMode(t *testing.T, dir string, sec *secrets.Memory, mode string) *fixture {
 	t.Helper()
 	cs, err := config.Open(filepath.Join(dir, "cfg"))
 	if err != nil {
@@ -58,6 +63,7 @@ func newFixtureAt(t *testing.T, dir string, sec *secrets.Memory) *fixture {
 			f.mu.Unlock()
 		},
 		Engine: engine.Options{ConfigDir: filepath.Join(dir, "scripts")},
+		Diag:   DiagSetup{Mode: mode, Build: "test-build", Version: "test", RepoSlug: "owner/repo", ContactName: "Someone", ContactHost: "mud.example.org", ContactPort: 1701},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -408,4 +414,14 @@ func TestRenamingAnyConnectionKeepsWorldAndTabInAgreement(t *testing.T) {
 	if cur.Name != "just-a-tab" || len(ws) != 2 {
 		t.Fatalf("tab %q, worlds %+v (a quick connect must not create a world)", cur.Name, ws)
 	}
+}
+
+// diagText is everything the diagnostics log has recorded so far.
+func (f *fixture) diagText() string {
+	f.t.Helper()
+	lines, err := f.svc.DiagView(5000, "")
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	return strings.Join(lines, "\n")
 }

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import { handleMenuAction } from '../../state/controller';
 import { useControllerRef } from '../../state/controller-context';
-import { useSessions } from '../../state/stores';
+import { useSessions, useUi } from '../../state/stores';
 import type { Platform } from '../../lib/platform';
 
 interface MenuItem {
@@ -90,6 +90,7 @@ export const MENUS: readonly Menu[] = [
       { label: 'SquatClient Help', key: 'H', shortcut: 'F1', action: 'help' },
       'sep',
       { label: 'Diagnostics...', key: 'D', action: 'diagnostics' },
+      { label: 'Send Diagnostics Log...', key: 'S', action: 'diaglog' },
       { label: 'About SquatClient', key: 'A', action: 'about' },
     ],
   },
@@ -105,6 +106,7 @@ export function MenuBar({ platform }: { platform: Exclude<Platform, 'mac'> }) {
   const hasSession = useSessions((s) => s.order.length > 0);
   const [open, setOpen] = useState<number | null>(null);
   const root = useRef<HTMLDivElement>(null);
+  const diagAvailable = useUi((s) => s.diagAvailable); // false in a build with diagnostics compiled out
 
   useEffect(() => {
     if (open === null) return;
@@ -191,7 +193,7 @@ export function MenuBar({ platform }: { platform: Exclude<Platform, 'mac'> }) {
           </button>
           {open === mi && (
             <div className="mb-drop" role="menu" aria-label={m.label}>
-              {m.items.map((it, i) =>
+              {m.items.filter((it) => it === 'sep' || it.action !== 'diaglog' || diagAvailable).map((it, i) =>
                 it === 'sep' ? (
                   <hr key={i} role="separator" />
                 ) : (

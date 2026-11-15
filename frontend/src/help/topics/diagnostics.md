@@ -41,4 +41,4 @@ The test draws a 300-character word with no spaces, and a long sentence, out of 
 - **Linux**: the WebKitGTK version is found with `pkg-config` when that is installed, otherwise from the name of the library file, which shows the major series only.
 - Open the dialog with a connection open if you want the live output row styles; without one they read `not mounted`, but the wrap test still runs.
 
-See also [Troubleshooting](help:troubleshooting).
+To send the app's own log of what happened, see [Sending a diagnostics log](help:diagnostics-log). See also [Troubleshooting](help:troubleshooting).

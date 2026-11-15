@@ -6,6 +6,8 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/menu"
 	"github.com/wailsapp/wails/v2/pkg/menu/keys"
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
+
+	"github.com/itsnotyoutoday/squatclient/internal/dlog"
 )
 
 // buildMenu returns the native application menu. Items that need UI work emit a `menu` event
@@ -48,6 +50,9 @@ func buildMenu(a *App) *menu.Menu {
 		help := m.AddSubmenu("Help")
 		help.AddText("SquatClient Help", nil, act("help"))
 		help.AddText("Diagnostics...", nil, act("diagnostics"))
+		if dlog.ParseMode(diagnosticsMode) != dlog.Off { // compiled out: no menu entry
+			help.AddText("Send Diagnostics Log...", nil, act("diaglog"))
+		}
 		return m
 	}
 

@@ -304,6 +304,8 @@ export interface EngineEvents {
   'cmcp-notes': { session: string; notes: CmcpNote[] };
   'cmcp-pulse': CmcpPulse;
   'sound-mute': { session: string; muted: '' | 'global' | 'world' };
+  /** The Go side wrote a diagnostics snapshot: the page adds its own state lines (tabs, audio, mutes). */
+  'diag-snapshot': { why: string };
   line: Line;
   session: SessionInfo;
   status: { session: string; fields: StatusField[] };
@@ -471,6 +473,46 @@ export interface SquatterConfigState {
 }
 
 export type EngineEventName = keyof EngineEvents;
+
+// ---- diagnostics log (docs/DIAGNOSTICS.md)
+
+export interface DiagInfo {
+  mode: 'always' | 'optin' | 'off';
+  available: boolean;
+  enabled: boolean;
+  build: string;
+  version: string;
+  os: string;
+  arch: string;
+  repoSlug: string;
+  contactName: string;
+  contactHost: string;
+  contactPort: number;
+  folder: string;
+}
+export interface DiagSession {
+  id: string;
+  current: boolean;
+  bytes: number;
+  segments: number;
+  redactions: number;
+}
+export interface DiagStatus {
+  info: DiagInfo;
+  log: { enabled: boolean; session: string; sessions: DiagSession[]; dropped: number; budget: number };
+  redactions: number;
+}
+export interface DiagZipOptions {
+  currentOnly: boolean;
+  note: string;
+  dest: string;
+}
+export interface DiagZipResult {
+  path: string;
+  size: number;
+  files: { name: string; bytes: number }[];
+  redactions: number;
+}
 
 // ---- in-game object/attribute editor (docs/EDIT.md sections 9 and 10)
 
@@ -676,8 +718,32 @@ export interface EngineAPI {
   cmcpPackConsent(session: string, packId: string, allow: boolean): Promise<void>;
   cmcpThemeDoc(session: string, themeId: string): Promise<Record<string, unknown>>;
   cmcpReducedMotion(on: boolean): Promise<void>;
-  /** a line of the web view's own diagnostics for client.log in the config folder */
+  /** a line of the web view's own diagnostics (classified by its prefix) for the diagnostics log */
   clientLog(line: string): Promise<void>;
+  /** the build's diagnostics policy and constants (docs/DIAGNOSTICS.md) */
+  diagInfo(): Promise<DiagInfo>;
+  /** logging state and the sizes of the current and the previous session's logs */
+  diagStatus(): Promise<DiagStatus>;
+  /** the dialog's on/off switch (persists) */
+  diagSetEnabled(on: boolean): Promise<void>;
+  /** delete every diagnostics log */
+  diagClear(): Promise<void>;
+  /** the last n lines of the current session that contain filter */
+  diagView(n: number, filter: string): Promise<string[]>;
+  /** one line of the page's own timeline (layer ui, web-audio, error, snapshot...; session is the engine's session id or "") */
+  diagLog(layer: string, session: string, text: string): Promise<void>;
+  /** write a state snapshot now */
+  diagSnapshot(): Promise<void>;
+  /** the last few error lines (already redacted) for the issue form */
+  diagSummary(): Promise<string[]>;
+  /** build the redacted zip (Downloads folder, or a Save As dialog); null when the user cancelled the dialog. Nothing is uploaded. */
+  diagBuildZip(o: DiagZipOptions, saveAs: boolean): Promise<DiagZipResult | null>;
+  /** show a saved zip in Finder / Explorer / the file manager */
+  diagReveal(path: string): Promise<void>;
+  /** delete a saved diagnostics zip */
+  diagDeleteZip(path: string): Promise<void>;
+  /** open the project's issue form or issue list in the browser (other addresses are refused) */
+  diagOpenUrl(url: string): Promise<void>;
   /** which build is running: git commit ("-dirty" with uncommitted changes) and build time */
   buildInfo(): Promise<{ commit: string; time: string }>;
   /** the developer sound self-test folder ("" in a normal run) */
