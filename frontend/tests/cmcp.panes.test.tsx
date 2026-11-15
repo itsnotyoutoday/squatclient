@@ -71,10 +71,13 @@ describe('CMCP 2 page elements', () => {
         v2: true,
         ctx: { type, scope, key: 'k', layout: 'l', surface: 'screen', ambient: false },
       }) as unknown as CmcpUI;
-    expect(drawsAsPage(ui('world.place', 'world'))).toBe(true);
-    expect(drawsAsPage(ui('ship.shiproom', 'ship'))).toBe(true);
-    expect(drawsAsPage(ui('ship.console', 'ship'))).toBe(false);
-    expect(drawsAsPage({ v2: false } as CmcpUI)).toBe(false);
+    expect(drawsAsPage(ui('world.place', 'world'), 'scene')).toBe(true);
+    expect(drawsAsPage(ui('ship.shiproom', 'ship'), 'scene')).toBe(true);
+    expect(drawsAsPage(ui('ship.console', 'ship'), 'scene')).toBe(false);
+    expect(drawsAsPage({ v2: false } as CmcpUI, 'scene')).toBe(false);
+    // capped at widgets, every screen is drawn as a page, consoles included
+    expect(drawsAsPage(ui('ship.console', 'ship'), 'widgets')).toBe(true);
+    expect(drawsAsPage({ v2: false } as CmcpUI, 'widgets')).toBe(true);
   });
 
   it('lists the exits a room puts in its data, as names or {name, cmd}', () => {
@@ -86,5 +89,24 @@ describe('CMCP 2 page elements', () => {
       { name: 'Ready Room', cmd: 'ready' },
     ]);
     expect(exitsOf({ ctx: { data: {} } } as unknown as CmcpUI)).toEqual([]);
+  });
+});
+
+describe('the CMCP level chip', () => {
+  it('shows the protocol version and changes what the client draws with', async () => {
+    const { StatusBar } = await import('../src/components/statusbar/StatusBar');
+    const { useCmcpDom } = await import('../src/cmcp/dom');
+    const { useCmcpLevel } = await import('../src/cmcp/level');
+    const { useSessions, useUi } = await import('../src/state/stores');
+    useUi.setState({ consoleOpen: false });
+    useSessions.setState({ fg: 's1', sessions: { s1: { id: 's1', name: 'Test', state: 'connected', unread: 0 } } as never });
+    useCmcpDom.getState().set('s1', { main: null, title: '', readonly: false, panes: [], exits: [], on: true, proto: 2 });
+    render(<StatusBar />);
+    const sel = screen.getByLabelText('What the client draws CMCP screens with') as HTMLSelectElement;
+    expect(sel.value).toBe('scene'); // the full console by default
+    expect([...sel.options].map((o) => o.value)).toEqual(['scene', 'widgets', 'text']);
+    expect(screen.getByTitle(/What this client draws/).textContent).toContain('CMCP 2');
+    fireEvent.change(sel, { target: { value: 'widgets' } });
+    expect(useCmcpLevel.getState().by.s1).toBe('widgets');
   });
 });

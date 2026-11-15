@@ -10,6 +10,8 @@ import {
   inputLabel,
 } from '../../lib/tfcontrol';
 import type { TFPreset } from '../../api/types';
+import { LEVELS, useCmcpLevel, type CmcpLevel } from '../../cmcp/level';
+import { useCmcpDom } from '../../cmcp/dom';
 
 const STATE_LABEL = { connecting: 'Connecting', connected: 'Connected', ended: 'Ended' } as const;
 const LINK_LABEL = {
@@ -17,6 +19,30 @@ const LINK_LABEL = {
   detached: 'Detached',
   unreachable: 'Squatter unreachable',
 } as const;
+
+/** How far the client goes in drawing this game's screens. A testing control: it changes nothing on the wire, only what the window draws with,
+ * so the same game can be seen as a full console, as plain widgets, or as text alone. */
+function CmcpChip({ session }: { session: string }) {
+  const dom = useCmcpDom((s) => s.by[session]);
+  const level = useCmcpLevel((s) => s.by[session] ?? 'scene');
+  if (!dom?.on) return null;
+  return (
+    <span className="seg cmcp" title="What this client draws the game's screens with (testing; the game is not told)">
+      CMCP {dom.proto}{' '}
+      <select
+        aria-label="What the client draws CMCP screens with"
+        value={level}
+        onChange={(e) => useCmcpLevel.getState().set(session, e.target.value as CmcpLevel)}
+      >
+        {LEVELS.map((l) => (
+          <option key={l.id} value={l.id} title={l.hint}>
+            {l.label}
+          </option>
+        ))}
+      </select>
+    </span>
+  );
+}
 
 export function StatusBar() {
   const fg = useSessions((s) => s.fg);
@@ -49,6 +75,7 @@ export function StatusBar() {
       <span className="seg world">{cur ? cur.name : 'Home'}</span>
       {cur && <span className={`seg state ${cur.state}`}>{STATE_LABEL[cur.state]}</span>}
       {cur && cur.state !== 'ended' && <WorldMuteButton session={cur.id} />}
+      {cur && cur.state !== 'ended' && <CmcpChip session={cur.id} />}
       {cur?.link && cur.link !== 'attached' && (
         <span className={`seg link ${cur.link}`} title="State of the connection to the squatter">
           {LINK_LABEL[cur.link]}

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { CmcpPane, CmcpTree, CmcpUI } from './types';
+import type { CmcpLevel } from './level';
 
 /** What the window draws with page elements (not the scene): the main context when it is not a ship console, and the dock / panel / float panes. */
 export interface DomState {
@@ -8,6 +9,9 @@ export interface DomState {
   readonly: boolean;
   panes: CmcpPane[];
   exits: { name: string; cmd: string }[];
+  /** the session speaks CMCP and is ready, and which protocol version (for the status chip) */
+  on: boolean;
+  proto: number;
 }
 interface DomStore {
   by: Record<string, DomState>;
@@ -23,7 +27,8 @@ export const useCmcpDom = create<DomStore>((set) => ({
 
 /** CMCP 2: a ship console keeps the scene and its frame (the old console look); every other context, a place such as the concourse or a ship room,
  * is drawn with page elements. */
-export function drawsAsPage(ui: CmcpUI): boolean {
+export function drawsAsPage(ui: CmcpUI, level: CmcpLevel): boolean {
+  if (level === 'widgets') return true; // the player capped the client below the scene
   if (!ui.v2 || !ui.ctx) return false;
   return ui.ctx.scope !== 'ship' || ui.ctx.type === 'ship.shiproom' || ui.ctx.type === 'ship.room';
 }

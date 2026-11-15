@@ -136,15 +136,18 @@ export function frameShapes(shapes: Shape[], pal: Pal, vars: Record<string, stri
 }
 
 /** the nav column: decoration only (the game decides the console); the current screen's item carries the marker */
-export function navShapes(skin: Skin, pal: Pal, current: number, idp: string, avail?: (screen: string) => { available: boolean; hint?: string }): Prim[] {
+export function navShapes(skin: Skin, pal: Pal, current: number, idp: string, avail?: (screen: string) => { available: boolean; hint?: string }, idFor?: (screenName: string) => string | undefined): Prim[] {
   const b = skin.nav.button, out: Prim[] = [];
+  // the id behind one of the skin's tab entries: the built-in screen of that name, or (CMCP 2) the allowed layout whose screen is that one
+  const idOf = (sc: string): string | undefined => (idFor ? idFor(sc) : `std.${sc}`);
+  const usable = (sc: string): boolean => { const id = idOf(sc); return !!id && (!avail || avail(id).available); };
   // only the screens this console can show are listed; the nav slots close up (the full list is behind the menu's "more")
-  const shown = skin.nav.items.map((it, i) => ({ it, i })).filter(({ it }) => !avail || it.screens.some((sc) => avail(`std.${sc}`).available));
+  const shown = skin.nav.items.map((it, i) => ({ it, i })).filter(({ it }) => it.screens.some(usable));
   const curShown = shown.findIndex(({ i }) => i === current);
   shown.forEach(({ it, i: orig }, i) => {
     const nf = fitText(it.label, b.size * (skin.font.tscale ?? 1), b.w - 2 * (b.padX ?? 16) - Math.abs(b.skewX ?? 0), skin.font.family, skin.font.weight);
     out.push({
-      id: `${idp}nav${i}`, type: 'button', events: ['click'], target: { path: '', event: '', special: 'nav', screen: `std.${it.screens.find((sc) => !avail || avail(`std.${sc}`).available) ?? it.screens[0]}` },
+      id: `${idp}nav${i}`, type: 'button', events: ['click'], target: { path: '', event: '', special: 'nav', screen: idOf(it.screens.find(usable) ?? it.screens[0]) ?? '' },
       props: { x: b.x + i * (b.dx ?? 0), y: b.y + i * (b.dy ?? 0), w: b.w, h: b.h, r: b.r ?? b.h / 2, fill: col(it.role, pal), text: nf.text, color: col(b.color, pal), size: nf.size, weight: skin.font.weight,
         align: b.align ?? 'center', padX: b.padX ?? 16, font: skin.font.family, glow: 0.04, key: `alt+${i + 1}`, skewX: b.skewX ?? 0, stroke: b.stroke ? col(b.stroke, pal) : undefined, strokeWidth: b.sw, opacity: orig === current ? 1 : 0.85 },
     });
@@ -154,39 +157,22 @@ export function navShapes(skin: Skin, pal: Pal, current: number, idp: string, av
   return out;
 }
 
-/** CMCP 2: the nav column of a console frame lists the layouts the active context allows (the screen menu of 20.5). It looks exactly as in v1: the skin's own
- * named tabs (OPERATIONS, TACTICAL, ...) in the skin's order and colours, found by the layout's screen name ("fspace-federation/operations" is the
- * skin's operations tab); a layout the skin has no tab for follows, titled by its name. */
-export interface NavEntry { id: string; title: string; available: boolean; active: boolean }
-const screenName = (id: string): string => id.replace(/^.*[/.]/, '');
-/** the names a pack gives a screen, as the skin's tabs know them */
-const ALIAS: Record<string, string> = { navigation: 'helm', science: 'sensors', damage_control: 'damage', engineering: 'power' };
-const pretty = (n: string): string => n.replace(/[_-]+/g, ' ').toUpperCase();
-export function navShapesV2(skin: Skin, pal: Pal, entries: NavEntry[], idp: string): Prim[] {
-  const b = skin.nav.button, out: Prim[] = [];
-  const slotOf = (id: string): number => { const n = screenName(id); return skin.nav.items.findIndex((it) => it.screens.includes(n) || it.screens.includes(ALIAS[n] ?? '')); };
-  // the skin's own tabs, one per slot, in the skin's order (as in v1); the screen being shown always has a tab, even when the skin has none for it
-  const bySlot = new Map<number, NavEntry>();
-  const extra: NavEntry[] = [];
-  for (const e of entries.filter((x) => x.available)) {
-    const slot = slotOf(e.id);
-    if (slot >= 0) { const old = bySlot.get(slot); if (!old || (e.active && !old.active)) bySlot.set(slot, e); } else if (e.active) extra.push(e);
+/** CMCP 2: the layout ids a context allows, keyed by the screen name a skin's tab knows. A pack names a console screen as the game does
+ * ("navigation", "science"); a skin's tabs use the built-in names ("helm", "sensors"), so a few are the same screen under two names. */
+const ALSO: Record<string, string[]> = { helm: ['navigation'], sensors: ['science'], power: ['engineering'], damage: ['damage_control'], operations: ['ops'] };
+/** The skin tab slot that shows this screen id, under either naming (-1: the skin has no tab for it). */
+export function navSlotOf(items: readonly { screens: string[] }[], screenId: string): number {
+  const n = screenId.replace(/^.*[/.]/, '');
+  return items.findIndex((it) => it.screens.some((sc) => sc === n || (ALSO[sc] ?? []).includes(n)));
+}
+
+export function layoutResolver(ids: readonly string[]): (screenName: string) => string | undefined {
+  const byName = new Map<string, string>();
+  for (const id of ids) {
+    const n = id.replace(/^.*[/.]/, '');
+    if (!byName.has(n)) byName.set(n, id);
   }
-  const shown: { e: NavEntry; slot: number }[] = [...bySlot.entries()].sort((x, y) => x[0] - y[0]).map(([slot, e]) => ({ e, slot })).concat(extra.map((e) => ({ e, slot: -1 })));
-  shown.forEach(({ e, slot }, i) => {
-    const item = slot >= 0 ? skin.nav.items[slot] : undefined;
-    const label = item?.label ?? (e.title && e.title !== e.id ? e.title.toUpperCase() : pretty(screenName(e.id)));
-    const role = item?.role ?? 'p';
-    const nf = fitText(label, b.size * (skin.font.tscale ?? 1), b.w - 2 * (b.padX ?? 16) - Math.abs(b.skewX ?? 0), skin.font.family, skin.font.weight);
-    out.push({
-      id: `${idp}nav${i}`, type: 'button', events: ['click'], target: { path: '', event: '', special: 'nav', screen: e.id },
-      props: { x: b.x + i * (b.dx ?? 0), y: b.y + i * (b.dy ?? 0), w: b.w, h: b.h, r: b.r ?? b.h / 2, fill: col(role, pal), text: nf.text, color: col(b.color, pal), size: nf.size, weight: skin.font.weight,
-        align: b.align ?? 'center', padX: b.padX ?? 16, font: skin.font.family, glow: 0.04, key: `alt+${i + 1}`, skewX: b.skewX ?? 0, stroke: b.stroke ? col(b.stroke, pal) : undefined, strokeWidth: b.sw, opacity: e.active ? 1 : 0.8 },
-    });
-  });
-  const m = skin.nav.marker, cur = shown.findIndex(({ e }) => e.active);
-  if (m && cur >= 0) out.push({ id: `${idp}marker`, type: 'rect', props: { x: m.x, y: m.y + cur * (b.dy ?? 0), w: m.w, h: m.h, fill: col(m.fill, pal), glow: m.glow } });
-  return out;
+  return (sc) => byName.get(sc) ?? ALSO[sc]?.map((n) => byName.get(n)).find(Boolean);
 }
 
 /** Where the notice pill goes: centred at the top edge unless that covers one of the frame's texts (a title that starts near the top), then the

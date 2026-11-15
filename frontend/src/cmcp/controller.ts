@@ -6,7 +6,7 @@ import { findTextport, place, type Placed } from './layout';
 import { skinFor } from './skins';
 import { layoutSkinned } from './skinlayout';
 import type { Pal, Skin } from './skins/types';
-import { col, fitText, frameShapes, measureText, navShapes, navShapesV2, noticeX, templateVars } from './skinframe';
+import { col, fitText, frameShapes, layoutResolver, measureText, navShapes, navSlotOf, noticeX, templateVars } from './skinframe';
 
 /** the notice pill: its height and the widest it gets (scene units) */
 export const NOTICE_H = 26;
@@ -17,6 +17,7 @@ import { setActiveCmcp, useAmbient, usePane, useScreenHelp, useThemeInUse } from
 import { useSettings } from '../state/stores';
 import { diffOps, PORT_ID, SCENE, sceneOp, type Ease } from './ops';
 import { drawsAsPage, exitsOf, useCmcpDom } from './dom';
+import { levelOf, useCmcpLevel } from './level';
 import { drawSprite, type SpriteView } from './sprite';
 import type { CmcpNode, CmcpNote, CmcpPulse, CmcpTree, CmcpUI } from './types';
 import { useOverlays } from './overlays';
@@ -93,10 +94,14 @@ export class CmcpController {
     if (typeof matchMedia !== 'undefined') this.reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
   }
 
+  /** Draw every session again (the player changed what the client draws with). */
+  private redrawAll = (): void => { for (const s of this.sess.values()) if (s.ui) this.onUi(s.ui); };
+
   attach(): () => void {
     setActiveCmcp(this);
     void this.engine.cmcpReducedMotion(this.reduceMotion).catch(() => undefined);
     const offs = [
+      useCmcpLevel.subscribe(this.redrawAll),
       this.engine.on('cmcp', (ui) => this.onUi(ui)),
       this.engine.on('cmcp-pulse', (p) => { useAmbient.getState().set(p.session, p.ambient ? { edge: p.ambient.edge, hueBg: p.ambient.hueBg } : undefined); const s = this.sess.get(p.session); if (s) { s.pulse = p; if (s.tree && s.open) this.render(s); } }),
       this.engine.on('cmcp-notes', (p) => { this.onNotes?.(p.session, p.notes); this.noteErrors(p.notes); this.effects(p.session, p.notes); }),
@@ -287,10 +292,15 @@ export class CmcpController {
     }
     s.lastRev = ui.rev;
     s.ui = ui;
-    // CMCP 2: a place or a ship room is drawn with page elements (no scene); a ship console keeps the scene. Panes are always page elements.
-    const page = drawsAsPage(ui);
-    useCmcpDom.getState().set(ui.session, { main: page ? ui.tree : null, title: ui.ctx?.type ? (ui.tree?.title || ui.title || '') : '', readonly: ui.readonly, panes: ui.panes ?? [], exits: exitsOf(ui) });
-    if (page) { this.close(s); s.tree = null; usePane.getState().set(s.id, false, false); return; }
+    // What this client draws with: the scene (the themed console), page elements, or nothing at all. A place or a ship room is page elements
+    // whatever the level; a ship console is the scene unless the player capped the client lower (the CMCP chip in the status bar).
+    const level = levelOf(ui.session);
+    const page = level !== 'text' && drawsAsPage(ui, level);
+    useCmcpDom.getState().set(ui.session, {
+      main: page ? ui.tree : null, title: ui.ctx?.type ? (ui.tree?.title || ui.title || '') : '', readonly: ui.readonly,
+      panes: level === 'text' ? [] : (ui.panes ?? []), exits: level === 'text' ? [] : exitsOf(ui), on: ui.state === 'ready', proto: ui.proto,
+    });
+    if (page || level === 'text') { this.close(s); s.tree = null; usePane.getState().set(s.id, false, false); return; }
     { const d = `${ui.session} model state=${ui.state} screen=${ui.tree?.screen ?? 'none'} view=${ui.tree?.view?.state ?? '-'} readonly=${ui.readonly} console=${ui.console?.id ?? ''} notice=${ui.notice?.id ?? ''}`; if (d !== this.lastDbg) { this.lastDbg = d; this.dbg(d); } }
     // a refused close (the core's error notice) ends the wait at once: the screen is hidden locally
     if (s.closeScreen && ui.notice?.id === 'close' && ui.notice.kind === 'error') this.closeFallback(ui.session, s.closeScreen);
@@ -548,12 +558,11 @@ export class CmcpController {
     const pal = amb ? ({ ...basePal, ...(amb.roles.includes('r') ? { r: ambCol } : {}), ...(amb.roles.includes('x') ? { x: alert ? red.x : ambCol } : {}) } as Pal) : basePal;
     const edgePal = (alert && mode !== 'off') || amb ? { ...red, r: ambCol } as Pal : pal;
     const screenName = t.screen.split(/[./]/).pop() ?? '';
-    const cur = skin.nav.items.findIndex((i) => i.screens.includes(screenName));
+    const cur = navSlotOf(skin.nav.items, t.screen);
     // a ship room is not a console: its frame names the ROOM (the game's room name), has no console tabs and says ROOM where the console frames say CONSOLE
     const isRoom = screenName === 'shiproom' || screenName === 'room';
     const roomName = isRoom ? ((s.ui?.stack ?? []).find((e) => e.active && e.kind === 'room')?.name ?? '').toUpperCase() : '';
-    // v2: the frame names the context (its title), not a console tab
-    const label = isRoom ? roomName || 'SHIP ROOM' : s.ui?.v2 ? (t.title || s.ui.title || screenName).toUpperCase() : cur >= 0 ? skin.nav.items[cur].label : (t.title || screenName);
+    const label = isRoom ? roomName || 'SHIP ROOM' : cur >= 0 ? skin.nav.items[cur].label : (t.title || screenName);
     const vars: Record<string, string> = { ...templateVars(s.ui!, label), screen: screenName, ...(isRoom ? { room: '1' } : {}) };
     // port.max_cols (default 80): the side layout's text is at most 80 monospace columns wide; the box size and font give the scene units
     const lg = this.rtFor(s.id).slot(SCENE).logical;
@@ -593,8 +602,10 @@ export class CmcpController {
       const b = skin.nav.button;
       prims.push({ id: 'nv.room', type: 'button', props: { x: b.x, y: b.y, w: b.w, h: b.h, r: b.r ?? b.h / 2, fill: col('t', pal), text: 'ROOM', color: col(b.color, pal), size: b.size * (skin.font.tscale ?? 1), weight: skin.font.weight, align: b.align ?? 'center', padX: b.padX ?? 16, font: skin.font.family, skewX: b.skewX ?? 0, opacity: 0.9 } });
     } else {
-      if (s.ui?.v2) prims.push(...navShapesV2(skin, pal, menu.map((o) => ({ id: o.id, title: o.title || o.id, available: o.available, active: o.active })), 'nv.'));
-      else prims.push(...navShapes(skin, pal, cur, 'nv.', (id) => { const o = menu.find((x) => x.id === id); return { available: !!o && o.available, hint: o?.hintCmd }; }));
+      // the nav column is the v1 one in both versions: the skin's own tabs, its order and its colours. v2 only changes what each tab points at
+      // (a layout id of the context's allowed set instead of a built-in std.* screen).
+      const idFor = s.ui?.v2 ? layoutResolver(menu.map((o) => o.id)) : undefined;
+      prims.push(...navShapes(skin, pal, cur, 'nv.', (id) => { const o = menu.find((x) => x.id === id); return { available: !!o && o.available, hint: o?.hintCmd }; }, idFor));
     }
     // a screen too big for one readable widget column is paged: the pager sits at the top of the column (Alt+PageUp / Alt+PageDown too)
     if (L.pages && L.pager) {

@@ -89,28 +89,28 @@ describe('CMCP 2 screens', () => {
 });
 
 describe('CMCP 2 nav column', () => {
-  it("shows the skin's own named tabs, as in v1: the layouts the context allows are matched to them by screen name", async () => {
-    const { navShapesV2 } = await import('../src/cmcp/skinframe');
+  it("is the v1 column: the skin's own tabs, order and colours, each pointing at the layout that shows that screen", async () => {
+    const { navShapes, layoutResolver, navSlotOf } = await import('../src/cmcp/skinframe');
     const { SKINS } = await import('../src/cmcp/skins');
     const skin = SKINS.tng;
-    const prims = navShapesV2(skin, skin.pal.normal, [
-      { id: 'fspace-federation/operations', title: 'fspace-federation/operations', available: true, active: true },
-      { id: 'fspace-federation/tactical', title: '', available: true, active: false },
-      { id: 'fspace-federation/damage', title: '', available: true, active: false },
-      { id: 'fspace-federation/engineering', title: '', available: true, active: false },
-      { id: 'fspace-federation/security', title: '', available: true, active: false }, // the skin has no tab for it and it is not shown
-      { id: 'fspace-federation/off', title: '', available: false, active: false },
-    ], 'nv.');
+    const ids = ['fspace-federation/operations', 'fspace-federation/tactical', 'fspace-federation/damage', 'fspace-federation/navigation'];
+    const cur = navSlotOf(skin.nav.items, 'fspace-federation/operations');
+    const prims = navShapes(skin, skin.pal.normal, cur, 'nv.', (id) => ({ available: ids.includes(id) }), layoutResolver(ids));
     const buttons = prims.filter((p) => p.type === 'button');
-    expect(buttons.map((b) => (b.props as { text: string }).text)).toEqual(['POWER', 'TACTICAL', 'DAMAGE', 'OPS']); // the skin's order and names, never the layout ids
+    // the skin's own labels and order (SENSORS/POWER/TACTICAL/DAMAGE/OPS), never a layout id; POWER has no layout here so its slot closes up
+    expect(buttons.map((b) => (b.props as { text: string }).text)).toEqual(['SENSORS', 'TACTICAL', 'DAMAGE', 'OPS']);
+    // the SENSORS tab points at the navigation layout (the skin knows that screen as "helm")
+    expect(buttons[0].target?.screen).toBe('fspace-federation/navigation');
     expect(buttons.at(-1)?.target?.screen).toBe('fspace-federation/operations');
     expect(prims.some((p) => p.id === 'nv.marker')).toBe(true);
   });
 
-  it('a screen the skin has no tab for still gets one while it is shown', async () => {
-    const { navShapesV2 } = await import('../src/cmcp/skinframe');
+  it('a v1 session is unchanged: the tabs point at the built-in std.* screens', async () => {
+    const { navShapes } = await import('../src/cmcp/skinframe');
     const { SKINS } = await import('../src/cmcp/skins');
-    const prims = navShapesV2(SKINS.tng, SKINS.tng.pal.normal, [{ id: 'fspace-federation/command', title: 'Command Console', available: true, active: true }], 'nv.');
-    expect(prims.filter((p) => p.type === 'button').map((b) => (b.props as { text: string }).text)).toEqual(['COMMAND CONSOLE']);
+    const prims = navShapes(SKINS.tng, SKINS.tng.pal.normal, 4, 'nv.');
+    const buttons = prims.filter((p) => p.type === 'button');
+    expect(buttons.map((b) => (b.props as { text: string }).text)).toEqual(['SENSORS', 'POWER', 'TACTICAL', 'DAMAGE', 'OPS']);
+    expect(buttons.map((b) => b.target?.screen)).toEqual(['std.sensors', 'std.power', 'std.tactical', 'std.damage', 'std.operations']);
   });
 });
