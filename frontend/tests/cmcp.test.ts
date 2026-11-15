@@ -194,3 +194,26 @@ describe('the controller', () => {
 });
 
 vi.stubGlobal('matchMedia', undefined);
+
+describe('the viewscreen draws contact art by view', () => {
+  const vs = (items: unknown[]): CmcpNode => ({ path: 'v', widget: 'viewscreen', props: { items, backdrop: { kind: 'stars', seed: 1, density: 0.3 } }, layout: {}, enabled: true });
+  it('lists what the engine chose as pictures to prepare, with the amounts', async () => {
+    const { viewNeeds } = await import('../src/cmcp/widgets');
+    const n = vs([{ cid: '17', art: 'marauder', views: [{ view: 'front', weight: 0.6, zones: { hull: 0.5 } }, { view: 'side', weight: 0.4, zones: {} }] }, { cid: '3', art: 'marker' }]);
+    expect(viewNeeds(n).map((x) => `${x.art}/${x.view}`)).toEqual(['marauder/front', 'marauder/side']);
+  });
+  it('draws a picture per view with its weight and mirror, a plain marker until the picture exists', async () => {
+    const { amountKey } = await import('../src/cmcp/widgets');
+    const ui = fx('sensors');
+    const item = { cid: '17', name: 'X', x: 0.5, y: 0.5, size: 0.2, min_px: 8, art: 'marauder', mirror: true, views: [{ view: 'side', weight: 0.7, zones: { hull: 0.5 }, glows: {} }, { view: 'front', weight: 0.3, zones: {}, glows: {} }] };
+    const placed = place(vs([item]), { x: 0, y: 0, w: 800, h: 400 });
+    const bare = draw(placed, ctxFor(ui));
+    expect(bare.filter((p) => p.type === 'image')).toHaveLength(0);
+    expect(bare.some((p) => p.type === 'circle')).toBe(true);
+    const images = new Map([[`marauder|side|${amountKey({ zones: { hull: 0.5 }, glows: {} })}`, { name: 'a', w: 80, h: 40 }], [`marauder|front|${amountKey({ zones: {}, glows: {} })}`, { name: 'b', w: 80, h: 60 }]]);
+    const full = draw(placed, ctxFor(ui, { viewImages: images }));
+    const imgs = full.filter((p) => p.type === 'image');
+    expect(imgs.map((p) => [p.props.src, p.props.opacity, p.props.scaleX])).toEqual([['a', 0.7, -1], ['b', 0.3, -1]]);
+    expect(full.some((p) => p.type === 'circle')).toBe(false);
+  });
+});

@@ -31,6 +31,8 @@ export interface Ctx {
   reduceMotion: boolean;
   /** DOM inputs the scene cannot draw (typed entry), collected while drawing */
   overlays?: Overlay[];
+  /** pictures of contact art by `art|view|amount key` (drawn by the controller from the sprites the engine resolved) */
+  viewImages?: Map<string, { name: string; w: number; h: number }>;
 }
 
 const tok = (ctx: Ctx, k: string, d = '#888888'): string => {
@@ -415,16 +417,46 @@ const schematic: Draw = (p, ctx, out) => {
   }
 };
 
-/** the forward view: stars, and the contacts as markers placed by the engine's projection (props.items) */
+export const amountKey = (a: unknown): string => JSON.stringify(a, (_k, v) => (typeof v === 'number' ? Math.round(v * 10) / 10 : v));
+
+interface ViewItem { cid?: string; name?: string; x?: number; y?: number; size?: number; min_px?: number; type?: string; art?: string; views?: { view: string; weight: number; zones?: Record<string, number>; glows?: Record<string, number> }[]; mirror?: boolean; roll?: number }
+
+/** What the viewscreen needs drawn as pictures: contact art views (spec 7.7), with the tint amounts the engine evaluated per contact. */
+export function viewNeeds(n: CmcpNode): { art: string; view: string; amounts: { zones?: Record<string, number>; glows?: Record<string, number> } }[] {
+  const out: ReturnType<typeof viewNeeds> = [];
+  const walk = (x: CmcpNode): void => {
+    if (x.widget === 'viewscreen' && Array.isArray(x.props.items)) {
+      for (const it of x.props.items as ViewItem[]) for (const v of it.views ?? []) if (it.art) out.push({ art: it.art, view: v.view, amounts: { zones: v.zones, glows: v.glows } });
+    }
+    (x.children ?? []).forEach(walk);
+  };
+  walk(n);
+  return out;
+}
+
+/** the forward view: backdrop, planets, contacts far to near with the view of their art chosen for the angle they show us (and
+ * cross-faded with the next nearest when the scene says so), effects are added by the controller on top */
 const viewscreen: Draw = (p, ctx, out) => {
   const id = p.node.path, r = p.rect;
   out.push(rect(`${id}.bg`, r, '#000000', { stroke: tok(ctx, 'color.accent'), strokeWidth: 2, r: radius(ctx) }));
-  out.push({ id: `${id}.stars`, type: 'starfield', props: { x: r.x + 2, y: r.y + 2, w: r.w - 4, h: r.h - 4, count: 260, seed: 4711, size: 1.8, speed: ctx.reduceMotion ? 0 : 0.01 } });
-  const items = Array.isArray(p.node.props.items) ? (p.node.props.items as Record<string, unknown>[]) : [];
+  const bd = (p.node.props.backdrop ?? {}) as Record<string, unknown>;
+  if (bd.kind !== 'none') out.push({ id: `${id}.stars`, type: 'starfield', props: { x: r.x + 2, y: r.y + 2, w: r.w - 4, h: r.h - 4, count: Math.round(num(bd.density, 0.35) * 700), seed: num(bd.seed, 4711), size: 1.8, speed: ctx.reduceMotion ? 0 : 0.01 } });
+  const items = Array.isArray(p.node.props.items) ? (p.node.props.items as ViewItem[]) : [];
   items.forEach((it, i) => {
-    const x = r.x + num(it.x, 0.5) * r.w, y = r.y + num(it.y, 0.5) * r.h, s = Math.max(num(it.min_px, 3), num(it.size, 0.02) * r.w);
-    out.push({ id: `${id}.i${i}`, type: 'circle', props: { x, y, r: s / 2, fill: it.type === 'Planet' ? tok(ctx, 'color.accent2') : tok(ctx, 'color.warn'), glow: 0.4 } });
-    if (it.name) out.push(text(`${id}.i${i}.n`, x + s / 2 + 4, y, str(it.name), 11, tok(ctx, 'color.text'), { font: font(ctx) }));
+    const x = r.x + num(it.x, 0.5) * r.w, y = r.y + num(it.y, 0.5) * r.h, w = Math.max(num(it.min_px, 3), num(it.size, 0.02) * r.w);
+    let drawn = false;
+    for (const v of it.views ?? []) {
+      const img = ctx.viewImages?.get(`${it.art}|${v.view}|${amountKey({ zones: v.zones, glows: v.glows })}`);
+      if (!img) continue;
+      drawn = true;
+      const h = (w * img.h) / img.w;
+      out.push({ id: `${id}.i${i}.${v.view}`, type: 'image', props: { x: x - w / 2, y: y - h / 2, w, h, src: img.name, opacity: v.weight, pivotX: w / 2, pivotY: h / 2, scaleX: it.mirror ? -1 : 1, rotation: num(it.roll, 0) } });
+    }
+    if (!drawn) {
+      const s = Math.max(3, w);
+      out.push({ id: `${id}.i${i}`, type: 'circle', props: { x, y, r: s / 2, fill: it.type === 'Planet' ? tok(ctx, 'color.accent2') : tok(ctx, 'color.warn'), glow: 0.4 } });
+    }
+    if (it.name && num(it.size) > 0.03) out.push(text(`${id}.i${i}.n`, x + w / 2 + 4, y, str(it.name), 11, tok(ctx, 'color.text'), { font: font(ctx) }));
   });
   out.push(text(`${id}.hd`, r.x + 10, r.y + 14, 'VIEWSCREEN', 12, tok(ctx, 'color.dim'), { font: font(ctx, true), weight: '700', letterSpacing: 1 }));
 };

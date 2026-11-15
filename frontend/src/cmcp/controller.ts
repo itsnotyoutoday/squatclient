@@ -1,12 +1,12 @@
 import type { EngineAPI, GfxOp } from '../api/types';
 import type { GfxEventOut } from '../gfx/types';
 import type { GfxRuntime } from '../gfx/runtime';
-import { findTextport, place } from './layout';
+import { findTextport, place, type Placed } from './layout';
 import { diffOps, PORT_ID, SCENE, sceneOp } from './ops';
 import { drawSprite, type SpriteView } from './sprite';
 import type { CmcpNode, CmcpNote, CmcpTree, CmcpUI } from './types';
 import { useOverlays } from './overlays';
-import { contextStrip, draw, readonlyBadge, recordHistory, type Ctx, type Prim, type Target } from './widgets';
+import { amountKey, contextStrip, draw, readonlyBadge, recordHistory, viewNeeds, type Ctx, type Prim, type Target } from './widgets';
 
 const BASE_W = 1200;
 
@@ -29,6 +29,12 @@ interface SessionState {
   spriteWanted: Set<string>;
   spriteDrawn: Map<string, string>;
   spriteN: number;
+  viewImages: Map<string, { name: string; w: number; h: number }>;
+  viewDocs: Map<string, { views: Record<string, SpriteView> }>;
+  viewWanted: Set<string>;
+  fxN: number;
+  vsRect: { x: number; y: number; w: number; h: number } | null;
+  vsItems: Record<string, { x: number; y: number }>;
   aspect: number;
   open: boolean;
   dismissed: string;
@@ -52,7 +58,7 @@ export class CmcpController {
   attach(): () => void {
     const offs = [
       this.engine.on('cmcp', (ui) => this.onUi(ui)),
-      this.engine.on('cmcp-notes', (p) => { this.onNotes?.(p.session, p.notes); this.noteErrors(p.notes); }),
+      this.engine.on('cmcp-notes', (p) => { this.onNotes?.(p.session, p.notes); this.noteErrors(p.notes); this.effects(p.session, p.notes); }),
       this.engine.on('session-removed', (p) => this.sess.delete(p.id)),
     ];
     return () => offs.forEach((o) => o());
@@ -67,7 +73,7 @@ export class CmcpController {
   state(session: string): SessionState {
     let s = this.sess.get(session);
     if (!s) {
-      s = { id: session, ui: null, tree: null, prev: new Map(), targets: new Map(), local: new Map(), history: new Map(), images: new Map(), spriteDocs: new Map(), spriteWanted: new Set(), spriteDrawn: new Map(), spriteN: 0, aspect: 9 / 16, open: false, dismissed: '', key: '', fonts: new Set(), lastRev: -1 };
+      s = { id: session, ui: null, tree: null, prev: new Map(), targets: new Map(), local: new Map(), history: new Map(), images: new Map(), spriteDocs: new Map(), spriteWanted: new Set(), spriteDrawn: new Map(), spriteN: 0, viewImages: new Map(), viewDocs: new Map(), viewWanted: new Set(), fxN: 0, vsRect: null, vsItems: {}, aspect: 9 / 16, open: false, dismissed: '', key: '', fonts: new Set(), lastRev: -1 };
       this.sess.set(session, s);
       const rt = this.rtFor(session);
       const prev = rt.onResize;
@@ -109,6 +115,7 @@ export class CmcpController {
     recordHistory(t.root, s.history);
     this.fonts(s, t);
     this.sprites(s, t);
+    this.viewArt(s, t);
     this.render(s);
   }
 
@@ -159,6 +166,33 @@ export class CmcpController {
     });
   }
 
+  /** Pictures for the contacts on the viewscreen: one image per (art, view, tint amounts), drawn from the sprite the engine resolved. */
+  private viewArt(s: SessionState, t: CmcpTree): void {
+    for (const nd of viewNeeds(t.root)) {
+      const dk = `${t.packKey}|${nd.art}`;
+      const doc = s.viewDocs.get(dk);
+      if (!doc) {
+        if (s.viewWanted.has(dk)) continue;
+        s.viewWanted.add(dk);
+        void this.engine.cmcpSprite(s.id, nd.art).then((txt) => {
+          s.viewDocs.set(dk, JSON.parse(txt) as { views: Record<string, SpriteView> });
+          this.viewArt(s, t);
+          this.render(s);
+        }).catch(() => undefined);
+        continue;
+      }
+      const key = `${nd.art}|${nd.view}|${amountKey(nd.amounts)}`;
+      if (s.viewImages.has(key) || s.viewImages.size > 96) continue;
+      const v = doc.views[nd.view];
+      if (!v) continue;
+      const d = drawSprite(v, 200, nd.amounts);
+      if (!d) continue;
+      const name = `cmcp:v:${++s.spriteN}`;
+      s.viewImages.set(key, { name, w: d.w, h: d.h });
+      this.rtFor(s.id).apply([{ op: 'image', name, src: d.canvas.toDataURL('image/png') }]);
+    }
+  }
+
   private reset(s: SessionState): void {
     if (s.open) this.rtFor(s.id).apply([{ op: 'clear', scene: SCENE }]);
     s.prev = new Map();
@@ -185,8 +219,9 @@ export class CmcpController {
     const root = place(t.root, { x: 0, y: strip, w: W, h: H - strip });
     const tp = findTextport(root);
     if (!tp) return; // a screen without a text port is invalid (spec 6.2); never draw it
-    const ctx: Ctx = { tree: t, local: s.local, history: s.history, images: s.images, readonly: s.ui?.readonly ?? false, reduceMotion: this.reduceMotion, overlays: [] };
+    const ctx: Ctx = { tree: t, local: s.local, history: s.history, images: s.images, readonly: s.ui?.readonly ?? false, reduceMotion: this.reduceMotion, overlays: [], viewImages: s.viewImages };
     const prims: Prim[] = draw(root, ctx);
+    this.noteViewscreen(s, root);
     useOverlays.getState().set(s.id, W, H, ctx.overlays ?? []);
     if (strip) prims.push(...contextStrip(stack, W, ctx));
     if (ctx.readonly) prims.push(...readonlyBadge(s.ui?.ai ?? false, s.ui?.console?.manned_by, W, ctx));
@@ -201,6 +236,59 @@ export class CmcpController {
     s.prev = map;
     s.targets = new Map(prims.filter((p) => p.target).map((p) => [p.id, p.target!]));
     rt.apply([...head, ...ops]);
+  }
+
+  private noteViewscreen(s: SessionState, root: Placed): void {
+    s.vsRect = null; s.vsItems = {};
+    const find = (p: Placed): Placed | null => { if (p.node.widget === 'viewscreen') return p; for (const k of p.children) { const f = find(k); if (f) return f; } return null; };
+    const vs = find(root);
+    if (!vs) return;
+    s.vsRect = vs.rect;
+    for (const it of (vs.node.props.items as { cid?: string; x?: number; y?: number }[] | undefined) ?? []) if (it.cid !== undefined) s.vsItems[String(it.cid)] = { x: vs.rect.x + (it.x ?? 0.5) * vs.rect.w, y: vs.rect.y + (it.y ?? 0.5) * vs.rect.h };
+  }
+
+  /** Effects the renderer owns (beam, torpedo, explosion, shield_flash, flash) for Cobra.Event, chosen by the pack's scene (spec 7.8). Skipped under reduced motion. */
+  effects(session: string, notes: CmcpNote[]): void {
+    const s = this.sess.get(session);
+    if (!s || !s.tree || !s.vsRect || this.reduceMotion || !s.open) return;
+    const find = (n: CmcpNode): CmcpNode | null => { if (n.widget === 'viewscreen') return n; for (const k of n.children ?? []) { const f = find(k); if (f) return f; } return null; };
+    const vsn = find(s.tree.root);
+    const table = (vsn?.props.effects ?? {}) as Record<string, { effect: string; color?: string; duration_ms?: number; width?: number; size?: number }>;
+    const tok = (c: string | undefined, d: string): string => { const v = c?.startsWith('@') ? s.tree!.tokens[c.slice(1)] : c; return typeof v === 'string' ? v : d; };
+    for (const n of notes) {
+      if (n.kind !== 'event' || !n.event) continue;
+      const d = n.event.data ?? {};
+      const key = n.event.type === 'fire' ? `fire.${String(d.kind ?? '')}` : n.event.type === 'hit' ? (d.shield ? 'hit.shield' : 'hit') : n.event.type;
+      const spec = table[key];
+      if (!spec) continue;
+      const R = s.vsRect;
+      const dur = Math.min(10, (spec.duration_ms ?? 500) / 1000);
+      const id = `fx${++s.fxN}`;
+      const to = s.vsItems[String(d.to ?? d.cid ?? '')] ?? { x: R.x + R.w / 2, y: R.y + R.h / 2 };
+      const col = tok(spec.color, '#ffffff');
+      const ops: GfxOp[] = [];
+      const add = (oid: string, type: string, props: Record<string, unknown>, tracks: Record<string, { from?: number; to: number }>): void => {
+        ops.push({ op: 'create', scene: SCENE, id: oid, type, props: { z: 9000, ...props } });
+        ops.push({ op: 'tween', scene: SCENE, target: oid, tracks, dur, ease: 'outQuad' });
+      };
+      /** a shape that moves or grows about its own centre: a group at the position holds it at (0,0) */
+      const grouped = (type: string, props: Record<string, unknown>, at: { x: number; y: number }, tracks: Record<string, { from?: number; to: number }>): void => {
+        ops.push({ op: 'create', scene: SCENE, id, type: 'group', props: { x: at.x, y: at.y, z: 9000 } });
+        ops.push({ op: 'create', scene: SCENE, id: `${id}.s`, type, parent: id, props: { x: 0, y: 0, ...props } });
+        ops.push({ op: 'tween', scene: SCENE, target: id, tracks, dur, ease: 'outQuad' });
+      };
+      const from = { x: R.x + R.w / 2, y: R.y + R.h };
+      switch (spec.effect) {
+        case 'beam': add(id, 'line', { x1: from.x, y1: from.y, x2: to.x, y2: to.y, stroke: col, strokeWidth: (spec.width ?? 2) * 2, glow: 0.8, opacity: 1 }, { opacity: { from: 1, to: 0 } }); break;
+        case 'torpedo': grouped('circle', { r: 7, fill: col, glow: 0.9 }, from, { x: { from: from.x, to: to.x }, y: { from: from.y, to: to.y } }); break;
+        case 'explosion': grouped('circle', { r: 12 * (spec.size ?? 1), fill: col, glow: 1 }, to, { scaleX: { from: 0.3, to: 5 }, scaleY: { from: 0.3, to: 5 }, opacity: { from: 1, to: 0 } }); break;
+        case 'shield_flash': add(id, 'rect', { x: R.x, y: R.y, w: R.w, h: R.h, fill: '#00000000', stroke: col, strokeWidth: 14, opacity: 0.9 }, { opacity: { from: 0.9, to: 0 } }); break;
+        case 'flash': add(id, 'rect', { x: R.x, y: R.y, w: R.w, h: R.h, fill: col, opacity: 0.5 }, { opacity: { from: 0.5, to: 0 } }); break;
+        default: continue;
+      }
+      this.rtFor(session).apply(ops);
+      setTimeout(() => this.rtFor(session).apply([{ op: 'delete', scene: SCENE, id }]), dur * 1000 + 150);
+    }
   }
 
   /** A pointer event from a scene. Returns true when the scene is CMCP's (consumed). */

@@ -1,4 +1,4 @@
-/* global window document process */
+/* global window document */
 // Draws the CMCP consoles in real headless Chrome from fixtures that the Go engine produced (public/cmcp/*.json: the bound trees of
 // the built-in screens filled with the protocol's example data) and writes screenshots.
 //   node scripts/cmcp-shots.mjs [baseUrl] [outDir]      baseUrl serves the app with the mock engine (npm run dev). Chrome: CHROME_PATH.
@@ -31,13 +31,22 @@ for (const screen of screens) {
   for (const theme of themes) {
     const fx = await (await fetch(new URL(`cmcp/${screen}.json`, base))).json();
     const sprite = await fetch(new URL('cmcp/marauder.sprite.json', base)).then((r) => (r.ok ? r.text() : ''));
-    await page.evaluate((ui, tokens, th, spr, helm) => {
+    await page.evaluate((ui, tokens, th, spr, helm, view) => {
       const w = window.__squat;
       const eng = w.ui.getState().engine;
       const id = w.sessions.getState().order[0];
       if (spr) eng.cmcpSprites.set('marauder', spr);
       ui.session = id;
       ui.tree.session = id;
+      if (view) { // three contacts showing different aspects of the same art, as the engine's projection would place them
+        const walkv = (n) => { if (n.widget === 'viewscreen') { n.props.effects = n.props.effects ?? { 'fire.phaser': { effect: 'beam', color: '@color.warn', duration_ms: 1500, width: 2 }, 'hit.shield': { effect: 'shield_flash', color: '@color.accent2', duration_ms: 1500 }, destroyed: { effect: 'explosion', color: '@color.accent', duration_ms: 2500, size: 1 } };
+          const am = { zones: { hull: 0.7 }, glows: {} };
+          n.props.items = [ { cid: '17', name: 'HEAD-ON', x: 0.25, y: 0.45, size: 0.2, min_px: 8, art: 'marauder', views: [{ view: 'front', weight: 1, ...am }] },
+            { cid: '18', name: 'SIDE', x: 0.55, y: 0.55, size: 0.28, min_px: 8, art: 'marauder', views: [{ view: 'side', weight: 1, zones: {}, glows: {} }] },
+            { cid: '19', name: 'MIRRORED BLEND', x: 0.82, y: 0.4, size: 0.2, min_px: 8, art: 'marauder', mirror: true, views: [{ view: 'side', weight: 0.6, zones: {}, glows: {} }, { view: 'front', weight: 0.4, zones: {}, glows: {} }] } ]; }
+          (n.children ?? []).forEach(walkv); };
+        walkv(ui.tree.root);
+      }
       if (helm) { // a pack without a joystick resolves it to helm-controls (core Bind): emulate that on the fixture
         const nav = ui.docs['Space.Nav'] ?? {};
         const walk = (n) => { if (n.widget === 'joystick') { n.widget = 'helm-controls'; n.props = { bearing: nav.bearing, warp: nav.warp, speed_mps: nav.speed_mps, selected: 11 }; n.events = ['heading', 'speed', 'warp', 'stop', 'engage', 'course', 'dock', 'undock']; } (n.children ?? []).forEach(walk); };
@@ -48,7 +57,7 @@ for (const screen of screens) {
       ui.tree.packKey += '/' + th;
       w.sessions.getState().setFg(id);
       eng.pushCmcp(ui);
-    }, fx, themeTokens[theme], theme, sprite, !!process.env.CMCP_HELM);
+    }, fx, themeTokens[theme], theme, sprite, !!process.env.CMCP_HELM, !!process.env.CMCP_VIEW);
     await sleep(1200);
     const g = await page.evaluate(() => {
       const r = (el) => { if (!el) return null; const b = el.getBoundingClientRect(); return [Math.round(b.x), Math.round(b.y), Math.round(b.width), Math.round(b.height)]; };
@@ -72,6 +81,10 @@ for (const screen of screens) {
         const typed = await page.evaluate(() => document.activeElement?.getAttribute('aria-label'));
         check(typed === 'Heading, degrees', 'focus stays in the field while typing');
       }
+    }
+    if (process.env.CMCP_VIEW) {
+      await page.evaluate(() => { const e = window.__squat.ui.getState().engine; const id = window.__squat.sessions.getState().order[0]; e.pushCmcpNotes(id, [{ kind: 'event', event: { type: 'fire', data: { kind: 'phaser', from: 'self', to: 18 } } }, { kind: 'event', event: { type: 'hit', data: { cid: 'self', shield: true } } }, { kind: 'event', event: { type: 'destroyed', data: { cid: 17 } } }]); });
+      await sleep(350);
     }
     const file = path.join(out, `${screen}-${theme}.png`);
     await page.screenshot({ path: file });

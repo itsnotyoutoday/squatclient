@@ -1,6 +1,6 @@
 {
  "session": "s1",
- "rev": 33,
+ "rev": 34,
  "generation": 1,
  "state": "ready",
  "proto": 1,
@@ -431,16 +431,9 @@
     "text": "shield {facing} {pct}",
     "args": {
      "facing": {
-      "type": "enum",
-      "values": [
-       "fore",
-       "aft",
-       "port",
-       "starboard",
-       "dorsal",
-       "ventral",
-       "all"
-      ]
+      "type": "string",
+      "maxlen": 32,
+      "pattern": "^(all|[a-z][a-z0-9_]{0,31})$"
      },
      "pct": {
       "type": "number",
@@ -761,16 +754,27 @@
      "level": {
       "type": "int",
       "min": 1,
-      "max": 5
+      "max": 5,
+      "required": false
      },
      "system": {
       "type": "string",
-      "maxlen": 64
+      "maxlen": 64,
+      "required": false
+     },
+     "systems": {
+      "type": "list",
+      "required": false,
+      "items": {
+       "type": "string",
+       "maxlen": 64
+      },
+      "maxitems": 8
      }
     },
     "rate_per_s": 2,
     "status": "designed",
-    "doc": "tell damage-control teams which system matters most"
+    "doc": "tell damage-control teams which system matters most: either one system with a level 1..5, or `systems`, an ordered list (most important first); the server needs one of the two forms"
    },
    {
     "name": "science.analyze",
@@ -1650,6 +1654,38 @@
      }
     },
     "rate_per_s": 1,
+    "status": "designed",
+    "doc": "choose which running mission Mission.Objectives shows (the tracked one)"
+   },
+   {
+    "name": "mission.accept",
+    "consoles": [
+     "command"
+    ],
+    "mutating": true,
+    "text": "mission accept {id}",
+    "args": {
+     "id": {
+      "type": "id"
+     }
+    },
+    "rate_per_s": 1,
+    "status": "designed",
+    "doc": "accept an offered mission (Mission.Offers)"
+   },
+   {
+    "name": "mission.decline",
+    "consoles": [
+     "command"
+    ],
+    "mutating": true,
+    "text": "mission decline {id}",
+    "args": {
+     "id": {
+      "type": "id"
+     }
+    },
+    "rate_per_s": 1,
     "status": "designed"
    },
    {
@@ -1802,7 +1838,7 @@
     },
     "rate_per_s": 1,
     "status": "designed",
-    "doc": "ask another role for something (tactical asks engineering for power, science asks the captain for the viewscreen)"
+    "doc": "ask another role for something (tactical asks engineering for power, science asks the captain for the viewscreen). A structured power request carries `group` and `pct`; a typed one (`request engineering/power=Weapons 60`) is parsed by the server into the same fields"
    },
    {
     "name": "request.accept",
@@ -2053,8 +2089,7 @@
   "nav.cancel",
   "power.reroute",
   "power.preset",
-  "repair.priority",
-  "science.analyze"
+  "repair.priority"
  ],
  "catalogue": {
   "ai.mode": {
@@ -2825,6 +2860,37 @@
    "rate_per_s": 2,
    "status": "designed"
   },
+  "mission.accept": {
+   "name": "mission.accept",
+   "consoles": [
+    "command"
+   ],
+   "mutating": true,
+   "text": "mission accept {id}",
+   "args": {
+    "id": {
+     "type": "id"
+    }
+   },
+   "rate_per_s": 1,
+   "status": "designed",
+   "doc": "accept an offered mission (Mission.Offers)"
+  },
+  "mission.decline": {
+   "name": "mission.decline",
+   "consoles": [
+    "command"
+   ],
+   "mutating": true,
+   "text": "mission decline {id}",
+   "args": {
+    "id": {
+     "type": "id"
+    }
+   },
+   "rate_per_s": 1,
+   "status": "designed"
+  },
   "mission.track": {
    "name": "mission.track",
    "consoles": [
@@ -2838,7 +2904,8 @@
     }
    },
    "rate_per_s": 1,
-   "status": "designed"
+   "status": "designed",
+   "doc": "choose which running mission Mission.Objectives shows (the tracked one)"
   },
   "nav.cancel": {
    "name": "nav.cancel",
@@ -3150,16 +3217,27 @@
     "level": {
      "type": "int",
      "min": 1,
-     "max": 5
+     "max": 5,
+     "required": false
     },
     "system": {
      "type": "string",
-     "maxlen": 64
+     "maxlen": 64,
+     "required": false
+    },
+    "systems": {
+     "type": "list",
+     "required": false,
+     "items": {
+      "type": "string",
+      "maxlen": 64
+     },
+     "maxitems": 8
     }
    },
    "rate_per_s": 2,
    "status": "designed",
-   "doc": "tell damage-control teams which system matters most"
+   "doc": "tell damage-control teams which system matters most: either one system with a level 1..5, or `systems`, an ordered list (most important first); the server needs one of the two forms"
   },
   "request.accept": {
    "name": "request.accept",
@@ -3258,7 +3336,7 @@
    },
    "rate_per_s": 1,
    "status": "designed",
-   "doc": "ask another role for something (tactical asks engineering for power, science asks the captain for the viewscreen)"
+   "doc": "ask another role for something (tactical asks engineering for power, science asks the captain for the viewscreen). A structured power request carries `group` and `pct`; a typed one (`request engineering/power=Weapons 60`) is parsed by the server into the same fields"
   },
   "scan.dock": {
    "name": "scan.dock",
@@ -3539,16 +3617,9 @@
    "text": "shield {facing} {pct}",
    "args": {
     "facing": {
-     "type": "enum",
-     "values": [
-      "fore",
-      "aft",
-      "port",
-      "starboard",
-      "dorsal",
-      "ventral",
-      "all"
-     ]
+     "type": "string",
+     "maxlen": 32,
+     "pattern": "^(all|[a-z][a-z0-9_]{0,31})$"
     },
     "pct": {
      "type": "number",
@@ -4063,6 +4134,11 @@
    "ok": true
   },
   {
+   "pkg": "Mission.Offers",
+   "source": "console",
+   "ok": true
+  },
+  {
    "pkg": "Ship.Cargo",
    "source": "console",
    "ok": true
@@ -4359,11 +4435,11 @@
      "status": "ok"
     },
     "security": {
-     "ai": false,
-     "ai_mode": "off",
+     "ai": true,
+     "ai_mode": "auto",
      "console": "security",
-     "efficiency": 0,
-     "status": "vacant"
+     "efficiency": 0.8,
+     "status": "ok"
     },
     "tactical": {
      "ai": false,
@@ -4482,7 +4558,39 @@
      "title": "Avoid detection"
     }
    },
+   "running": {
+    "m-escort": {
+     "done": 0,
+     "title": "Escort the freighter",
+     "total": 2
+    },
+    "m-salvage": {
+     "done": 1,
+     "title": "Salvage run",
+     "total": 3
+    }
+   },
    "tracked": "o2"
+  },
+  "Mission.Offers": {
+   "offers": {
+    "m-patrol": {
+     "briefing": "Two hours on the Klingon border.",
+     "difficulty": 5,
+     "giver": "Admiral Voss",
+     "id": "m-patrol",
+     "title": "Border patrol"
+    },
+    "m-survey": {
+     "briefing": "Map the ion storm at the edge of the sector.",
+     "difficulty": 3,
+     "expires_t": 1794675900000,
+     "giver": "Starfleet Operations",
+     "id": "m-survey",
+     "reward": "400 credits",
+     "title": "Survey the nebula"
+    }
+   }
   },
   "Ship.Cargo": {
    "bays": {
@@ -5186,6 +5294,7 @@
   "Crew.Roster": 1,
   "Crew.Security": 1,
   "Mission.Objectives": 1,
+  "Mission.Offers": 1,
   "Ship.Cargo": 1,
   "Ship.Log": 1,
   "Ship.Orders": 1,
@@ -5298,6 +5407,11 @@
          "id": "view",
          "widget": "viewscreen",
          "props": {
+          "backdrop": {
+           "density": 0.3,
+           "kind": "stars",
+           "seed": 4711
+          },
           "contacts": {
            "11": {
             "bearing": {
@@ -5393,6 +5507,19 @@
              "az": 166,
              "mark": -4
             }
+           }
+          },
+          "effects": {
+           "fire.phaser": {
+            "color": "@color.warn",
+            "duration_ms": 400,
+            "effect": "beam",
+            "width": 3
+           },
+           "target.designated": {
+            "color": "@color.alert",
+            "duration_ms": 3000,
+            "effect": "reticle"
            }
           },
           "heading": {
@@ -5831,11 +5958,11 @@
             "status": "ok"
            },
            "security": {
-            "ai": false,
-            "ai_mode": "off",
+            "ai": true,
+            "ai_mode": "auto",
             "console": "security",
-            "efficiency": 0,
-            "status": "vacant"
+            "efficiency": 0.8,
+            "status": "ok"
            },
            "tactical": {
             "ai": false,
