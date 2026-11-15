@@ -248,6 +248,78 @@ export function SettingsDialog() {
             onChange={(e) => update({ libDirs: e.target.value.split('\n') })}
           />
         </Field>
+        <h3 className="group">Game consoles (CMCP) and sound</h3>
+        {check('cmcp', 'Let games draw their consoles from protocol data', '(advertised when you connect; off = text only. Takes effect on the next connection.)')}
+        <Field label="Console theme" hint="How the consoles look. A game may suggest one; it is only followed when the next option is on.">
+          <select aria-label="Console theme" value={settings.consoleTheme} onChange={(e) => update({ consoleTheme: e.target.value })}>
+            {['tng', 'soft', 'klingon', 'romulan', 'tos', 'ferengi', 'ops'].map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </select>
+        </Field>
+        {check('useShipTheme', "Use the ship's theme and sound era", '(the console, the ship or the screen may suggest one)')}
+        <Field label="Sound era" hint="Which set of sounds to use for your own recordings. Empty = what the game or the ship's theme suggests.">
+          <select aria-label="Sound era" value={settings.soundEra} onChange={(e) => update({ soundEra: e.target.value })}>
+            {['', 'tos', 'tng', 'ds9', 'voy', 'klingon', 'romulan', 'ferengi', 'any'].map((t) => (
+              <option key={t} value={t}>
+                {t || '(automatic)'}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field
+          label="Local sound folder"
+          hint="Your own sounds, read from here and never uploaded or copied. A map in <folder>/era-maps/<era>.json names the files; any event you leave out falls back to the game's sound, then to a synthesised one."
+        >
+          <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <input
+              type="text"
+              aria-label="Local sound folder"
+              value={settings.soundFolder}
+              spellCheck={false}
+              onChange={(e) => update({ soundFolder: e.target.value })}
+            />
+            <button
+              type="button"
+              onClick={() =>
+                void engine
+                  ?.pickFolder('Choose your sound folder', settings.soundFolder)
+                  .then((p) => p && update({ soundFolder: p }))
+                  .catch((e: unknown) => setErr(String(e)))
+              }
+            >
+              Browse...
+            </button>
+            <button type="button" disabled={!settings.soundFolder} onClick={() => openFolder(settings.soundFolder)}>
+              Open
+            </button>
+          </span>
+        </Field>
+        {check('soundMuted', 'Sounds off')}
+        <Field label={`Master volume ${settings.soundVolume}%`}>
+          <input
+            type="range"
+            min={0}
+            max={100}
+            aria-label="Master volume"
+            value={settings.soundVolume}
+            onChange={(e) => update({ soundVolume: Number(e.target.value) })}
+          />
+        </Field>
+        {['alert', 'weapon', 'impact', 'system', 'ambient', 'ui'].map((c) => (
+          <Field key={c} label={`${c[0].toUpperCase()}${c.slice(1)} sounds ${settings.soundCategoryVolumes?.[c] ?? 100}%`}>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              aria-label={`${c} volume`}
+              value={settings.soundCategoryVolumes?.[c] ?? 100}
+              onChange={(e) => update({ soundCategoryVolumes: { ...(settings.soundCategoryVolumes ?? {}), [c]: Number(e.target.value) } })}
+            />
+          </Field>
+        ))}
         {folders && (
           <div className="field">
             <span className="lbl">Built-in libraries (managed, rewritten at every start)</span>

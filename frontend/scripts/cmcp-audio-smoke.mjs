@@ -1,4 +1,4 @@
-/* global window document */
+/* global document AudioContext */
 // The Web Audio backend in real headless Chrome: a recipe, a streamed file (a generated WAV) and the bell run without errors, the
 // context runs, and a looped crossfaded bed starts a second element before the first one ends. (No speakers are heard here.)
 //   node scripts/cmcp-audio-smoke.mjs [baseUrl]
