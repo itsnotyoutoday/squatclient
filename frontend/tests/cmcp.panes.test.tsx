@@ -65,19 +65,13 @@ describe('CMCP 2 page elements', () => {
     expect(document.querySelector('[data-textport]')).toBeNull();
   });
 
-  it('a ship console keeps the scene; a place and a ship room are drawn as a page', () => {
-    const ui = (type: string, scope: string): CmcpUI =>
-      ({
-        v2: true,
-        ctx: { type, scope, key: 'k', layout: 'l', surface: 'screen', ambient: false },
-      }) as unknown as CmcpUI;
-    expect(drawsAsPage(ui('world.place', 'world'), 'scene')).toBe(true);
-    expect(drawsAsPage(ui('ship.shiproom', 'ship'), 'scene')).toBe(true);
+  it('draws in the scene at the full level, and as page elements only when the client is capped there', () => {
+    const ui = (type: string, scope: string): CmcpUI => ({ v2: true, ctx: { type, scope, key: 'k', layout: 'l', surface: 'screen', ambient: false } } as unknown as CmcpUI);
+    expect(drawsAsPage(ui('world.place', 'world'), 'scene')).toBe(false);
     expect(drawsAsPage(ui('ship.console', 'ship'), 'scene')).toBe(false);
     expect(drawsAsPage({ v2: false } as CmcpUI, 'scene')).toBe(false);
-    // capped at widgets, every screen is drawn as a page, consoles included
+    expect(drawsAsPage(ui('world.place', 'world'), 'widgets')).toBe(true);
     expect(drawsAsPage(ui('ship.console', 'ship'), 'widgets')).toBe(true);
-    expect(drawsAsPage({ v2: false } as CmcpUI, 'widgets')).toBe(true);
   });
 
   it('lists the exits a room puts in its data, as names or {name, cmd}', () => {

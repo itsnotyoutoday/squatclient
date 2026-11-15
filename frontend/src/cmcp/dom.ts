@@ -25,12 +25,10 @@ export const useCmcpDom = create<DomStore>((set) => ({
     ),
 }));
 
-/** CMCP 2: a ship console keeps the scene and its frame (the old console look); every other context, a place such as the concourse or a ship room,
- * is drawn with page elements. */
-export function drawsAsPage(ui: CmcpUI, level: CmcpLevel): boolean {
-  if (level === 'widgets') return true; // the player capped the client below the scene
-  if (!ui.v2 || !ui.ctx) return false;
-  return ui.ctx.scope !== 'ship' || ui.ctx.type === 'ship.shiproom' || ui.ctx.type === 'ship.room';
+/** Whether the window draws this session's screen with page elements instead of the scene. Only when the player capped the client there
+ * (the CMCP chip): every screen a game sends is drawn in the scene, as it always was. */
+export function drawsAsPage(_ui: CmcpUI, level: CmcpLevel): boolean {
+  return level === 'widgets';
 }
 
 /** The exits a room context lists in its data (`exits`: names, or {name, cmd}); each becomes a button that sends the command. */

@@ -77,9 +77,9 @@ const run = (scope: string, type: string) => {
 };
 
 describe('CMCP 2 screens', () => {
-  it('draws a world-scope context as a page, not in the scene (no frame, no nav column, no alert pill)', () => {
+  it('draws a world-scope context in the scene, like every other screen', () => {
     const { ids } = run('world', 'world.place');
-    expect(ids.size).toBe(0); // nothing is drawn in the scene: the window shows the page
+    expect(ids.has('cmcp.port')).toBe(true);
   });
 
   it('keeps the ship frame for a ship-scope context', () => {
