@@ -23,7 +23,7 @@ func (s *Service) cmcpHello() cs.Config {
 		Name: "SquatClient", Version: s.version(), Kind: "gui", MaxBody: 65536,
 		Protos:  cmcpProtos(),
 		Render:  &msg.Render{Kind: "gpu", FPS: 60, Surfaces: []string{"screen", "panel", "dock", "float"}}, // all four are drawn (frontend/src/cmcp/PaneHost.tsx)
-		Widgets: map[string]int{"joystick": 1, "scope": 1, "lights": 1},          // only the optional ones; core widgets are never listed
+		Widgets: map[string]int{"joystick": 1, "scope": 1, "lights": 1},                                    // only the optional ones; core widgets are never listed
 		Themes:  config.CmcpThemes, Theme: st.ConsoleTheme,
 		Audio: &msg.Audio{Play: !st.SoundMuted && st.SoundVolume > 0, Formats: []string{"wav", "ogg", "mp3"}, Recipes: true, Voices: 16},
 		Input: &msg.Input{Mouse: true, Keyboard: true}, // gamepad/touch only when implemented
