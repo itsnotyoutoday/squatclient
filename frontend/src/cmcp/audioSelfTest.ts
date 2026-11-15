@@ -1,7 +1,10 @@
 import type { EngineAPI } from '../api/types';
 import { useAudioStats } from './audio';
 import { useSoundMute } from '../state/soundMute';
-import { useSessions, useSettings } from '../state/stores';
+import { useSessions, useSettings, useUi } from '../state/stores';
+import type { DialogId } from '../state/stores';
+import { enterEditor } from '../lib/editor/view';
+import { openTarget } from '../state/editorStore';
 
 /** Developer self-test of the sound path inside the REAL web view (SQUATCLIENT_AUDIO_SELFTEST_DIR=<folder with wav/ogg samples> on a run of the app):
  * the audio context, which formats the view can decode, and for each file fetch + decodeAudioData through the app's own audio handler. Every line
@@ -51,7 +54,7 @@ export async function runAudioSelfTest(engine: EngineAPI, files: string[]): Prom
 
 /** The live self-test: connect to a game, run its commands, and log what the sound engine did (SQUATCLIENT_AUDIO_SELFTEST_LIVE="host:port|cmd|cmd...").
  * Steps beginning with "!" drive the real UI: `!open host:port` (another session, in front), `!fg N` (the N-th session's tab), `!mute` / `!unmute` (the world
- * speaker button of the status bar), `!global` (the toolbar speaker), `!wait N` (seconds), `!stats` (log the sound state of every session). */
+ * speaker button of the status bar), `!global` (the toolbar speaker), `!wait N` (seconds), `!stats` (log the sound state of every session), `!editor` (open the Object Editor), `!edit REF` (open an object in it), `!view terminal|editor`, `!dialog NAME` (open a dialog; `!dialog close`). */
 export async function runLiveSelfTest(engine: EngineAPI, script: string): Promise<void> {
   const log = (l: string): void => { void engine.clientLog(`selftest-live: ${l}`).catch(() => undefined); };
   const [addr, ...cmds] = script.split('|');
@@ -93,6 +96,10 @@ export async function runLiveSelfTest(engine: EngineAPI, script: string): Promis
       if (c === '!global') { log(`!global: button ${click('Mute all sound') || click('Unmute all sound') ? 'clicked' : 'NOT FOUND'}`); await sleep(1200); stats('after global'); continue; }
       if (c.startsWith('!wait ')) { await sleep(Number(c.slice(6)) * 1000); stats('wait'); continue; }
       if (c === '!stats') { stats('stats'); continue; }
+      if (c === '!editor') { enterEditor(); log('!editor'); await sleep(1500); continue; }
+      if (c.startsWith('!edit ')) { const r = await openTarget(useSessions.getState().fg ?? sessions[0], c.slice(6)); log(`!edit ${c.slice(6)}: ${r.ok ? 'ok' : r.error}`); await sleep(1500); continue; }
+      if (c.startsWith('!view ')) { useUi.getState().setView(c.slice(6) === 'editor' ? 'editor' : 'terminal'); log(c); await sleep(800); continue; }
+      if (c.startsWith('!dialog ')) { const n = c.slice(8); useUi.getState().openDialog(n === 'close' ? null : (n as DialogId)); log(c); await sleep(800); continue; }
       const id = useSessions.getState().fg ?? sessions[0];
       await engine.input(id, c);
       log(`sent to ${id}: "${c}"`);
