@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/itsnotyoutoday/squatClientDaemon/pkg/engine"
@@ -45,14 +46,15 @@ type Options struct {
 
 // Service implements the bound methods.
 type Service struct {
-	cfg   *config.Store
-	sec   secrets.Store
-	emit  Emitter
-	eng   *engine.Engine
-	log   *slog.Logger
-	quit  func()
-	win   func(string)
-	flush time.Duration
+	reducedMotion atomic.Bool // the web view's prefers-reduced-motion (CmcpReducedMotion)
+	cfg           *config.Store
+	sec           secrets.Store
+	emit          Emitter
+	eng           *engine.Engine
+	log           *slog.Logger
+	quit          func()
+	win           func(string)
+	flush         time.Duration
 
 	ctx        context.Context
 	cancel     context.CancelFunc // stops squatter connects at shutdown
@@ -370,6 +372,10 @@ func (s *Service) deliver(batch []engine.Event) {
 		case engine.EvCmcp:
 			if ev.Cmcp != nil {
 				s.emit("cmcp", ev.Cmcp)
+			}
+		case engine.EvCmcpPulse:
+			if ev.CmcpPulse != nil {
+				s.emit("cmcp-pulse", ev.CmcpPulse)
 			}
 		case engine.EvCmcpNote:
 			s.handleSoundNotes(ev.Session, ev.CmcpNotes)

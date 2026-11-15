@@ -1,4 +1,4 @@
-import type { CmcpEventResult, CmcpNote, CmcpUI } from '../cmcp/types';
+import type { CmcpEventResult, CmcpNote, CmcpPulse, CmcpUI } from '../cmcp/types';
 import { DEFAULT_SETTINGS } from './types';
 import { GAME_TYPES } from '../lib/modules';
 import type {
@@ -654,6 +654,13 @@ export class MockEngine implements EngineAPI {
   }
   /** theme documents a test serves as downloaded packs, by theme id */
   cmcpThemeDocs: Record<string, Record<string, unknown>> = {};
+  async cmcpReducedMotion(on: boolean): Promise<void> {
+    this.cmcpCall('cmcpReducedMotion', String(on));
+  }
+  /** test helper: a pulse sample from the engine */
+  pushCmcpPulse(p: CmcpPulse): void {
+    this.emit('cmcp-pulse', p);
+  }
   async cmcpThemeDoc(session: string, themeId: string): Promise<Record<string, unknown>> {
     this.cmcpCall('cmcpThemeDoc', session, themeId);
     const d = this.cmcpThemeDocs[themeId];

@@ -4,7 +4,7 @@ import type { GfxRuntime } from '../gfx/runtime';
 import { findTextport, place, type Placed } from './layout';
 import { skinFor } from './skins';
 import { layoutSkinned } from './skinlayout';
-import type { Skin } from './skins/types';
+import type { Pal, Skin } from './skins/types';
 import { col, frameShapes, navShapes, templateVars } from './skinframe';
 export type AlertRecolour = 'full' | 'edge' | 'off';
 import { skinFromTheme } from './skins/pack';
@@ -12,7 +12,7 @@ import { setActiveCmcp, usePane, useScreenHelp, useThemeInUse } from './pane';
 import { useSettings } from '../state/stores';
 import { diffOps, PORT_ID, SCENE, sceneOp, type Ease } from './ops';
 import { drawSprite, type SpriteView } from './sprite';
-import type { CmcpNode, CmcpNote, CmcpTree, CmcpUI } from './types';
+import type { CmcpNode, CmcpNote, CmcpPulse, CmcpTree, CmcpUI } from './types';
 import { useOverlays } from './overlays';
 import { amountKey, contextStrip, draw, readonlyBadge, recordHistory, viewNeeds, type Ctx, type Prim, type Target } from './widgets';
 
@@ -62,6 +62,8 @@ interface SessionState {
   menu: { open: boolean; idx: number };
   lastW?: number;
   skinned: boolean;
+  noticeId?: string;
+  pulse?: CmcpPulse;
   viewState: 'compact' | 'balanced' | 'large' | 'expanded' | 'off' | 'default';
 }
 
@@ -79,8 +81,10 @@ export class CmcpController {
 
   attach(): () => void {
     setActiveCmcp(this);
+    void this.engine.cmcpReducedMotion(this.reduceMotion).catch(() => undefined);
     const offs = [
       this.engine.on('cmcp', (ui) => this.onUi(ui)),
+      this.engine.on('cmcp-pulse', (p) => { const s = this.sess.get(p.session); if (s) { s.pulse = p; if (s.tree && s.open) this.render(s); } }),
       this.engine.on('cmcp-notes', (p) => { this.onNotes?.(p.session, p.notes); this.noteErrors(p.notes); this.effects(p.session, p.notes); }),
       this.engine.on('session-removed', (p) => this.sess.delete(p.id)),
     ];
@@ -460,9 +464,13 @@ export class CmcpController {
     // alert_recolour: full = every role swaps to the red set; edge = only the edge roles (port frame, alert pill, screen edge) do; off = nothing
     // recolours (the pill and the strip still say ALERT RED). The theme default: green-identity themes (romulan, ferengi) use edge.
     const want = this.alertRecolour();
-    const mode: AlertRecolour = want === 'theme' ? (skin.alertRecolour ?? (skin.name === 'romulan' || skin.name === 'ferengi' ? 'edge' : 'full')) : want;
-    const pal = alert && mode === 'full' ? skin.pal.red : skin.pal.normal;
-    const edgePal = alert && mode !== 'off' ? skin.pal.red : pal;
+    const mode: AlertRecolour = t.alertMode ?? (want === 'theme' ? (skin.alertRecolour ?? (skin.name === 'romulan' || skin.name === 'ferengi' ? 'edge' : 'full')) : want);
+    // the engine (the core) says what pulses: while a red alert pulses its samples re-colour the roles r and x, the alert pill and the edge
+    const pu = s.pulse?.active && alert ? s.pulse : undefined;
+    const withPulse = (p: Pal): Pal => (pu?.roles ? ({ ...p, ...(pu.roles.r ? { r: pu.roles.r } : {}), ...(pu.roles.x ? { x: pu.roles.x } : {}) } as Pal) : p);
+    const red = withPulse(skin.pal.red);
+    const pal = withPulse(alert && mode === 'full' ? skin.pal.red : alert && mode === 'edge' ? ({ ...skin.pal.normal, r: skin.pal.red.r, x: skin.pal.red.x } as Pal) : skin.pal.normal);
+    const edgePal = alert && mode !== 'off' ? red : pal;
     const screenName = t.screen.split(/[./]/).pop() ?? '';
     const cur = skin.nav.items.findIndex((i) => i.screens.includes(screenName));
     const label = cur >= 0 ? skin.nav.items[cur].label : (t.title || screenName);
@@ -512,8 +520,18 @@ export class CmcpController {
     const ob = skin.off.button;
     prims.push({ id: 'offbtn', type: 'button', events: ['click'], target: { path: '', event: '', special: 'off' }, props: { x: ob.x, y: ob.y, w: ob.w, h: ob.h, r: ob.r ?? ob.h / 2, fill: col(ob.role, pal), text: skin.off.label, color: col(ob.color, pal), size: ob.size * (skin.font.tscale ?? 1), weight: skin.font.weight, align: ob.align ?? 'center', font: skin.font.family, key: 'alt+s', glow: 0.04 } });
     prims.forEach((p, i) => { p.props = { ...p.props, z: i }; });
-    if (alert && mode === 'edge') prims.push({ id: 'alertedge', type: 'rect', props: { x: 4, y: 4, w: 1592, h: 892, r: skin.alertEdge?.r ?? 0, stroke: skin.alertEdge?.color ?? skin.pal.red.r, strokeWidth: skin.alertEdge?.width ?? 8, fill: '#00000000', z: 9500 } });
+    // the notice line: one pill at the top edge of the scene, styled by the skin, clear of the text port, the input bar and the nav column
+    const nt = s.ui?.notice;
+    if (nt && nt.text) {
+      const nw = Math.min(900, Math.max(320, nt.text.length * 15 + 48)), nx = 800 - nw / 2, bad = nt.state === 'failed' || nt.kind === 'error' || nt.kind === 'warning';
+      prims.push({ id: 'notice.bg', type: 'rect', props: { x: nx, y: 4, w: nw, h: 34, r: skin.sharp ? 0 : 17, fill: col('bg', pal), stroke: col(bad ? 'r' : skin.port.frame.role, edgePal), strokeWidth: 2, glow: 0.1, z: 9400 } });
+      prims.push({ id: 'notice.tx', type: 'text', props: { x: 800, y: 21, text: nt.text, size: 22 * (skin.font.tscale ?? 1), fill: col(bad ? 'r' : 'k', edgePal), align: 'center', baseline: 'middle', weight: '700', font: skin.font.family, z: 9401 } });
+    }
+    const noticeNew = nt?.id !== s.noticeId;
+    s.noticeId = nt?.id;
+    if (alert && mode !== 'off') prims.push({ id: 'alertedge', type: 'rect', props: { x: 4, y: 4, w: 1592, h: 892, r: skin.alertEdge?.r ?? 0, stroke: pu?.edge ?? skin.alertEdge?.color ?? skin.pal.red.r, strokeWidth: skin.alertEdge?.width ?? 8, fill: '#00000000', z: 9500 } });
     const palKey = alert ? (mode === 'full' ? 'red' : mode === 'edge' ? 'edge' : 'normal') : 'normal';
+    const pulsing = !!pu;
     const palChanged = s.lastPal !== '' && s.lastPal !== palKey;
     s.lastPal = palKey;
     const slow = this.reduceMotion ? 0 : 1;
@@ -521,6 +539,7 @@ export class CmcpController {
       if (!slow) return 0;
       const calm = t.view?.calm ? 2.5 : 1; // calm mode: 2.5 times slower
       if ((id === PORT_ID || id === 'portframe' || id === 'cw' || id === 'logsum') && /^(x|y|w|h|opacity)$/.test(prop)) return 0.35 * calm; // the animated LOG toggle (the Lua themes' portNode tween)
+      if (pulsing && /^(fill|stroke|color)$/.test(prop)) return 0.06; // a pulse sample: a short smoothing glide
       if (palChanged && /^(fill|stroke|color)$/.test(prop)) return ((skin.motion?.alertMs ?? 900) / 1000) * calm;
       return 0;
     };
@@ -532,6 +551,8 @@ export class CmcpController {
     s.prev = map;
     s.targets = new Map(prims.filter((p) => p.target).map((p) => [p.id, p.target!]));
     rt.apply([...head, ...ops]);
+    // a new notice fades in (150 ms); an update in place does not, and reduced motion shows it at once
+    if (nt && noticeNew && slow) for (const id of ['notice.bg', 'notice.tx']) rt.apply([{ op: 'tween', scene: SCENE, target: id, tracks: { opacity: { from: 0, to: 1 } }, dur: 0.15, ease: 'outQuad' }]);
   }
 
   /** A pointer event from a scene. Returns true when the scene is CMCP's (consumed). */

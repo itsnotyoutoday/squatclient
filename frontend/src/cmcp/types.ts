@@ -27,6 +27,8 @@ export interface CmcpTree {
   theme: string;
   themeSource?: 'pack' | 'builtin' | 'plain';
   themeVersion?: string;
+  /** the effective alert_recolour (full | edge | off): the theme's field with the player's setting applied by the core */
+  alertMode?: 'full' | 'edge' | 'off';
   /** The text view's state from the shared core (LOG / screen-off) and the player's size choice. */
   view?: { state: 'compact' | 'balanced' | 'large' | 'expanded' | 'off'; portDefault: 'compact' | 'balanced' | 'large'; fraction: number; calm: boolean };
   tokens: Record<string, string | number>;
@@ -64,6 +66,8 @@ export interface CmcpUI {
   stack?: CmcpStackEntry[];
   catalogueComplete?: boolean;
   /** The screen menu: the screens this console can show, with why a screen is dimmed and how to get it. */
+  /** the one notice line (the core's queue: pack downloads, accepted packs, theme in use, command errors with hints) */
+  notice?: { id: string; kind: string; state: string; text: string };
   screens?: { id: string; title: string; available: boolean; reason?: string; hintCmd?: string; active: boolean; state?: string; hint?: string }[];
   localScreen?: string;
   pinned?: boolean;
@@ -95,3 +99,7 @@ export interface CmcpNote {
   /** pack-consent / pack-ready: the pack entry */
   pack?: { id: string; kind: string; version: string; sha256: string; size?: number };
 }
+
+/** One sample of the red-alert pulse from the engine (the core's pulse function and theme.PulseColour): the roles r and x and the alert edge
+ * re-coloured at this level. `active` false = steady (draw the plain colours). */
+export interface CmcpPulse { session: string; active: boolean; level: number; phase: string; periodMs?: number; alert?: string; roles?: Record<string, string>; edge?: string }

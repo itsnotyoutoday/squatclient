@@ -284,6 +284,13 @@ export function SettingsDialog() {
             <option value="off">Off</option>
           </select>
         </Field>
+        <Field label="Red alert pulse" hint="Whether a red alert pulses the alert pill, the edge and the red roles. Theme (default): the theme decides (every theme pulses by default). Calm mode slows it, reduced motion keeps it steady.">
+          <select aria-label="Red alert pulse" value={settings.cmcpAlertPulse || 'theme'} onChange={(e) => update({ cmcpAlertPulse: e.target.value as 'theme' | 'on' | 'off' })}>
+            <option value="theme">Theme decides (default)</option>
+            <option value="on">On</option>
+            <option value="off">Off</option>
+          </select>
+        </Field>
         <ThemeInUse />
         <Field label="Sound era" hint="Which set of sounds to use for your own recordings. Empty = what the game or the ship's theme suggests.">
           <select aria-label="Sound era" value={settings.soundEra} onChange={(e) => update({ soundEra: e.target.value })}>

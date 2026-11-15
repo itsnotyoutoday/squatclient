@@ -124,3 +124,13 @@ func (a *App) CmcpPinScreen(session string, pin bool) error {
 	}
 	return s.CmcpPinScreen(session, pin)
 }
+
+// CmcpReducedMotion reports the web view's prefers-reduced-motion.
+func (a *App) CmcpReducedMotion(on bool) error {
+	s, err := a.service()
+	if err != nil {
+		return err
+	}
+	s.CmcpReducedMotion(on)
+	return nil
+}

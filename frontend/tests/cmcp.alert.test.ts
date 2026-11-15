@@ -83,7 +83,7 @@ describe('alert_recolour', () => {
     expect(off.create('portframe')?.stroke).toBe(redP.romulan.normal);
     expect(calm.create('portframe')?.stroke).toBe(redP.romulan.normal);
     expect(edge.create('alertedge')).toBeTruthy();
-    expect(full.create('alertedge')).toBeUndefined();
+    expect(full.create('alertedge')).toBeTruthy(); // the core draws the alert edge in full mode too, never in off
     expect(off.create('alertedge')).toBeUndefined();
     // the fill roles stay in edge mode (the off button uses the normal set), and swap in full mode
     expect(edge.create('offbtn')?.fill).toBe(off.create('offbtn')?.fill);
@@ -91,9 +91,60 @@ describe('alert_recolour', () => {
     // the state is readable in the alert pill whatever the mode
     for (const r of [full, edge, off]) expect(r.create('alertbtn')?.text).toBe('ALERT RED');
   });
-  it('the theme default: romulan and ferengi edge, tng full', () => {
+  it('the theme default: romulan and ferengi edge (roles r and x only), tng full', () => {
     expect(run('romulan', 'theme', 'red').create('alertedge')).toBeTruthy();
     expect(run('ferengi', 'theme', 'red').create('alertedge')).toBeTruthy();
-    expect(run('tng', 'theme', 'red').create('alertedge')).toBeUndefined();
+    expect(run('tng', 'theme', 'red').create('alertedge')).toBeTruthy();
+    expect(run('tng', 'theme', 'green').create('alertedge')).toBeUndefined();
+  });
+});
+
+describe('the red-alert pulse (samples come from the engine, which asks the core)', () => {
+  const setupP = (alert: string, reduce = false) => {
+    const engine = new MockEngine();
+    const rt = new GfxRuntime();
+    rt.paused = true;
+    const ops: GfxOp[] = [];
+    const apply = rt.apply.bind(rt);
+    rt.apply = (o: GfxOp[]): void => { ops.push(...o); apply(o); };
+    const ctl = new CmcpController(engine, () => rt);
+    ctl.reduceMotion = reduce;
+    ctl.attach();
+    const ui = { ...fx('sensors'), session: 's1', alert, status: { alert, hull: { cur: 80, max: 100 }, core_pct: 60, name: 'SS Test' }, commands: ['alert.set'] } as CmcpUI;
+    ui.tree!.session = 's1';
+    ui.tree!.theme = 'klingon';
+    ui.tree!.alertMode = 'full';
+    engine.pushCmcp(ui);
+    const fin = (id: string): Record<string, unknown> | undefined => {
+      let cur: Record<string, unknown> | undefined;
+      for (const o of ops) {
+        if (o.op === 'create' && o.id === id) cur = { ...(o.props as Record<string, unknown>) };
+        else if (o.op === 'set' && o.id === id && cur) Object.assign(cur, o.props);
+        else if (o.op === 'tween' && o.target === id && cur) for (const [k, v] of Object.entries(o.tracks as Record<string, { to: unknown }>)) cur[k] = v.to;
+      }
+      return cur;
+    };
+    return { engine, fin, ops, ctl };
+  };
+  it('re-colours the alert pill, the edge and the roles r and x from each sample, and restores the plain colours when steady', () => {
+    const { engine, fin } = setupP('red');
+    const plain = fin('alertbtn')?.fill;
+    engine.pushCmcpPulse({ session: 's1', active: true, level: 0.7, phase: 'dim', alert: 'red', roles: { r: '#a13738', x: '#9a792c' }, edge: '#b61717' });
+    expect(fin('alertbtn')?.fill).toBe('#a13738');
+    expect(fin('alertedge')?.stroke).toBe('#b61717');
+    engine.pushCmcpPulse({ session: 's1', active: true, level: 1, phase: 'on', alert: 'red', roles: { r: '#ff2a2a', x: '#ffd24a' }, edge: '#ff2020' });
+    expect(fin('alertbtn')?.fill).toBe('#ff2a2a');
+    engine.pushCmcpPulse({ session: 's1', active: false, level: 1, phase: 'on' });
+    expect(fin('alertbtn')?.fill).toBe(plain);
+  });
+  it('ignores samples on a green alert and renders nothing different when steady', () => {
+    const { engine, fin } = setupP('green');
+    const before = fin('alertbtn')?.fill;
+    engine.pushCmcpPulse({ session: 's1', active: true, level: 0.5, phase: 'dim', roles: { r: '#123456' } });
+    expect(fin('alertbtn')?.fill).toBe(before);
+  });
+  it('tells the engine about reduced motion (a steady alert)', () => {
+    const { engine } = setupP('red', true);
+    expect(engine.cmcpCalls.some((c) => c.fn === 'cmcpReducedMotion')).toBe(true);
   });
 });

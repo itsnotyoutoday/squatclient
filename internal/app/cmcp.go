@@ -41,7 +41,7 @@ func (s *Service) applyCmcpSettings() {
 	} else {
 		s.eng.SetCmcp(nil)
 	}
-	s.eng.SetCmcpRender(engine.CmcpRender{PortDefault: st.CmcpPortDefault, Calm: st.CmcpCalm, StartCollapsed: st.CmcpStartCollapsed, PackConsent: st.CmcpPackConsent, Theme: st.ConsoleTheme, UseShipTheme: st.ConsoleThemeMode != "fixed", Tokens: CmcpThemeTokens})
+	s.eng.SetCmcpRender(engine.CmcpRender{PortDefault: st.CmcpPortDefault, Calm: st.CmcpCalm, StartCollapsed: st.CmcpStartCollapsed, PackConsent: st.CmcpPackConsent, AlertPulse: st.CmcpAlertPulse, AlertRecolour: st.CmcpAlertRecolour, Reduced: s.reducedMotion.Load(), Theme: st.ConsoleTheme, UseShipTheme: st.ConsoleThemeMode != "fixed", Tokens: CmcpThemeTokens})
 }
 
 type cmcpNotesPayload struct {
@@ -103,6 +103,13 @@ func (s *Service) CmcpSetUI(session, key, valueJSON string) error {
 		}
 	}
 	return s.eng.CmcpSetUI(session, key, v)
+}
+
+// CmcpReducedMotion tells the engine the web view's prefers-reduced-motion (a steady alert, no fades).
+func (s *Service) CmcpReducedMotion(on bool) {
+	if s.reducedMotion.Swap(on) != on {
+		s.applyCmcpSettings()
+	}
 }
 
 // CmcpThemeDoc is the decoded downloaded theme of a session (the web view builds its skin from it).
