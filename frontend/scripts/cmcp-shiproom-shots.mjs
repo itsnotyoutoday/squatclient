@@ -1,4 +1,4 @@
-/* global window document */
+/* global window */
 // std.shiproom (an ordinary room aboard, no console) rendered by the real renderer in each theme, on a green and a red alert. The UI is the one the Go engine
 // produced from a live game session (live-shiproom.json).  node scripts/cmcp-shiproom-shots.mjs <dumpDir> <outDir> [baseUrl]
 import puppeteer from 'puppeteer-core';
