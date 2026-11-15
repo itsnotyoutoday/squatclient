@@ -39,6 +39,9 @@ type World struct {
 	LocalEcho string `json:"localEcho,omitempty"`
 	// Cmcp is the one CMCP version this world declares: "" = the client's default (2), "1" or "2". A world never declares both.
 	Cmcp string `json:"cmcp,omitempty"`
+	// DevHTTP marks a local development game: its definition, packs and sounds may come over plain http from its own loopback origin (the host must be
+	// loopback; every other check stays). For testing a game on this machine without an https certificate.
+	DevHTTP bool `json:"devHttp,omitempty"`
 }
 
 // Squatter is a remote daemon entry (stored now, used when squatter

@@ -276,6 +276,13 @@ func (s *Service) applyLocalEcho() {
 		}
 	}
 	s.eng.SetWorldCmcpProto(protos) // each world declares exactly one CMCP version
+	dev := map[string]bool{}
+	for _, w := range s.cfg.Worlds() {
+		if w.DevHTTP {
+			dev[w.Name] = true
+		}
+	}
+	s.eng.SetWorldDevHTTP(dev)
 	s.eng.SetLocalEchoDefault(s.cfg.Settings().LocalEcho)
 }
 

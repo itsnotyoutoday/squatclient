@@ -114,6 +114,8 @@ export interface WorldConfig {
   localEcho?: '' | 'on' | 'off';
   /** The one CMCP version this world declares: empty = the default (2), '1' for an older game. */
   cmcp?: '' | '1' | '2';
+  /** A local development game: its definition, packs and sounds may come over plain http from its own loopback origin. */
+  devHttp?: boolean;
 }
 
 export interface SquatterConfig {

@@ -330,6 +330,20 @@ export function WorldManager() {
                   <option value="1">CMCP 1 (older games)</option>
                 </select>
               </Field>
+              <Field
+                label="Local development game"
+                hint="Tick this for a game running on this computer (localhost / 127.0.0.1) that serves its definition, packs and sounds over plain http. It only works when the host is local."
+              >
+                <label className="check">
+                  <input
+                    type="checkbox"
+                    aria-label="Local development game"
+                    checked={!!draft.devHttp}
+                    onChange={(e) => set('devHttp', e.target.checked || undefined)}
+                  />{' '}
+                  Allow plain http from this game's own local server
+                </label>
+              </Field>
               <Field label="Encoding">
                 <select
                   value={draft.encoding}
