@@ -22,7 +22,7 @@ export interface Target {
   /** widget-local state to write instead of/before sending (selection inside a widget) */
   local?: { key: string; value: unknown | ((x: number, y: number) => unknown) };
   /** a control of the skin itself: the LOG toggle or the screen-off button */
-  special?: 'log' | 'off' | 'nav';
+  special?: 'log' | 'off' | 'nav' | 'alert';
   /** nav: the screen this item shows */
   screen?: string;
   /** ui key to mirror to the engine (the team picked in a team-assigner is $ui.team) */

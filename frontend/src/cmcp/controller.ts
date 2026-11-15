@@ -53,6 +53,9 @@ interface SessionState {
   offSeen: boolean;
   lastPal: string;
   layoutMode: string;
+  /** effect objects alive (removed after their duration; cleared on reset) */
+  fx: Set<string>;
+  skinned: boolean;
   viewState: 'compact' | 'balanced' | 'large' | 'expanded' | 'off' | 'default';
 }
 
@@ -94,6 +97,20 @@ export class CmcpController {
   toggleLog(session: string): void { this.viewEvent(session, 'log_toggle'); }
   /** Alt+] / Alt+[ : the next or previous screen of the console */
   cycleScreen(session: string, dir: number): void { void this.engine.cmcpCycleScreen(session, dir).catch((err: unknown) => this.onError?.(String(err).replace(/^Error: /, ''))); }
+  /** green -> yellow -> red -> green through the verb alert.set; a console that may not set it gets the hint instead */
+  cycleAlert(session: string): void {
+    const s = this.sess.get(session);
+    if (!s?.ui) return;
+    const spec = s.ui.catalogue?.['alert.set'];
+    if (!(s.ui.commands ?? []).includes('alert.set') || s.ui.readonly) {
+      const mans = (spec?.consoles ?? []).filter((c) => !c.includes(':')).slice(0, 3).join(' or ');
+      this.onError?.(s.ui.readonly ? 'The alert cannot be changed while the screen is read-only.' : `Not available from this console${mans ? `: man ${mans}` : ''}.`);
+      return;
+    }
+    const cur = String(((s.ui.status ?? s.ui.docs?.['Space.Ship.Status'] ?? {}) as Record<string, unknown>).alert ?? s.ui.alert ?? 'green');
+    const next = cur === 'green' ? 'yellow' : cur === 'yellow' ? 'red' : 'green';
+    void this.engine.cmcpCommand(session, 'alert.set', { level: next }).catch((e: unknown) => this.onError?.(String(e).replace(/^Error: /, '')));
+  }
   logState(session: string): boolean { return this.sess.get(session)?.viewState === 'expanded'; }
 
   private applyView(s: SessionState): void {
@@ -114,7 +131,7 @@ export class CmcpController {
   state(session: string): SessionState {
     let s = this.sess.get(session);
     if (!s) {
-      s = { id: session, ui: null, tree: null, prev: new Map(), targets: new Map(), local: new Map(), history: new Map(), images: new Map(), spriteDocs: new Map(), spriteWanted: new Set(), spriteDrawn: new Map(), spriteN: 0, viewImages: new Map(), viewDocs: new Map(), viewWanted: new Set(), fxN: 0, vsRect: null, vsItems: {}, aspect: 9 / 16, open: false, dismissed: '', key: '', fonts: new Set(), lastRev: -1, log: false, off: false, offSeen: false, lastPal: '', layoutMode: 'stack', viewState: 'default' };
+      s = { id: session, ui: null, tree: null, prev: new Map(), targets: new Map(), local: new Map(), history: new Map(), images: new Map(), spriteDocs: new Map(), spriteWanted: new Set(), spriteDrawn: new Map(), spriteN: 0, viewImages: new Map(), viewDocs: new Map(), viewWanted: new Set(), fxN: 0, vsRect: null, vsItems: {}, aspect: 9 / 16, open: false, dismissed: '', key: '', fonts: new Set(), lastRev: -1, log: false, off: false, offSeen: false, lastPal: '', layoutMode: 'stack', fx: new Set(), skinned: false, viewState: 'default' };
       this.sess.set(session, s);
       const rt = this.rtFor(session);
       const prev = rt.onResize;
@@ -243,6 +260,7 @@ export class CmcpController {
   }
 
   private reset(s: SessionState): void {
+    s.fx.clear();
     if (s.open) this.rtFor(s.id).apply([{ op: 'clear', scene: SCENE }]);
     s.prev = new Map();
     s.targets = new Map();
@@ -278,6 +296,8 @@ export class CmcpController {
     if (ctx.readonly) prims.push(...readonlyBadge(s.ui?.ai ?? false, s.ui?.console?.manned_by, W, ctx));
     // the port node: the rectangle where the real text shows (never drawn over)
     prims.unshift({ id: PORT_ID, type: 'rect', props: { x: tp.rect.x, y: tp.rect.y, w: tp.rect.w, h: tp.rect.h, fill: '#00000000' } });
+    s.skinned = false;
+    if (s.vsRect) prims.push({ id: 'fxclip', type: 'group', props: { x: 0, y: 0, clip: [s.vsRect.x, s.vsRect.y, s.vsRect.w, s.vsRect.h], z: 9000 } });
     const { ops, map } = diffOps(s.prev, prims);
     const rt = this.rtFor(s.id);
     const bg = typeof t.tokens['color.bg'] === 'string' ? (t.tokens['color.bg'] as string) : '#000000';
@@ -313,32 +333,36 @@ export class CmcpController {
       const spec = table[key];
       if (!spec) continue;
       const R = s.vsRect;
+      if (s.fx.size >= 12) continue; // a burst of events must not pile up objects
       const dur = Math.min(10, (spec.duration_ms ?? 500) / 1000);
       const id = `fx${++s.fxN}`;
+      const parent = 'fxclip'; // every effect lives in a group clipped to the viewscreen: never over the nav, the port or the controls
       const to = s.vsItems[String(d.to ?? d.cid ?? '')] ?? { x: R.x + R.w / 2, y: R.y + R.h / 2 };
       const col = tok(spec.color, '#ffffff');
       const ops: GfxOp[] = [];
+      const maxR = Math.max(4, R.h * 0.12); // an explosion never exceeds this radius
       const add = (oid: string, type: string, props: Record<string, unknown>, tracks: Record<string, { from?: number; to: number }>): void => {
-        ops.push({ op: 'create', scene: SCENE, id: oid, type, props: { z: 9000, ...props } });
+        ops.push({ op: 'create', scene: SCENE, id: oid, type, parent, props: { z: 9000, ...props } });
         ops.push({ op: 'tween', scene: SCENE, target: oid, tracks, dur, ease: 'outQuad' });
       };
       /** a shape that moves or grows about its own centre: a group at the position holds it at (0,0) */
       const grouped = (type: string, props: Record<string, unknown>, at: { x: number; y: number }, tracks: Record<string, { from?: number; to: number }>): void => {
-        ops.push({ op: 'create', scene: SCENE, id, type: 'group', props: { x: at.x, y: at.y, z: 9000 } });
+        ops.push({ op: 'create', scene: SCENE, id, type: 'group', parent, props: { x: at.x, y: at.y, z: 9000 } });
         ops.push({ op: 'create', scene: SCENE, id: `${id}.s`, type, parent: id, props: { x: 0, y: 0, ...props } });
         ops.push({ op: 'tween', scene: SCENE, target: id, tracks, dur, ease: 'outQuad' });
       };
       const from = { x: R.x + R.w / 2, y: R.y + R.h };
       switch (spec.effect) {
         case 'beam': add(id, 'line', { x1: from.x, y1: from.y, x2: to.x, y2: to.y, stroke: col, strokeWidth: (spec.width ?? 2) * 2, glow: 0.8, opacity: 1 }, { opacity: { from: 1, to: 0 } }); break;
-        case 'torpedo': grouped('circle', { r: 7, fill: col, glow: 0.9 }, from, { x: { from: from.x, to: to.x }, y: { from: from.y, to: to.y } }); break;
-        case 'explosion': grouped('circle', { r: 12 * (spec.size ?? 1), fill: col, glow: 1 }, to, { scaleX: { from: 0.3, to: 5 }, scaleY: { from: 0.3, to: 5 }, opacity: { from: 1, to: 0 } }); break;
-        case 'shield_flash': add(id, 'rect', { x: R.x, y: R.y, w: R.w, h: R.h, fill: '#00000000', stroke: col, strokeWidth: 14, opacity: 0.9 }, { opacity: { from: 0.9, to: 0 } }); break;
-        case 'flash': add(id, 'rect', { x: R.x, y: R.y, w: R.w, h: R.h, fill: col, opacity: 0.5 }, { opacity: { from: 0.5, to: 0 } }); break;
+        case 'torpedo': grouped('circle', { r: 6, fill: col, glow: 0.9 }, from, { x: { from: from.x, to: to.x }, y: { from: from.y, to: to.y } }); break;
+        case 'explosion': grouped('circle', { r: Math.min(maxR / 3, 8 * (spec.size ?? 1)), fill: col, glow: 1 }, to, { scaleX: { from: 0.4, to: 3 }, scaleY: { from: 0.4, to: 3 }, opacity: { from: 1, to: 0 } }); break;
+        case 'shield_flash': add(id, 'rect', { x: R.x, y: R.y, w: R.w, h: R.h, fill: '#00000000', stroke: col, strokeWidth: 10, opacity: 0.9 }, { opacity: { from: 0.9, to: 0 } }); break;
+        case 'flash': add(id, 'rect', { x: R.x, y: R.y, w: R.w, h: R.h, fill: col, opacity: 0.35 }, { opacity: { from: 0.35, to: 0 } }); break;
         default: continue;
       }
+      s.fx.add(id);
       this.rtFor(session).apply(ops);
-      setTimeout(() => this.rtFor(session).apply([{ op: 'delete', scene: SCENE, id }]), dur * 1000 + 150);
+      setTimeout(() => { s.fx.delete(id); if (s.open) this.rtFor(session).apply([{ op: 'delete', scene: SCENE, id }]); }, dur * 1000 + 150);
     }
   }
 
@@ -347,7 +371,7 @@ export class CmcpController {
    * the widgets are laid out in the 1200-unit base and drawn inside a group scaled by 4/3. */
   private renderSkinned(s: SessionState, t: CmcpTree, skin: Skin): void {
     const W = 1600, H = 900, K = 0.75;
-    const alert = (s.ui?.alert ?? String(((s.ui?.docs?.['Space.Ship.Status'] ?? {}) as Record<string, unknown>).alert ?? '')) === 'red';
+    const alert = (s.ui?.alert ?? String(((s.ui?.status ?? s.ui?.docs?.['Space.Ship.Status'] ?? {}) as Record<string, unknown>).alert ?? '')) === 'red';
     const pal = alert ? skin.pal.red : skin.pal.normal;
     const screenName = t.screen.split(/[./]/).pop() ?? '';
     const cur = skin.nav.items.findIndex((i) => i.screens.includes(screenName));
@@ -367,12 +391,19 @@ export class CmcpController {
     prims.push(...frameShapes(skin.frame, pal, vars, 'fr.'));
     prims.push({ id: 'cw', type: 'group', props: { x: 0, y: 0, scaleX: L.scale / K, scaleY: L.scale / K, opacity: s.log ? 0 : 1, visible: true } });
     for (const p of content) prims.push({ ...p, parent: p.parent ?? 'cw' });
+    if (s.vsRect) prims.push({ id: 'fxclip', type: 'group', parent: 'cw', props: { x: 0, y: 0, clip: [s.vsRect.x, s.vsRect.y, s.vsRect.w, s.vsRect.h], z: 9000 } });
+    s.skinned = true;
     prims.push({ id: 'portframe', type: 'rect', props: { x: port[0] - 8, y: port[1] - 8, w: port[2] + 16, h: port[3] + 16, r: skin.port.frame.r, stroke: col(skin.port.frame.role, pal), strokeWidth: skin.port.frame.width, fill: '#00000000', glow: skin.port.frame.glow } });
     if (s.log) prims.push({ id: 'logsum', type: 'text', props: { x: port[0] + 4, y: port[1] - 22, text: `${label}   ${vars.ship}   HULL ${vars.hull}%   CORE ${vars.core}%   ALERT ${vars.alert}`, size: 22, fill: col('x', pal), baseline: 'middle', weight: '700', font: skin.font.family } });
     const menu = s.ui?.screens ?? [];
     prims.push(...navShapes(skin, pal, cur, 'nv.', (id) => { const o = menu.find((x) => x.id === id); return { available: o ? o.available : true, hint: o?.hintCmd }; }));
     const lb = skin.log.button;
     prims.push({ id: 'logbtn', type: 'button', events: ['click'], target: { path: '', event: '', special: 'log' }, props: { x: lb.x, y: lb.y, w: lb.w, h: lb.h, r: lb.r ?? lb.h / 2, fill: col(lb.role, pal), text: s.log ? skin.log.shrink : skin.log.expand, color: col(lb.color, pal), size: lb.size * (skin.font.tscale ?? 1), weight: skin.font.weight, align: lb.align ?? 'center', padX: lb.padX ?? 16, font: skin.font.family, key: 'alt+l', glow: 0.04 } });
+    // the alert pill: click cycles green / yellow / red and sends alert.set (the typed form `alert red` is echoed by the engine); dim when this
+    // console may not set it or the screen is read-only
+    const ab = skin.alert ?? { ...skin.off.button, y: skin.off.button.y + 56, role: 'x' as const };
+    const can = (s.ui?.commands ?? []).includes('alert.set') && !(s.ui?.readonly ?? false);
+    prims.push({ id: 'alertbtn', type: 'button', events: ['click'], target: { path: '', event: '', special: 'alert' }, props: { x: ab.x, y: ab.y, w: ab.w, h: ab.h, r: ab.r ?? ab.h / 2, fill: col(alert ? 'r' : ab.role, pal), text: `ALERT ${vars.alert}`, color: col(ab.color ?? '#000000', pal), size: ab.size * (skin.font.tscale ?? 1), weight: skin.font.weight, align: ab.align ?? 'center', font: skin.font.family, key: 'alt+a', glow: can ? 0.1 : 0, opacity: can ? 1 : 0.5 } });
     const ob = skin.off.button;
     prims.push({ id: 'offbtn', type: 'button', events: ['click'], target: { path: '', event: '', special: 'off' }, props: { x: ob.x, y: ob.y, w: ob.w, h: ob.h, r: ob.r ?? ob.h / 2, fill: col(ob.role, pal), text: skin.off.label, color: col(ob.color, pal), size: ob.size * (skin.font.tscale ?? 1), weight: skin.font.weight, align: ob.align ?? 'center', font: skin.font.family, key: 'alt+s', glow: 0.04 } });
     prims.forEach((p, i) => { p.props = { ...p.props, z: i }; });
@@ -404,6 +435,7 @@ export class CmcpController {
     if (e.id === '#scene' && e.event === 'close') { s.dismissed = s.key; s.open = false; s.prev = new Map(); s.targets = new Map(); this.rtFor(session).apply([{ op: 'clear', scene: SCENE }, { op: 'scene', scene: SCENE, open: false }]); return true; }
     const tg = s.targets.get(e.id);
     if (!tg) return true;
+    if (tg.special === 'alert') { this.cycleAlert(session); return true; }
     if (tg.special === 'log') { this.toggleLog(session); return true; }
     if (tg.special === 'off') { this.toggleOff(session); return true; }
     if (tg.special === 'nav' && tg.screen) { // the console-switch column: another screen of this console, shown locally

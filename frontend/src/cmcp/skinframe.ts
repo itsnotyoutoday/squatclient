@@ -8,13 +8,13 @@ export const col = (c: Colour | string | undefined, pal: Pal): string => (c === 
 
 /** values for the skin's text templates, from the protocol (Space.Ship.Status, the ship and the console) */
 export function templateVars(ui: CmcpUI, modeLabel: string): Record<string, string> {
-  const st = (ui.docs?.['Space.Ship.Status'] ?? {}) as Record<string, unknown>;
+  const st = (ui.status ?? ui.docs?.['Space.Ship.Status'] ?? {}) as Record<string, unknown>; // the pushed model carries `status`, a pulled one `docs`
   const hull = (st.hull ?? {}) as { cur?: number; max?: number };
   const pct = hull.max ? Math.round(((hull.cur ?? 0) / hull.max) * 100) : 0;
   const alert = String(st.alert ?? ui.alert ?? 'green');
   return {
-    ship: (ui.ship?.name ?? 'UNKNOWN SHIP').toUpperCase(),
-    class: (ui.ship?.class ?? '').toUpperCase(),
+    ship: (ui.ship?.name || ui.welcome?.ship?.name || String(st.name ?? '') || ui.ship?.class || ui.ship?.id || 'UNNAMED SHIP').toUpperCase(),
+    class: (ui.ship?.class || ui.welcome?.ship?.class || String(st.class ?? '')).toUpperCase(),
     game: (ui.server?.game ?? ui.server?.server ?? '').toUpperCase(),
     mode: modeLabel.toUpperCase(),
     title: (ui.console?.name ?? ui.title ?? '').toUpperCase(),

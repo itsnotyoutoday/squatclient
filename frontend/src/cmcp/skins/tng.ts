@@ -25,7 +25,6 @@ export const tng: Skin = {
     { t: 'text', x: 850, y: 45, text: '{game}', size: 34, fill: '#000000' },
     { t: 'text', x: 1284, y: 45, text: '{mode}', size: 28, fill: '#000000' },
     { t: 'text', x: 366, y: 857, text: '{mode} CONSOLE', size: 32, fill: '#000000' },
-    { t: 'text', x: 674, y: 857, text: 'ALERT {alert}', size: 32, fill: '#000000' },
     { t: 'text', x: 850, y: 857, text: 'CORE {core}%   HULL {hull}%   LOCK {lock}', size: 30, fill: '#000000' },
     { t: 'text', x: 1404, y: 857, text: 'SQUATCLIENT', size: 32, fill: '#000000' },
     { t: 'rect', id: 'navfill', x: 20, y: 552, w: 190, h: 172, fill: 't' },
@@ -42,6 +41,7 @@ export const tng: Skin = {
     marker: { t: 'rect', id: 'marker', x: 216, y: 206, w: 12, h: 60, fill: '#ffffff', glow: 0.8 },
   },
   log: { button: { x: 20, y: 560, w: 190, h: 54, r: [0, 27, 27, 0], size: 26, align: 'right', padX: 18, color: '#000000', role: 'x' }, shrink: 'LOG - SHRINK', expand: 'LOG - EXPAND' },
+  alert: { x: 660, y: 832, w: 170, h: 48, size: 30, align: 'center', color: '#000000', role: 'x', r: 0 },
   off: { button: { x: 1390, y: 20, w: 190, h: 48, r: [0, 24, 24, 0], size: 26, align: 'center', color: '#000000', role: 'x' }, label: 'SCREEN OFF' },
   // the game text is the largest element: 1340 x 410 of 1600 x 900 (45.6% of the height, 84% of the width); LOG expands it to 80% of the height
   port: { rect: [240, 410, 1340, 410], expanded: [240, 100, 1340, 720], frame: { role: 'p', r: 14, width: 4, glow: 0.2 } },

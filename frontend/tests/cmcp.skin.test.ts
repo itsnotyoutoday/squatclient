@@ -45,7 +45,7 @@ describe.each(Object.entries(SKINS))('skin %s: the game text is the largest elem
     skin.frame.filter((s) => !(s.z !== undefined && s.z < 0) && ('fill' in s ? s.fill !== undefined && s.fill !== 'none' : false)).forEach((s) => bboxes(s).forEach((b) => expect(hit(fr, b), `frame shape ${s.id ?? s.t} covers the port`).toBe(false)));
       const b = skin.nav.button;
       skin.nav.items.forEach((_, i) => expect(hit(fr, [b.x, b.y + i * (b.dy ?? 0), b.w, b.h])).toBe(false));
-      for (const x of [skin.log.button, skin.off.button]) expect(hit(fr, [x.x, x.y, x.w, x.h])).toBe(false);
+      for (const x of [skin.log.button, skin.off.button, skin.alert ?? { ...skin.off.button, y: skin.off.button.y + 56 }]) expect(hit(fr, [x.x, x.y, x.w, x.h])).toBe(false);
     }
   });
   it('puts the widget band above/beside the port without overlap', () => {

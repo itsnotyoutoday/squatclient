@@ -47,7 +47,7 @@ export interface CmcpUI {
   state: 'off' | 'declared' | 'hello_sent' | 'ready' | 'closed';
   proto: number;
   server?: { server: string; game?: string };
-  welcome?: { packs?: { id: string; kind: string; version: string; sha256: string }[]; features?: string[] };
+  welcome?: { ship?: { id?: string; name?: string; class?: string }; packs?: { id: string; kind: string; version: string; sha256: string }[]; features?: string[] };
   ship?: { id: string; name?: string; class?: string; empire?: string; epoch: number; ai?: boolean; theme?: string };
   console?: { id: string; name: string; manned_by?: string } | null;
   consoleRev: number;
@@ -69,6 +69,8 @@ export interface CmcpUI {
   catalogue?: Record<string, CmcpCommandSpec>;
   subs: CmcpSub[];
   docs?: Record<string, unknown>;
+  /** Space.Ship.Status (name, alert, hull, core, lock): what the frame's status strip shows (the pushed model has no docs). */
+  status?: Record<string, unknown>;
   seqs: Record<string, number>;
   alert?: string;
   pending: number;

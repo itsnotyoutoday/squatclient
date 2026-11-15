@@ -35,6 +35,8 @@ export interface Skin {
   log: { button: ButtonSkin & { role: Role }; shrink: string; expand: string };
   /** the screen-off button: hides the whole CMCP screen and gives the area back to the text (data keeps streaming) */
   off: { button: ButtonSkin & { role: Role }; label: string };
+  /** the alert pill (every screen): click cycles green / yellow / red and sends alert.set; default: under the SCREEN OFF button */
+  alert?: ButtonSkin & { role: Role };
   port: { rect: Rect4; expanded: Rect4; frame: { role: Role; r: number; width: number; glow: number } };
   /** the side layout for dense screens (the band would overflow): the text on the left at 60% of the width, the widgets stacked in a column */
   side: { port: Rect4; content: Rect4 };
