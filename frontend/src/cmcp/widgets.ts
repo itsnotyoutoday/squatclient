@@ -362,7 +362,69 @@ const textport: Draw = (p, ctx, out) => {
   out.push(rect(`${p.node.path}.frame`, { x: r.x - 2, y: r.y - 2, w: r.w + 4, h: r.h + 4 }, '#00000000', { stroke: tok(ctx, 'color.accent'), strokeWidth: 2, r: radius(ctx) }));
 };
 
+/** a labelled button primitive */
+function btn(ctx: Ctx, id: string, r: Rect, label: string, on: boolean, target: Target | undefined, t: unknown = 'accent'): Prim {
+  return {
+    id, type: 'button',
+    props: { x: r.x, y: r.y, w: r.w, h: r.h, text: label, fill: on ? tone(ctx, t) : tok(ctx, 'color.panel'), color: on ? tok(ctx, 'color.bg') : tok(ctx, 'color.dim'), size: 15, weight: '700', font: font(ctx, true), r: radius(ctx), glow: on ? 0.1 : 0, align: 'center' },
+    events: on && target ? ['click'] : [], target: on ? target : undefined,
+  };
+}
+
+/** The whole helm from ordinary inputs (spec 6.4 helm-controls): heading with step buttons, speed and warp, STOP, course/dock to the selected contact, ENGAGE. */
+const helmControls: Draw = (p, ctx, out) => {
+  const pr = p.node.props, id = p.node.path;
+  const inner = panel(p, ctx, out, id, 'Helm');
+  const can = p.node.enabled && !ctx.readonly;
+  const br = (pr.bearing ?? {}) as Record<string, unknown>, az = num(br.az), mk = num(br.mark);
+  const step = num(pr.step_deg, 5) || 5;
+  const warp = (pr.warp ?? {}) as Record<string, unknown>, wmax = Math.max(1, num(warp.max, 9)), wf = num(warp.factor, 0);
+  const sel = pr.selected === undefined || pr.selected === null ? null : Number(pr.selected);
+  const rowH = 38, gap = 6, bw = 58;
+  let y = inner.y;
+  const t = (k: string, x: number, yy: number, txt: string, size = 14, fill = tok(ctx, 'color.dim'), o: Record<string, unknown> = {}): void => { out.push(text(`${id}.${k}`, x, yy, txt, size, fill, { font: font(ctx), weight: '600', ...o })); };
+  const ev = (event: string, value?: unknown): Target => ({ path: p.node.path, event, value });
+  // heading
+  t('h.l', inner.x + 4, y + rowH / 2, 'HEADING', 13);
+  t('h.v', inner.x + 100, y + rowH / 2, `${Math.round(az)}  mark ${Math.round(mk)}`, 20, tok(ctx, 'color.text'), { weight: '700' });
+  [[-step * 2, `-${step * 2}`], [-step, `-${step}`], [step, `+${step}`], [step * 2, `+${step * 2}`]].forEach(([d, l], i) => {
+    out.push(btn(ctx, `${id}.h${i}`, { x: inner.x + inner.w - (4 - i) * (bw + gap) + gap, y: y + 2, w: bw, h: rowH - 4 }, String(l), can, ev('heading', { az: (((az + Number(d)) % 360) + 360) % 360, mark: mk })));
+  });
+  y += rowH + gap;
+  // speed (percent of impulse)
+  t('s.l', inner.x + 4, y + rowH / 2, 'IMPULSE', 13);
+  [0, 25, 50, 75, 100].forEach((v, i) => out.push(btn(ctx, `${id}.s${v}`, { x: inner.x + 100 + i * (bw + gap), y: y + 2, w: bw, h: rowH - 4 }, `${v}%`, can, ev('speed', v))));
+  t('s.v', inner.x + inner.w - 6, y + rowH / 2, `${cell(num(pr.speed_mps))} m/s`, 14, tok(ctx, 'color.text'), { align: 'right' });
+  y += rowH + gap;
+  // warp
+  t('w.l', inner.x + 4, y + rowH / 2, 'WARP', 13);
+  out.push(btn(ctx, `${id}.wm`, { x: inner.x + 100, y: y + 2, w: bw, h: rowH - 4 }, '-', can && wf > 0, ev('warp', Math.max(0, wf - 1))));
+  t('w.v', inner.x + 100 + bw + 14, y + rowH / 2, `${cell(wf)} / ${cell(wmax)}`, 20, tok(ctx, 'color.text'), { weight: '700' });
+  out.push(btn(ctx, `${id}.wp`, { x: inner.x + 100 + bw + 120, y: y + 2, w: bw, h: rowH - 4 }, '+', can && wf < wmax, ev('warp', Math.min(wmax, wf + 1))));
+  y += rowH + gap + 4;
+  // actions
+  const aw = Math.min(150, (inner.w - gap * 3) / 4), ah = rowH;
+  const act = (i: number, row: number, k: string, label: string, on: boolean, tg: Target, tn: unknown = 'accent'): void => {
+    out.push(btn(ctx, `${id}.a${k}`, { x: inner.x + i * (aw + gap), y: y + row * (ah + gap), w: aw, h: ah }, label, on, tg, tn));
+  };
+  act(0, 0, 'stop', 'STOP', can, ev('stop'), 'alert');
+  act(1, 0, 'imp', 'ENGAGE IMPULSE', can, ev('engage', 'impulse'));
+  act(2, 0, 'wrp', 'ENGAGE WARP', can, ev('engage', 'warp'));
+  act(0, 1, 'crs', 'COURSE TO CONTACT', can && sel !== null, ev('course', sel));
+  act(1, 1, 'dck', 'DOCK', can && sel !== null, ev('dock', sel));
+  act(2, 1, 'udk', 'UNDOCK', can, ev('undock'));
+  t('sel', inner.x + 4, y + 2 * (ah + gap) + 6, sel !== null ? `SELECTED CONTACT ${sel}` : 'SELECT A CONTACT FOR COURSE / DOCK', 12);
+};
+
+/** decorative status lights (spec 6.4: clients MAY draw nothing); drawn as a row of dots */
+const lights: Draw = (p, ctx, out) => {
+  const n = Math.max(1, Math.min(24, num(p.node.props.count, 6))), id = p.node.path, r = p.rect;
+  const col = tone(ctx, p.node.props.tone);
+  for (let i = 0; i < n; i++) out.push({ id: `${id}.${i}`, type: 'circle', props: { x: r.x + 8 + i * 14, y: r.y + r.h / 2, r: 4, fill: col, opacity: ctx.reduceMotion || (i * 7) % 3 !== 0 ? 0.9 : 0.35 } });
+};
+
 const DRAW: Record<string, Draw> = {
+  'helm-controls': helmControls, lights,
   label, bar, 'bar-list': barList, list: table, table, 'contact-picker': table, 'group-picker': groupPicker, button, toggle, slider, graph, gauge,
   radar, scope: radar, 'team-assigner': teamAssigner, joystick, schematic, viewscreen, textport,
 };

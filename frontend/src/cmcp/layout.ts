@@ -5,11 +5,11 @@ export interface Rect { x: number; y: number; w: number; h: number }
 export interface Placed { node: CmcpNode; rect: Rect; children: Placed[] }
 
 const LEAF_H: Record<string, number> = {
-  label: 26, bar: 34, button: 46, toggle: 40, slider: 52, gauge: 120, graph: 70, lights: 20, joystick: 170,
+  label: 26, bar: 34, button: 46, toggle: 40, slider: 52, gauge: 120, graph: 70, lights: 20, joystick: 170, 'helm-controls': 210,
   'bar-list': 120, list: 120, table: 120, radar: 220, scope: 220, schematic: 200, viewscreen: 220, 'contact-picker': 140,
   'team-assigner': 200, 'group-picker': 140, textport: 100,
 };
-const LEAF_W: Record<string, number> = { button: 150, toggle: 150, joystick: 170, gauge: 120 };
+const LEAF_W: Record<string, number> = { button: 150, toggle: 150, joystick: 170, 'helm-controls': 210, gauge: 120 };
 
 const isRow = (l: CmcpLayout): boolean => l.dir === 'row';
 
