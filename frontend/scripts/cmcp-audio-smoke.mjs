@@ -1,4 +1,4 @@
-/* global document AudioContext */
+/* global AudioContext */
 // The Web Audio backend in real headless Chrome: a recipe, a streamed file (a generated WAV) and the bell run without errors, the
 // context runs, and a looped crossfaded bed starts a second element before the first one ends. (No speakers are heard here.)
 //   node scripts/cmcp-audio-smoke.mjs [baseUrl]
@@ -33,7 +33,6 @@ const res = await page.evaluate(async () => {
   audio.handle({ session: 's', op: 'play', event: 'red_alert', key: 'bed', category: 'alert', loop: true, volume: 1, priority: 5, res: { kind: 'url', url: wavUrl(3), loop: true, crossfadeMs: 500, gain: 1 } });
   audio.handle({ session: 's', op: 'play', event: 'comm_beep', category: 'ui', volume: 1, priority: 5, res: { kind: 'bell' } });
   await new Promise((r) => setTimeout(r, 3500));
-  const els = 0; // files are decoded into buffer sources now (no <audio> elements)
   const stats = useAudioStats.getState();
   const active = audio.active;
   audio.stopAll(50);

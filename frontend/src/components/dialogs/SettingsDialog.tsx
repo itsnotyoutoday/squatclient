@@ -301,6 +301,13 @@ export function SettingsDialog() {
             <option value="off">Off</option>
           </select>
         </Field>
+        <Field label="Console text position" hint="Automatic (default): the game text beside the widgets in a wide window (1100 px and up), under them in a narrow one. Beside: always beside. Under: always under.">
+          <select aria-label="Console text position" value={settings.cmcpTextLayout || 'auto'} onChange={(e) => update({ cmcpTextLayout: e.target.value as 'auto' | 'left' | 'stacked' })}>
+            <option value="auto">Automatic (default)</option>
+            <option value="left">Beside the widgets</option>
+            <option value="stacked">Under the widgets</option>
+          </select>
+        </Field>
         <Field label="Red alert pulse" hint="Whether a red alert pulses the alert pill, the edge and the red roles. Theme (default): the theme decides (every theme pulses by default). Calm mode slows it, reduced motion keeps it steady.">
           <select aria-label="Red alert pulse" value={settings.cmcpAlertPulse || 'theme'} onChange={(e) => update({ cmcpAlertPulse: e.target.value as 'theme' | 'on' | 'off' })}>
             <option value="theme">Theme decides (default)</option>

@@ -97,4 +97,23 @@ describe.each(Object.entries({ ...SKINS, ...PACKS }))('skin %s: the game text is
       }
     }
   });
+  it.each(SCREENS)('side layout by default (wide windows): %s keeps the text left at its cap, the widgets in the column, nothing over anything', (screen) => {
+    const ui = fx(screen);
+    for (const cap of [Infinity, 640]) {
+      const L = layoutSkinned(ui.tree!.root, skin, screen, false, 'balanced', cap, true)!;
+      expect(L.mode).toBe('side');
+      expect(L.port[2]).toBeLessThanOrEqual(Math.max(300, cap) + 1e-6);
+      expect(L.port[2] / W).toBeGreaterThan(0.3);
+      const port = [L.port[0] * K / L.scale, L.port[1] * K / L.scale, L.port[2] * K / L.scale, L.port[3] * K / L.scale];
+      const ins = (skin.port.frame.inset ?? 8) * K / L.scale;
+      const frame = [port[0] - ins, port[1] - ins, port[2] + 2 * ins, port[3] + 2 * ins];
+      const items = leaves(L.root).filter((p) => p.node.widget !== 'textport');
+      items.forEach((p) => expect(hit([p.rect.x, p.rect.y, p.rect.w, p.rect.h], frame), `${screen}: ${p.node.widget} over the text port`).toBe(false));
+      for (let i = 0; i < items.length; i++) for (let j = i + 1; j < items.length; j++) {
+        const a = items[i].rect, b = items[j].rect;
+        const inter = Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x)) * Math.max(0, Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y));
+        expect(inter, `${screen}: ${items[i].node.widget} overlaps ${items[j].node.widget}`).toBeLessThan(2);
+      }
+    }
+  });
 });

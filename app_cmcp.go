@@ -134,3 +134,12 @@ func (a *App) CmcpReducedMotion(on bool) error {
 	s.CmcpReducedMotion(on)
 	return nil
 }
+
+// CmcpViewport reports the web view's logical width (px), device px per scene unit and the monospace font size (px) for the layout decision.
+func (a *App) CmcpViewport(session string, widthPx, scale, monoPx float64) error {
+	s, err := a.service()
+	if err != nil {
+		return err
+	}
+	return s.CmcpViewport(session, widthPx, scale, monoPx)
+}

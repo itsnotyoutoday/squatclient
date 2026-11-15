@@ -27,6 +27,9 @@ export interface CmcpTree {
   theme: string;
   themeSource?: 'pack' | 'builtin' | 'plain';
   themeVersion?: string;
+  /** textport_layout decided by the core for the reported viewport (side | stacked) and the side textport's width cap in device px */
+  layout?: 'side' | 'stacked';
+  portCapPx?: number;
   /** the effective alert_recolour (full | edge | off): the theme's field with the player's setting applied by the core */
   alertMode?: 'full' | 'edge' | 'off';
   /** The text view's state from the shared core (LOG / screen-off) and the player's size choice. */
@@ -68,6 +71,9 @@ export interface CmcpUI {
   /** The screen menu: the screens this console can show, with why a screen is dimmed and how to get it. */
   /** the one notice line (the core's queue: pack downloads, accepted packs, theme in use, command errors with hints) */
   notice?: { id: string; kind: string; state: string; text: string };
+  /** every screen with its state and hint, and the core's directory lines (`LABEL - man <console> to use`) */
+  allScreens?: { id: string; title: string; available: boolean; reason?: string; hintCmd?: string; active: boolean; state?: string; hint?: string }[];
+  directory?: string[];
   screens?: { id: string; title: string; available: boolean; reason?: string; hintCmd?: string; active: boolean; state?: string; hint?: string }[];
   localScreen?: string;
   pinned?: boolean;

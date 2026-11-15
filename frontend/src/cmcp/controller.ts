@@ -63,6 +63,7 @@ interface SessionState {
   lastW?: number;
   skinned: boolean;
   noticeId?: string;
+  vp?: string;
   pulse?: CmcpPulse;
   viewState: 'compact' | 'balanced' | 'large' | 'expanded' | 'off' | 'default';
 }
@@ -114,7 +115,7 @@ export class CmcpController {
   }
   /** every screen with the console that provides it (the popover behind "more...") */
   allScreens(s: SessionState): { id: string; title: string; available: boolean; console: string }[] {
-    return (s.ui?.screens ?? []).map((o) => ({ id: o.id, title: o.title || o.id, available: o.available, console: o.available ? 'this console' : (o.hint ?? '').replace(/^man\s+/, '').replace(/\s+to use$/, '') || (o.hintCmd ?? '').replace(/^man\s+/, '') || (o.reason ?? '') }));
+    return (s.ui?.allScreens ?? s.ui?.screens ?? []).map((o) => ({ id: o.id, title: o.title || o.id, available: o.available, console: o.available ? 'this console' : (o.hint ?? '').replace(/^man\s+/, '').replace(/\s+to use$/, '') || (o.hintCmd ?? '').replace(/^man\s+/, '') || (o.reason ?? '') }));
   }
 
   /** Called with a short message the first time the menu opens (once per install). */
@@ -479,8 +480,13 @@ export class CmcpController {
     const lg = this.rtFor(s.id).slot(SCENE).logical;
     const k = lg && lg.w > 0 ? Math.min(lg.w / 1600, lg.h / 900) : 0;
     const fontPx = useSettings.getState().settings.fontSize || 14;
-    const maxPortW = k > 0 ? ((skin.maxCols ?? 80) * 0.6 * fontPx + 28) / k : Infinity;
-    const L = layoutSkinned(t.root, skin, screenName, s.log, t.view?.portDefault ?? 'balanced', maxPortW);
+    // the core decides textport_layout and the cap for the viewport the engine is told about (it is told again when the size or the font changes)
+    if (k > 0) {
+      const vp = `${Math.round(lg!.w)}|${k.toFixed(4)}|${fontPx}`;
+      if (s.vp !== vp) { s.vp = vp; void this.engine.cmcpViewport(s.id, lg!.w, k, fontPx).catch(() => undefined); }
+    }
+    const maxPortW = k > 0 ? ((t.portCapPx && t.portCapPx > 0 ? t.portCapPx : (skin.maxCols ?? 80) * 0.6 * fontPx) + 28) / k : Infinity;
+    const L = layoutSkinned(t.root, skin, screenName, s.log, t.view?.portDefault ?? 'balanced', maxPortW, t.layout === 'side');
     if (!L) return;
     const { root, port } = L;
     s.layoutMode = L.mode;
@@ -499,7 +505,7 @@ export class CmcpController {
     prims.push({ id: 'portframe', type: 'rect', props: { x: port[0] - (skin.port.frame.inset ?? 8), y: port[1] - (skin.port.frame.inset ?? 8), w: port[2] + 2 * (skin.port.frame.inset ?? 8), h: port[3] + 2 * (skin.port.frame.inset ?? 8), r: skin.port.frame.r, stroke: col(skin.port.frame.role, edgePal), strokeWidth: skin.port.frame.width, fill: '#00000000', glow: skin.port.frame.glow } });
     if (s.log) prims.push({ id: 'logsum', type: 'text', props: { x: port[0] + 4, y: port[1] - 22, text: `${label}   ${vars.ship}   HULL ${vars.hull}%   CORE ${vars.core}%   ALERT ${vars.alert}`, size: 22, fill: col('x', pal), baseline: 'middle', weight: '700', font: skin.font.family } });
     const menu = s.ui?.screens ?? [];
-    prims.push(...navShapes(skin, pal, cur, 'nv.', (id) => { const o = menu.find((x) => x.id === id); return { available: o ? o.available : true, hint: o?.hintCmd }; }));
+    prims.push(...navShapes(skin, pal, cur, 'nv.', (id) => { const o = menu.find((x) => x.id === id); return { available: !!o && o.available, hint: o?.hintCmd }; }));
     const lb = skin.log.button;
     prims.push({ id: 'logbtn', type: 'button', events: ['click'], target: { path: '', event: '', special: 'log' }, props: { x: lb.x, y: lb.y, w: lb.w, h: lb.h, r: lb.r ?? lb.h / 2, fill: col(lb.role, pal), text: s.log ? skin.log.shrink : skin.log.expand, color: col(lb.color, pal), size: lb.size * (skin.font.tscale ?? 1), weight: skin.font.weight, align: lb.align ?? 'center', padX: lb.padX ?? 16, font: skin.font.family, key: 'alt+l', glow: 0.04 } });
     // the alert pill: click cycles green / yellow / red and sends alert.set (the typed form `alert red` is echoed by the engine); dim when this

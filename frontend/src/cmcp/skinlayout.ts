@@ -23,7 +23,7 @@ export interface SkinLayout { root: Placed; port: Rect4; mode: Mode; tree: CmcpN
  * layout. Rectangles of the result are in base units (x 4/3 = scene units). */
 export type PortDefault = 'compact' | 'balanced' | 'large';
 
-export function layoutSkinned(tree: CmcpNode, skin: Skin, screenName: string, logExpanded: boolean, portDefault: PortDefault = 'balanced', maxPortW = Infinity): SkinLayout | null {
+export function layoutSkinned(tree: CmcpNode, skin: Skin, screenName: string, logExpanded: boolean, portDefault: PortDefault = 'balanced', maxPortW = Infinity, preferSide = false): SkinLayout | null {
   const find = (n: CmcpNode): string | null => { if (n.widget === 'textport') return n.path; for (const c of n.children ?? []) { const f = find(c); if (f) return f; } return null; };
   const tp = find(tree);
   if (!tp) return null;
@@ -34,7 +34,7 @@ export function layoutSkinned(tree: CmcpNode, skin: Skin, screenName: string, lo
   const c0 = skin.content;
   const c: Rect4 = [c0[0], c0[1], c0[2], Math.max(96, stacked[1] - 8 - c0[1])];
   const arranged = skin.arrange[screenName] !== undefined && portDefault === 'balanced'; // the arrangements are written for the balanced band
-  const dense = !arranged && intrinsic(withoutPort(tree, tp), 'h') > c[3] * K * 0.8; // some headroom: the estimate is a minimum
+  const dense = preferSide || !arranged && intrinsic(withoutPort(tree, tp), 'h') > c[3] * K * 0.8; // some headroom: the estimate is a minimum
   const mode: Mode = dense ? 'side' : 'stack';
   const root = dense ? reflow(tree) : tree;
   // side layout: the text is at most `port.max_cols` columns wide (maxPortW, scene units) and the width it does not need goes to the widget column

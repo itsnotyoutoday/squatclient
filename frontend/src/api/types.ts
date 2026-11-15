@@ -208,6 +208,7 @@ export interface Settings {
   cmcpPackConsent: 'always' | 'ask' | 'never';
   cmcpAlertRecolour: 'theme' | 'full' | 'edge' | 'off';
   cmcpAlertPulse: 'theme' | 'on' | 'off';
+  cmcpTextLayout: 'auto' | 'left' | 'stacked';
   /** Console theme: follow the ship's suggested theme (default) or always use `consoleTheme`. */
   consoleThemeMode: 'ship' | 'fixed';
   /** Text view size: compact (the theme's own, ~20%, animated LOG toggle), balanced (45%, default), large (60%). */
@@ -668,6 +669,7 @@ export interface EngineAPI {
   cmcpPackConsent(session: string, packId: string, allow: boolean): Promise<void>;
   cmcpThemeDoc(session: string, themeId: string): Promise<Record<string, unknown>>;
   cmcpReducedMotion(on: boolean): Promise<void>;
+  cmcpViewport(session: string, widthPx: number, scale: number, monoPx: number): Promise<void>;
   /** A widget wrote a screen UI key ($ui.team). */
   cmcpSetUi(session: string, key: string, value: unknown): Promise<void>;
   /** A sprite of the current pack with the theme's tokens resolved (JSON text). */
@@ -925,6 +927,7 @@ export const DEFAULT_SETTINGS: Settings = {
   cmcpPackConsent: 'always',
   cmcpAlertRecolour: 'theme',
   cmcpAlertPulse: 'theme',
+  cmcpTextLayout: 'auto',
   consoleThemeMode: 'ship',
   cmcpPortDefault: 'balanced',
   cmcpCalm: false,

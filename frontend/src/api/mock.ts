@@ -654,6 +654,9 @@ export class MockEngine implements EngineAPI {
   }
   /** theme documents a test serves as downloaded packs, by theme id */
   cmcpThemeDocs: Record<string, Record<string, unknown>> = {};
+  async cmcpViewport(session: string, widthPx: number, scale: number, monoPx: number): Promise<void> {
+    this.cmcpCall('cmcpViewport', session, widthPx, scale, monoPx);
+  }
   async cmcpReducedMotion(on: boolean): Promise<void> {
     this.cmcpCall('cmcpReducedMotion', String(on));
   }

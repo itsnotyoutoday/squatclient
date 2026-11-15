@@ -41,7 +41,7 @@ func (s *Service) applyCmcpSettings() {
 	} else {
 		s.eng.SetCmcp(nil)
 	}
-	s.eng.SetCmcpRender(engine.CmcpRender{PortDefault: st.CmcpPortDefault, Calm: st.CmcpCalm, StartCollapsed: st.CmcpStartCollapsed, PackConsent: st.CmcpPackConsent, AlertPulse: st.CmcpAlertPulse, AlertRecolour: st.CmcpAlertRecolour, Reduced: s.reducedMotion.Load(), Theme: st.ConsoleTheme, UseShipTheme: st.ConsoleThemeMode != "fixed", Tokens: CmcpThemeTokens})
+	s.eng.SetCmcpRender(engine.CmcpRender{PortDefault: st.CmcpPortDefault, Calm: st.CmcpCalm, StartCollapsed: st.CmcpStartCollapsed, PackConsent: st.CmcpPackConsent, TextLayout: st.CmcpTextLayout, AlertPulse: st.CmcpAlertPulse, AlertRecolour: st.CmcpAlertRecolour, Reduced: s.reducedMotion.Load(), Theme: st.ConsoleTheme, UseShipTheme: st.ConsoleThemeMode != "fixed", Tokens: CmcpThemeTokens})
 }
 
 type cmcpNotesPayload struct {
@@ -140,4 +140,9 @@ func (s *Service) CmcpCycleScreen(session string, dir int) (string, error) {
 // CmcpPinScreen keeps the locally chosen screen across console changes.
 func (s *Service) CmcpPinScreen(session string, pin bool) error {
 	return s.eng.CmcpPinScreen(session, pin)
+}
+
+// CmcpViewport passes the web view's viewport to the engine (the core's layout decision and the textport cap).
+func (s *Service) CmcpViewport(session string, widthPx, scale, monoPx float64) error {
+	return s.eng.CmcpViewport(session, widthPx, scale, monoPx)
 }
