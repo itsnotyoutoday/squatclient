@@ -67,3 +67,18 @@ written to `<config>/lib/tf` at every start (managed, like `lib/squat`). `/load`
 name: `lib/squat`, then `lib/tf`, then the scripts folder, so `/load tintin.tf` and `/load examples/hello.tf` work without
 a path; an absolute path (or `~/...`) loads from anywhere. Only `lib/squat/stdlib.tf` runs at start; the classic
 `stdlib.tf` stays available as `lib/tf/stdlib.tf` (`SQUATCLIENT_TFLIB` can still point the start-up library elsewhere).
+
+## Where files go (Mac, Windows, Linux)
+
+| Folder | Default | Setting |
+|---|---|---|
+| App-data (startup.tf, plugins/, logs/, settings; holds the managed libraries) | `~/Library/Application Support/SquatClient` (Mac), `%AppData%\SquatClient` (Windows), `~/.config/SquatClient` (Linux) | `SQUATCLIENT_CONFIG_DIR` |
+| Managed libraries `lib/squat` and `lib/tf` | inside the app-data folder; rewritten at every start, do not edit | none |
+| Scripts folder: the working directory, so a relative `/load`, `/require`, `/log`, `/save`, `/lcd` start here | the app-data folder | Settings > Scripts folder (`scriptsDir`); applies at the next start |
+| Extra library folders | none | Settings > Extra library folders (`libDirs`) |
+
+A relative `/load name` searches: the scripts folder, `lib/squat`, `lib/tf`, the extra library folders. So `/load tintin.tf`
+or `/load examples/hello.tf` work without a path. A name starting with `/`, a drive letter (`C:\...`), `./` or `~/` is used
+as given (`~` is the home folder on every system, including `~\` on Windows), so scripts can reach `~/Documents` or
+`~/Downloads` explicitly. The app does not default into Documents: macOS asks permission for it and Windows often
+redirects it to OneDrive. Settings stores only absolute paths (or `~/...`).

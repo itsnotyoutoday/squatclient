@@ -104,7 +104,11 @@ type Settings struct {
 	StripBlankLines bool `json:"stripBlankLines"` // editor mode: drop blank and @@-comment-only lines
 	SendLineDelayMs int  `json:"sendLineDelayMs"` // editor mode: pause between lines of a block (0 = none)
 	HistoryMax      int  `json:"historyMax"`      // entries kept per world
-	WarnUnbalanced  bool `json:"warnUnbalanced"`  // editor mode: ask before sending a buffer with bracket problems
+
+	// Where TinyFugue scripts live (docs/LIB.md "Where files go"). Both take effect at the next start.
+	ScriptsDir     string   `json:"scriptsDir,omitempty"` // the user's scripts folder; "" = the app-data folder. A relative /load looks here first
+	LibDirs        []string `json:"libDirs,omitempty"`    // extra library folders searched after the shipped library
+	WarnUnbalanced bool     `json:"warnUnbalanced"`       // editor mode: ask before sending a buffer with bracket problems
 
 	// AutoReconnectSquatters brings a lost link to a squatter back by itself (laptop sleep, network drop).
 	AutoReconnectSquatters bool `json:"autoReconnectSquatters"`

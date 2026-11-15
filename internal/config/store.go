@@ -347,6 +347,10 @@ func (s *Store) SaveSettings(in Settings) error {
 	if in.Theme == "" {
 		return errors.New("theme is required")
 	}
+	var err error
+	if in.ScriptsDir, in.LibDirs, err = CleanScriptDirs(in.ScriptsDir, in.LibDirs); err != nil {
+		return err
+	}
 	if err := s.write("settings.json", settingsFile{Version: CurrentVersion, Settings: in}); err != nil {
 		return err
 	}

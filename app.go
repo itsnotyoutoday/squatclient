@@ -75,24 +75,42 @@ func (a *App) build(ctx context.Context) (*app.Service, *config.Store, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	scripts := os.Getenv("SQUATCLIENT_SCRIPTS_DIR")
+	scripts := os.Getenv("SQUATCLIENT_SCRIPTS_DIR") // startup.tf, plugins/, logs/ and the managed library live here
 	if scripts == "" {
 		scripts = dir
 	}
-	// SquatClient's own TinyFugue library (docs/LIB.md) is written into <scripts>/lib/squat at every start and loaded as
-	// the standard library; SQUATCLIENT_TFLIB names a directory with another one (real tf's lib/tf, say) instead.
+	// SquatClient's own TinyFugue library (docs/LIB.md) is written into <scripts>/lib/squat, the classic TinyFugue
+	// library into <scripts>/lib/tf, at every start. The first is loaded as the standard library;
+	// SQUATCLIENT_TFLIB names a directory with another one (real tf's lib/tf, say) instead.
 	stdLib := os.Getenv("SQUATCLIENT_TFLIB")
-	libDirs := []string{scripts}
+	// The user's scripts folder (Settings > Scripts): where a relative /load, /require, /log, /save and /lcd start.
+	// A GUI app has no useful working directory of its own, so this becomes it.
+	work := scripts
+	if w := config.ExpandPath(cfg.Settings().ScriptsDir); w != "" {
+		work = w
+	}
+	if err := os.MkdirAll(work, 0o755); err != nil {
+		slog.Warn("scripts folder not usable, using the app-data folder", "dir", work, "err", err)
+		work = scripts
+	}
+	if err := os.Chdir(work); err != nil {
+		slog.Warn("could not enter the scripts folder", "dir", work, "err", err)
+	}
+	// /load and /require search a relative name in: the working folder, the shipped library, the classic library,
+	// the folders added in Settings. Absolute paths and ~ go anywhere.
+	libDirs := []string{work}
 	if lib, err := stdlib.Install(scripts); err != nil {
 		slog.Warn("standard library not installed", "err", err)
 	} else {
-		// /load and /require search: our library first (its stdlib.tf is the one loaded at start), then the classic
-		// TinyFugue library (tintin.tf, at.tf, ...), then the user's own scripts. Absolute paths and ~ go anywhere.
-		libDirs = []string{lib, filepath.Join(scripts, filepath.FromSlash(stdlib.TFDir)), scripts}
+		libDirs = []string{lib, filepath.Join(scripts, filepath.FromSlash(stdlib.TFDir))}
 		if stdLib == "" {
 			stdLib = lib
 		}
 	}
+	for _, l := range cfg.Settings().LibDirs {
+		libDirs = append(libDirs, config.ExpandPath(l))
+	}
+	libDirs = append(libDirs, work)
 	svc, err := app.New(app.Options{
 		Config:  cfg,
 		Secrets: secrets.Keychain{},

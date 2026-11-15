@@ -179,6 +179,10 @@ export interface Settings {
   sendLineDelayMs: number;
   /** History entries kept per world. */
   historyMax: number;
+  /** The user's scripts folder ('' = the app-data folder): a relative /load, /log, /save starts here. Applies at the next start. */
+  scriptsDir?: string;
+  /** Extra library folders /load and /require search after the shipped library. Applies at the next start. */
+  libDirs?: string[];
   /** Editor mode: ask before sending a buffer with bracket problems. */
   warnUnbalanced: boolean;
   /** Bring a lost link to a squatter back by itself (laptop sleep, network drop). */
@@ -190,6 +194,15 @@ export interface Settings {
 }
 
 /** Result of `readTextFile` (the /upload command). Failures are reported inside the result. */
+/** The folders TinyFugue files live in (see docs/LIB.md "Where files go"). */
+export interface ScriptFolders {
+  scripts: string;
+  appData: string;
+  lib: string;
+  tfLib: string;
+  home: string;
+}
+
 export interface FileResult {
   ok: boolean;
   error?: string;
@@ -726,6 +739,12 @@ export interface EngineAPI {
   pickFile(title: string): Promise<string>;
   /** Read a text file the user chose or typed (regular file, <= 5 MiB, no binary). */
   readTextFile(path: string): Promise<FileResult>;
+  /** Native folder dialog; resolves '' when cancelled. */
+  pickFolder(title: string, start: string): Promise<string>;
+  /** Show a folder in the system file manager. */
+  openFolder(path: string): Promise<void>;
+  /** Where TinyFugue files are right now (for Settings > Scripts). */
+  scriptFolders(): Promise<ScriptFolders>;
   // ---- in-game object/attribute editor (docs/EDIT.md). These never reject: check `ok`.
   editFetchObject(sessionId: string, dbref: string): Promise<EditObjectResult>;
   editFetchAttr(sessionId: string, dbref: string, attr: string): Promise<EditAttrResult>;
@@ -787,7 +806,14 @@ export interface EngineAPI {
 
 /** internal/diag.Report (Go). */
 export interface DiagReport {
-  app: { version: string; commit: string; buildDate: string; buildType: string; engineVersion: string; swpVersion: number };
+  app: {
+    version: string;
+    commit: string;
+    buildDate: string;
+    buildType: string;
+    engineVersion: string;
+    swpVersion: number;
+  };
   platform: {
     os: string;
     osName: string;

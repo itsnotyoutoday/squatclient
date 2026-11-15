@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import { useSessions, useSettings, useUi, setBufferCap } from '../../state/stores';
 import { seedHistory } from '../../state/history';
-import type { Settings } from '../../api/types';
+import type { ScriptFolders, Settings } from '../../api/types';
 import { DEFAULT_FONT } from '../../api/types';
 import { allThemes, parseThemeJson, useThemeVersion } from '../../themes';
 import { Dialog, Field } from './Dialog';
@@ -17,6 +17,14 @@ export function SettingsDialog() {
   const fg = useSessions((s) => s.fg);
   const [stored, setStored] = useState<number | null>(null);
   const [confirmClear, setConfirmClear] = useState(false);
+  const [folders, setFolders] = useState<ScriptFolders | null>(null);
+
+  useEffect(() => {
+    void engine
+      ?.scriptFolders()
+      .then(setFolders)
+      .catch(() => undefined);
+  }, [engine]);
 
   useEffect(() => {
     void engine
@@ -54,6 +62,16 @@ export function SettingsDialog() {
   };
 
   // Settings apply live (instant theme/font switching) and persist through the engine.
+  const openFolder = (path: string): void => {
+    void engine?.openFolder(path).catch((e: unknown) => setErr(String(e)));
+  };
+  const browse = (): void => {
+    void engine
+      ?.pickFolder('Choose the scripts folder', settings.scriptsDir ?? '')
+      .then((p) => p && update({ scriptsDir: p }))
+      .catch((e: unknown) => setErr(String(e)));
+  };
+
   const update = (patch: Partial<Settings>): void => {
     const next = { ...useSettings.getState().settings, ...patch };
     useSettings.getState().set(next);
@@ -200,6 +218,48 @@ export function SettingsDialog() {
           )}
         </div>
         <Field
+          label="Scripts folder"
+          hint="Where a relative /load, /require, /log and /save start. Empty = the app-data folder. Takes effect the next time SquatClient starts."
+        >
+          <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <input
+              type="text"
+              value={settings.scriptsDir ?? ''}
+              placeholder={folders?.appData ?? ''}
+              spellCheck={false}
+              onChange={(e) => update({ scriptsDir: e.target.value })}
+            />
+            <button type="button" onClick={browse}>
+              Browse...
+            </button>
+            <button type="button" onClick={() => openFolder(settings.scriptsDir || folders?.scripts || '')}>
+              Open
+            </button>
+          </span>
+        </Field>
+        <Field
+          label="Extra library folders (one per line)"
+          hint="Searched by /load and /require after the built-in library (lib/squat, then the classic TinyFugue library in lib/tf). Absolute paths, or ~/... for your home folder. Takes effect the next time SquatClient starts."
+        >
+          <textarea
+            rows={3}
+            spellCheck={false}
+            value={(settings.libDirs ?? []).join('\n')}
+            onChange={(e) => update({ libDirs: e.target.value.split('\n') })}
+          />
+        </Field>
+        {folders && (
+          <div className="field">
+            <span className="lbl">Built-in libraries (managed, rewritten at every start)</span>
+            <span className="hint">
+              {folders.lib} and {folders.tfLib}{' '}
+              <button type="button" onClick={() => openFolder(folders.lib)}>
+                Open
+              </button>
+            </span>
+          </div>
+        )}
+        <Field
           label="Delay between block lines (ms, 0 = none)"
           hint="Multi-line mode: paces big blocks so they do not flood the game"
         >
@@ -232,7 +292,7 @@ export function SettingsDialog() {
           )}
           {check(
             'tfHideQueries',
-            'Keep SquatClient\'s own queries off TinyFugue\'s screen',
+            "Keep SquatClient's own queries off TinyFugue's screen",
             '(sends TinyFugue a small script when an admin device connects; needs squat_scripts)',
           )}
           {check('timestamps', 'Show timestamps')}

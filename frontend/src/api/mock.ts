@@ -28,6 +28,7 @@ import type {
   EngineEventName,
   EngineEvents,
   FileResult,
+  ScriptFolders,
   HistoryEntry,
   HistoryPage,
   HistoryQueryOpts,
@@ -539,7 +540,8 @@ export class MockEngine implements EngineAPI {
     if (sd.info.tf) return this.renameTFSession(sessionId, name);
     const w = sd.info.worldId ? this.worlds.find((x) => x.id === sd.info.worldId) : undefined;
     if (w) {
-      if (this.worlds.some((x) => x.id !== w.id && x.name === name)) throw new Error(`you already have a world called "${name}"`);
+      if (this.worlds.some((x) => x.id !== w.id && x.name === name))
+        throw new Error(`you already have a world called "${name}"`);
       w.name = name;
       for (const o of this.sessions.values()) {
         if (o.info.worldId === w.id) {
@@ -767,13 +769,31 @@ export class MockEngine implements EngineAPI {
   }
   async diagnostics(): Promise<DiagReport> {
     return {
-      app: { version: '0.0.0-mock', commit: 'mock', buildDate: '', buildType: 'mock', engineVersion: 'mock', swpVersion: 1 },
+      app: {
+        version: '0.0.0-mock',
+        commit: 'mock',
+        buildDate: '',
+        buildType: 'mock',
+        engineVersion: 'mock',
+        swpVersion: 1,
+      },
       platform: {
-        os: 'mock', osName: 'Mock OS (browser preview)', osVersion: '0', arch: 'none', goVersion: 'none',
-        locale: navigator.language, timezone: 'browser', numCPU: navigator.hardwareConcurrency || 1, notes: ['mock engine, not a real build'],
+        os: 'mock',
+        osName: 'Mock OS (browser preview)',
+        osVersion: '0',
+        arch: 'none',
+        goVersion: 'none',
+        locale: navigator.language,
+        timezone: 'browser',
+        numCPU: navigator.hardwareConcurrency || 1,
+        notes: ['mock engine, not a real build'],
       },
       webview: { engine: 'browser (mock)', version: '', note: 'no native shell' },
-      paths: { config: '~/.config/SquatClient', data: '~/.config/SquatClient', logs: '~/.config/SquatClient/logs' },
+      paths: {
+        config: '~/.config/SquatClient',
+        data: '~/.config/SquatClient',
+        logs: '~/.config/SquatClient/logs',
+      },
     };
   }
   async saveTextFile(defaultName: string, text: string): Promise<string> {
@@ -1207,6 +1227,19 @@ export class MockEngine implements EngineAPI {
   }
   async pickFile(): Promise<string> {
     return this.nextPick;
+  }
+  async pickFolder(): Promise<string> {
+    return this.nextPick.replace(/\/[^/]*$/, '') || '~/scripts';
+  }
+  async openFolder(): Promise<void> {}
+  async scriptFolders(): Promise<ScriptFolders> {
+    return {
+      scripts: '~/.config/SquatClient',
+      appData: '~/.config/SquatClient',
+      lib: '~/.config/SquatClient/lib/squat',
+      tfLib: '~/.config/SquatClient/lib/tf',
+      home: '~',
+    };
   }
   async readTextFile(path: string): Promise<FileResult> {
     const p = path.trim();

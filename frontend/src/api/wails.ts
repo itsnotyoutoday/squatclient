@@ -27,6 +27,7 @@ import type {
   EngineEventName,
   EngineEvents,
   FileResult,
+  ScriptFolders,
   HistoryPage,
   HistoryQueryOpts,
   SessionData,
@@ -181,7 +182,8 @@ export class WailsEngine implements EngineAPI {
   listTFScripts = (id: string) => list(call<TFScript[] | null>('ListTFScripts', id));
   deleteTFScript = (id: string, name: string) => call<void>('DeleteTFScript', id, name);
   gfxSnapshot = () => list(call<GfxOp[] | null>('GfxSnapshot'));
-  gfxEvent = (scene: string, id: string, event: string, x: number, y: number) => call<void>('GfxEvent', scene, id, event, x, y);
+  gfxEvent = (scene: string, id: string, event: string, x: number, y: number) =>
+    call<void>('GfxEvent', scene, id, event, x, y);
   tfKeyBindings = () => list(call<string[] | null>('TFKeyBindings'));
   tfKey = (id: string, seq: string, text: string, cursor: number) =>
     call<TFKeyResult>('TFKey', id, seq, text, cursor);
@@ -341,6 +343,10 @@ export class WailsEngine implements EngineAPI {
     ).then((r) => ({ ...r, exits: r.exits ?? [], contents: r.contents ?? [] }));
   pickFile = (title: string) => call<string>('PickFile', title).then((p) => p ?? '');
   readTextFile = (path: string) => call<FileResult>('ReadTextFile', path);
+  pickFolder = (title: string, start: string) =>
+    call<string>('PickFolder', title, start).then((p) => p ?? '');
+  openFolder = (path: string) => call<void>('OpenFolder', path);
+  scriptFolders = () => call<ScriptFolders>('ScriptFolders');
 
   on<E extends EngineEventName>(event: E, cb: (payload: EngineEvents[E]) => void): () => void {
     const rt = w().runtime;
