@@ -191,8 +191,12 @@ func (ss *soundSvc) resolve(sessionID string, p *msg.SoundPlay) *Instr {
 		event = p.Sound
 	}
 	shipTheme := ""
-	if ui, err := ss.s.eng.CmcpUI(sessionID); err == nil && ui.Ship != nil {
-		shipTheme = ui.Ship.Theme
+	if ui, err := ss.s.eng.CmcpUI(sessionID); err == nil {
+		if ui.Ship != nil {
+			shipTheme = ui.Ship.Theme
+		} else if o := ui.Scopes["ship"].Owner; ui.V2 && o != nil { // CMCP 2: the ship scope's owner brings the theme
+			shipTheme = o.Theme
+		}
 	}
 	mode := "ship"
 	if st.ConsoleThemeMode == "fixed" || !st.UseShipTheme {

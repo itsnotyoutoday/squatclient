@@ -376,6 +376,11 @@ func (s *Service) DiagSnapshot(why string) {
 			ship := ""
 			if ui.Ship != nil {
 				ship = ui.Ship.ID
+			} else if o := ui.Scopes["ship"].Owner; ui.V2 && o != nil {
+				ship = o.ID
+			}
+			if ui.V2 && ui.Ctx != nil { // CMCP 2: the active context's type stands where the console id was
+				cons = ui.Ctx.Type
 			}
 			note := ""
 			if ui.Notice != nil {
