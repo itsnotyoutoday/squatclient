@@ -55,13 +55,14 @@ export function Mush() {
       el.style.height = r ? `${r.h}px` : '';
     };
     apply(store.rect);
-    return store.subscribe(apply);
+    const off = store.subscribe(apply);
+    return () => { off(); apply(null); }; // another session's text port must never leave its inset on this pane
   }, [store]);
   return (
     <div className="lay-mush">
       {searchOpen && <SearchBar sessionId={env.sessionId} />}
       <GfxPane sessionId={env.sessionId} />
-      <div className="lay-output" ref={out}>
+      <div className="lay-output" ref={out} key={env.sessionId}>
         <OutputPane key={env.sessionId} sessionId={env.sessionId} />
       </div>
     </div>

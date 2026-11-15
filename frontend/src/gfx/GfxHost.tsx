@@ -46,17 +46,25 @@ function placement(plan: Plan): React.CSSProperties {
   return { position: 'absolute', inset: 0 };
 }
 
+/** One scene's render surface. It owns its host <div> and a <canvas> it creates itself on every mount: a GL context that was
+ * released (background session, a lost context) can never be revived on the same element, so no canvas is ever reused. The
+ * pane keys this component by session AND scene, so two sessions never share an instance (and with it, styles, canvas, GL). */
 function SceneCanvas({ rt, id, store }: { rt: GfxRuntime; id: string; store: PortStore }) {
   const wrap = useRef<HTMLDivElement>(null);
-  const cv = useRef<HTMLCanvasElement>(null);
   const [err, setErr] = useState('');
+  const [gen, setGen] = useState(0); // bumped when the GL context is lost: the effect runs again with a fresh canvas
   const slot = rt.slot(id);
   const cfg = slot.scene.cfg;
   const kind = cfg.dock === 'full' && (portNodeOf(cfg) || Array.isArray(cfg.port)) ? 'frame' : 'strip';
   const stripPlan = planScene(cfg, { w: 1, h: 1 });
   useEffect(() => {
-    const canvas = cv.current, box = wrap.current;
-    if (!canvas || !box) return;
+    const box = wrap.current;
+    if (!box) return;
+    const canvas = document.createElement('canvas');
+    box.insertBefore(canvas, box.firstChild);
+    let alive = true;
+    const onLost = (ev: Event): void => { ev.preventDefault(); if (alive) setGen((n) => n + 1); };
+    canvas.addEventListener('webglcontextlost', onLost);
     const e = rt.mount(id, canvas);
     setErr(e ?? '');
     if (e) { // WebGL missing or failing: say so and take the graphics away, the text and input are untouched
@@ -104,20 +112,24 @@ function SceneCanvas({ rt, id, store }: { rt: GfxRuntime; id: string; store: Por
     const handlers: [string, (e: PointerEvent) => void][] = [['pointermove', pt('move')], ['pointerdown', pt('down')], ['pointerup', pt('up')]];
     for (const [n, f] of handlers) window.addEventListener(n, f as EventListener, true);
     return () => {
+      alive = false;
+      canvas.removeEventListener('webglcontextlost', onLost);
       cancelAnimationFrame(raf);
       for (const [n, f] of handlers) window.removeEventListener(n, f as EventListener, true);
       document.documentElement.style.cursor = '';
       ro.disconnect();
       store.set(null);
-      rt.unmount(id);
+      rt.unmount(id); // releases the GL context
+      canvas.remove();
+      box.style.clipPath = ''; // nothing of this surface's styling outlives it
+      box.style.visibility = '';
     };
-  }, [rt, id, slot, store, cfg]);
+  }, [rt, id, slot, store, cfg, gen]);
   if (err) {
     return <div className="gfx-msg" role="alert">Graphics need WebGL2, which this window does not provide ({err}).</div>;
   }
   return (
     <div ref={wrap} className="gfx-scene" style={placement(kind === 'frame' ? { mode: 'frame', out: { x: 0, y: 0, w: 0, h: 0 }, input: null } : stripPlan)} data-scene={id}>
-      <canvas ref={cv} />
       <button type="button" className="gfx-close" aria-label="Close graphics" onClick={() => rt.closeScene(id)}>
         &times;
       </button>
@@ -244,5 +256,5 @@ export function GfxPane({ sessionId }: { sessionId: string }) {
   if (!GfxRenderer.supported()) {
     return <div className="gfx-msg" role="alert">Graphics need WebGL2, which this window does not provide.</div>;
   }
-  return <>{open.map((s) => <SceneCanvas key={s.scene.id} rt={g.rt} id={s.scene.id} store={store} />)}</>;
+  return <>{open.map((s) => <SceneCanvas key={`${sessionId}/${s.scene.id}`} rt={g.rt} id={s.scene.id} store={store} />)}</>;
 }
