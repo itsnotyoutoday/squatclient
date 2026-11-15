@@ -41,9 +41,9 @@ return function(E)
   end
   local function nav()
     local sc, S = E.sc(), E.S()
-    E.navbtns({{"SCAN", "sens", "x"}, {"POWER", "eng", "r"}, {"WEAPONS", "tac", "p"}, {"HULL", "ship", "s"}}, {x = 30, y = 340, w = 160, h = 58, dy = 72, r = 0, size = 34, align = "left", padX = 16, color = "#080203"})
-    for i = 1, 4 do sc:get("nav" .. i):set{skewX = 10} end
-    E.logbtn{x = 30, y = 650, w = 160, h = 54, r = 0, role = "x", size = 28, align = "left", shrink = "LOG  <", expand = "LOG  >"}
+    E.navbtns({{"SCAN", "sens", "x"}, {"POWER", "eng", "r"}, {"WEAPONS", "tac", "p"}, {"DAMAGE", "ship", "s"}, {"OPS", "op", "k"}}, {x = 30, y = 340, w = 160, h = 58, dy = 72, r = 0, size = 34, align = "left", padX = 16, color = "#080203"})
+    for i = 1, 5 do sc:get("nav" .. i):set{skewX = 10} end
+    E.logbtn{x = 30, y = 722, w = 160, h = 54, r = 0, role = "x", size = 28, align = "left", shrink = "LOG  <", expand = "LOG  >"}
   end
   -- the radar becomes an angular tactical plot: hexagonal rings, a turning blade, contacts as diamonds
   local function plot(rdg)
@@ -79,7 +79,7 @@ return function(E)
   end
   -- heavy red alert: the whole border pulses hard (calm softens it, see lcars.lua)
   E.register{
-    name = "klingon", font = "Teko", weight = "600", sharp = true, bloom = 0.5, radar = plot,
+    name = "klingon", ctscale = 0.78, font = "Teko", weight = "600", sharp = true, bloom = 0.5, radar = plot,
     fonts = {{"Teko", "fonts/Teko-VF.ttf", "300 700"}},
     pal = {
       normal = {p = "#c1121f", s = "#8a8d93", t = "#240709", q = "#3a0a0f", x = "#c9a84c", r = "#e63946", k = "#d4b86a", bg = "#050102"},

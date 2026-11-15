@@ -13,9 +13,11 @@ animation and data bindings run in the renderer.
 
 Open any session, then type:
 
-- `/lcars` the full LCARS console written in Lua (sensors, engineering, tactical, ship systems, red alert, a helm
-  joystick that puts `/echo JoyStick to 130 power 85` into the input line). `/lcars eng`, `/lcars alert red`,
-  `/lcars stop`.
+- `/lcars` the full LCARS console written in Lua, per session: sensors, power (`/lcars power`), tactical, damage control
+  (`/lcars dc`) and operations (`/lcars operations`), red alert, and a helm joystick on the consoles that fly or aim the ship
+  (it puts `/echo JoyStick to 130 power 85` into the input line). The buttons send the game's own commands (`dmg assign`,
+  `power`, `hatch`, `tractor ...`) to the session you are in, and show them first. Themes: `/lcars themes` (`ops` is the dense
+  wall, also `bridge` or `picard`). `/lcars alert red`, `/lcars stop`.
 - `/gfxdemo` a short TinyFugue script drawing a few animated shapes, one data-bound bar and a button.
 
 The close button at the top right of a full-window scene closes it.

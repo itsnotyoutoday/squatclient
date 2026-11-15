@@ -59,9 +59,9 @@ return function(E)
   end
   local function nav()
     local sc, S = E.sc(), E.S()
-    E.navbtns({{"SENSORS", "sens", "p"}, {"ENGINEER", "eng", "s"}, {"WEAPONS", "tac", "q"}, {"SHIP", "ship", "r"}}, {x = 26, y = 130, w = 190, h = 58, dy = 76, r = 14, size = 24, color = "#f5f1e6"})
-    for i = 1, 4 do sc:get("nav" .. i):set{stroke = "#14161a", strokeWidth = 4} end
-    E.logbtn{x = 26, y = 440, w = 190, h = 54, r = 14, role = "x", size = 22, color = "#111", shrink = "LOG: SMALL", expand = "LOG: LARGE"}
+    E.navbtns({{"SENSORS", "sens", "p"}, {"POWER", "eng", "s"}, {"WEAPONS", "tac", "q"}, {"DAMAGE", "ship", "r"}, {"OPS", "op", "t"}}, {x = 26, y = 130, w = 190, h = 58, dy = 76, r = 14, size = 24, color = "#f5f1e6"})
+    for i = 1, 5 do sc:get("nav" .. i):set{stroke = "#14161a", strokeWidth = 4} end
+    E.logbtn{x = 26, y = 516, w = 190, h = 54, r = 14, role = "x", size = 22, color = "#111", shrink = "LOG: SMALL", expand = "LOG: LARGE"}
   end
   local function decor(name, parent)
     local sc, S = E.sc(), E.S()
@@ -70,7 +70,7 @@ return function(E)
     end
   end
   E.register{
-    name = "tos", font = "Orbitron", weight = "700", sharp = false, bloom = 0.15, decor = decor, tscale = 0.78,
+    name = "tos", ctscale = 0.85, font = "Orbitron", weight = "700", sharp = false, bloom = 0.15, decor = decor, tscale = 0.78,
     fonts = {{"Orbitron", "fonts/Orbitron-VF.ttf", "400 900"}},
     pal = {
       normal = {p = "#e8372c", s = "#f2c230", t = "#34393e", q = "#2f6fd6", x = "#f5f1e6", r = "#2aa75b", k = "#9fd0ff", bg = "#1e2125"},

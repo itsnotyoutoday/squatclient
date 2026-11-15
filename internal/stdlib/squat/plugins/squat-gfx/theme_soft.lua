@@ -12,7 +12,8 @@ return function(E)
         stroke = "#2a3138", strokeWidth = 2, skewY = sc3[5], z = -5}
     end
     -- small-caps headings over thin double rules, in salmon
-    local heads = {{"NAVIGATION", 36, 126}, {"TACTICAL", 252, 112}, {"CONTACTS", 1138, 124}}
+    local heads = {{"NAVIGATION", 36, 126}, {"{lc_mode == \"eng\" ? \"POWER\" : (lc_mode == \"ship\" ? \"DAMAGE CONTROL\" : (lc_mode == \"op\" ? \"OPERATIONS\" : (lc_mode == \"tac\" ? \"TACTICAL\" : \"SENSORS\")))}", 252, 112},
+      {"{lc_mode == \"sens\" || lc_mode == \"tac\" ? \"CONTACTS\" : \"\"}", 1138, 124}}
     for i, h in ipairs(heads) do
       text(nil, "hd" .. i, h[2], h[3], h[1], 30, P.p, "left", {weight = "700"})
       T("p", sc:rect{id = "hr" .. i .. "a", x = h[2], y = h[3] + 18, w = 190, h = 2, fill = P.p, opacity = 0.9})
@@ -28,12 +29,12 @@ return function(E)
   end
   local function nav()
     local sc, S = E.sc(), E.S()
-    E.navbtns({{"SENSORS", "sens", "s"}, {"ENGINEER", "eng", "k"}, {"TACTICAL", "tac", "x"}, {"SHIP", "ship", "t"}}, {x = 30, y = 188, w = 180, h = 50, dy = 62, r = 6, size = 26, align = "left", padX = 14})
+    E.navbtns({{"SENSORS", "sens", "s"}, {"POWER", "eng", "k"}, {"TACTICAL", "tac", "x"}, {"DAMAGE", "ship", "t"}, {"OPS", "op", "p"}}, {x = 30, y = 188, w = 180, h = 50, dy = 62, r = 6, size = 26, align = "left", padX = 14})
     sc:rect{id = "marker", x = 22, y = 190, w = 3, h = 46, fill = S.pal.normal.p}
-    E.logbtn{x = 30, y = 448, w = 180, h = 48, r = 6, role = "p", size = 24, align = "left", shrink = "LOG  -  SHRINK", expand = "LOG  -  EXPAND"}
+    E.logbtn{x = 30, y = 510, w = 180, h = 48, r = 6, role = "p", size = 24, align = "left", shrink = "LOG  -  SHRINK", expand = "LOG  -  EXPAND"}
   end
   E.register{
-    name = "soft", font = "Rajdhani", weight = "700", sharp = false, bloom = 0.08,
+    name = "soft", conY = 26, font = "Rajdhani", weight = "700", sharp = false, bloom = 0.08,
     fonts = {{"Rajdhani", "fonts/Rajdhani-Medium.ttf", "500"}, {"Rajdhani", "fonts/Rajdhani-Bold.ttf", "700"}},
     pal = {
       normal = {p = "#d98a63", s = "#e6d6c4", t = "#8e99a3", q = "#5e8e96", x = "#e0b48e", r = "#c26b5a", k = "#9cc2c6", bg = "#090b0d"},

@@ -240,8 +240,9 @@ the Lua module keeps its scenes, handlers, timers and simulation per world.
 `/lcars [theme]` is the single entry point. `/lcars themes` lists them, `/lcars tour` cycles through all of them every 12 seconds
 (any button click, any `/lcars` command or `/lcars stop` ends the tour). Plain `/lcars` opens the theme used last this session
 (TNG at first; `/lcars tng` goes back). Switching themes rebuilds only the scene: the text pane, its scroll position, the LOG
-state and the real input bar are untouched. Every theme has the same four consoles (sens, eng, tac, ship) under its own
-names, driven by the same simulation and variables (`lc_*`, `sh_*`, `fg_*`, GMCP `Ship.Status`), so they are interchangeable.
+state and the real input bar are untouched. Every theme has the same five consoles under its own names: `sens` (sensors), `eng`
+(power: `/lcars power`), `tac`, `ship` (damage control: `/lcars dc`) and `op` (operations: `/lcars operations`), driven by the same
+simulation and variables (`lc_*`, `sh_*`, `dc_*`, `pg_*`, `op_*`, `fg_*`, GMCP `Ship.Status`), so they are interchangeable.
 
 | theme | look | signature |
 |---|---|---|
@@ -250,8 +251,8 @@ names, driven by the same simulation and variables (`lc_*`, `sh_*`, `fg_*`, GMCP
 | `romulan` | near-black green, cold green and amber, long asymmetric bezier sweeps like folded wings, angular amber nameplate, Rajdhani | cloaking shimmer shader and a dish that fades in and out |
 | `klingon` | black, blood red, dull gold, jagged plates with zig-zag edges, blade motifs, heavy Teko type | an angular hexagonal tactical plot (blade sweep, diamond contacts, a turning disruptor bracket) instead of a radar dish; stepped battle-damage flicker |
 | `tos` | grey riveted panels, chunky primary-colour push-buttons, Orbitron | rows of lamps blinking in stepped patterns, toggles, round dials with needles, CRT scan lines, flicker and grain over the viewscreen |
-| `ferengi` | gold, bronze, deep maroon, ornate double frame with filigree corners, Cinzel | spinning coins, a latinum bar chart with profit and loss, a scrolling ticker of original sayings, sparkles, a shop-counter panel |
-| `bridge` (`picard`) | a wall of three tilted black-glass panels, dense small data, thin red strip lighting, warm floor glow; the text port is the fourth panel | a slowly turning wireframe schematic of an invented ship with overlays per console (reticle and contacts, power flow, shield arcs, damage pulses), line graphs, rolling data columns, blinking grids |
+| `ferengi` | a ship's ops console in gold, amber and bronze on maroon-black: rounded forms, ornate double frame with sweeping filigree, Cinzel | a band of script-like glyphs (our own abstract artwork, generated from a seed) and a ladder of glyph meters bound to the power levels; the consoles are the shared ones, named SENSORS, ENGINEERING, TACTICAL, DAMAGE CONTROL, OPERATIONS |
+| `ops` (`bridge`, `picard`) | a wall of three tilted black-glass panels, dense small data, thin red strip lighting, warm floor glow; the text port is the fourth panel | EVERY console re-skins the whole wall: its own left panel, centre schematic, right panel and title, from the shared data (see below) |
 
 Shared on purpose: the simulation, the LOG toggle (the text port object and its frame), console buttons, the alert recolouring (each
 theme has a `red` palette; calm turns the border flash into a slow shallow pulse), the console builders (themes replace or decorate
@@ -268,6 +269,37 @@ the app, which survives `/reload`); I found no cleaner place in the app settings
 Performance (headless Chrome on a Metal GPU, 1100x720 pane): every theme and console holds 60 fps (display-limited) with
 0.4 to 1.2 ms of CPU per frame; the bridge (the heaviest, about 200 draw items plus 650 for the Romulan curves) took 0.8 to 1.2 ms,
 so no cheaper quality level was needed. Screenshots of every theme and console are in `docs/gfx-shots/themes/`.
+
+## The ship consoles speak the game's commands
+
+The panels are built from shared modules (`model.lua`), so every theme gets the same content: **sens** (contact table, scans:
+`srs`, `lrs`, `passive|dockscan|internal <locked contact>`), **eng** (the game's power model: power groups 1-7 with percent and
+watts, pools, components, repair, battery charge; click a group to open it, `pg <group>`, set it with `power <group>=<0% | 25% |
+50% | 100% | max | off | N%>`, `eng main|aux <value>`, `eng gen stat`, `eng emergency`), **tac** (weapons, per-facing shield arcs, target list),
+**ship** = damage control (teams 1-5 with crew and assignment, `dmg stat` bars as `<86.4/100.0>`, pick a team and click a system to
+send `dmg assign <team>=<system>`), **op** (`op stat`, `hatch`, `dd open|close`, `fuel stat`, tractor: `tractor lock <contact>`,
+`dest <room>`, `engage`, `reset`, `stat`). The joystick only appears on consoles that fly or aim the ship (sens, tac).
+
+Every click sends the real command to THIS session's game, only while it is connected, and shows `lcars> <command>` in the output
+first (an offline session says "not connected" and sends nothing). The game's answers feed the panels back: `model.lua` parses
+`Port_Nacelle ... <86.4/100.0>`, `Hull Status`, the `T# Crew Assignment` table, `op stat`, `power` and `pg` rows (and GMCP
+`Ship.Status`). Until the game answers, the panels show the numbers of a sample session, so the screen is complete offline. The reply
+"That function is not available from this console" becomes a hint pointing at the Operations console (`man opera`). Assumed, not
+verified against the game: the system names after `dmg assign` (`Hull`, `Port_Nacelle`, `Starboard_Nacelle`, as `dmg stat` prints
+them), the contact id used by `tractor lock` and the scans (the contact's number in the list) and the column layout of `pg <group>`.
+
+Layout rule, checked by `TestDecorationNeverCoversWidgetsOrText`: for every theme and console, decorative layers (particle emitters,
+ornament and frame paths) never overlap a button, a clickable object or a text, buttons never overlap each other and the
+joystick's labels never collide with a console's texts.
+
+## One render surface per session
+
+A scene belongs to its session and is drawn only while that session is in front. Each scene's component (`SceneCanvas`) is keyed by
+session and scene, owns its host element and creates a new `<canvas>` on every mount; leaving the screen releases the GL context, and a
+lost context re-runs the mount with a fresh canvas (a lost context can never be revived on the same element, which is what blanked
+a session after a tab switch when its component was shared). The text-port inset is cleared when the pane's session changes.
+`frontend/scripts/gfx-tabs.mjs` drives the real app in headless Chrome with several sessions and asserts geometry, canvases, pixels
+and the text/input after every switch (needs the debug hook: `vite build --mode hook`, or `npm run dev`).
 
 ## Rendering
 

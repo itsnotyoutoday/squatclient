@@ -10,10 +10,10 @@ return function(E)
     local sc, S, T, text = E.sc(), E.S(), E.T, E.text
     local P = S.pal.normal
     -- swept wings: long beziers sweeping from the left column across the top and bottom, asymmetric
-    wing("w1", "M 20 880 C 60 520, 120 300, 330 150 S 760 60, 1100 70 S 1500 40, 1585 18", "p", 3)
-    wing("w2", "M 20 840 C 90 520, 190 340, 380 200 S 800 110, 1130 118 S 1450 100, 1585 70", "t", 2, 0.7)
-    wing("w3", "M 20 800 C 120 520, 260 380, 430 250 S 820 170, 1160 160", "q", 2, 0.6)
-    wing("w4", "M 1585 880 C 1500 760, 1380 720, 1150 835 S 700 880, 330 850 S 90 880, 20 880", "p", 2.5, 0.8)
+    -- (kept to the margins: left edge, top and bottom rim, so they never run over a control or a text)
+    wing("w1", "M 20 890 C 6 640, 6 360, 20 120 S 90 18, 240 14 S 900 8, 1150 12", "p", 3)
+    wing("w2", "M 30 880 C 16 640, 16 380, 28 150 S 80 44, 200 30", "t", 2, 0.7)
+    wing("w3", "M 1585 884 C 1300 890, 900 886, 40 888", "p", 2, 0.6)
     -- nameplate: an angular amber plate, top right
     T("x", sc:polygon{id = "plate", points = {1180, 14, 1570, 14, 1550, 62, 1160, 62}, fill = P.x, glow = 0.1})
     text(nil, "rt1", 1200, 40, "WARBIRD  VALDORE  //  {lc_mode|upper}", 28, "#0a0a05", "left")
@@ -25,10 +25,10 @@ return function(E)
   end
   local function nav()
     local sc, S = E.sc(), E.S()
-    E.navbtns({{"SENSORS", "sens", "p"}, {"ENGINES", "eng", "x"}, {"WEAPONS", "tac", "t"}, {"DECKS", "ship", "q"}}, {x = 36, y = 220, w = 170, h = 52, dy = 66, dx = 10, r = 3, size = 26, align = "left", padX = 14, color = "#021008"})
-    for i = 1, 4 do sc:get("nav" .. i):set{skewX = -14} end
+    E.navbtns({{"SENSORS", "sens", "p"}, {"POWER", "eng", "x"}, {"WEAPONS", "tac", "t"}, {"DAMAGE", "ship", "q"}, {"OPS", "op", "r"}}, {x = 36, y = 220, w = 160, h = 52, dy = 66, dx = 6, r = 3, size = 26, align = "left", padX = 14, color = "#021008"})
+    for i = 1, 5 do sc:get("nav" .. i):set{skewX = -14} end
     sc:rect{id = "marker", x = 20, y = 224, w = 6, h = 44, fill = S.pal.normal.x, glow = 0.6}
-    E.logbtn{x = 36, y = 520, w = 170, h = 50, r = 3, role = "x", size = 24, align = "left", shrink = "LOG  <  COMPACT", expand = "LOG  >  EXPAND"}
+    E.logbtn{x = 36, y = 586, w = 170, h = 50, r = 3, role = "x", size = 24, align = "left", shrink = "LOG  <  SMALL", expand = "LOG  >  EXPAND"}
     sc:get("logbtn"):set{skewX = -14}
   end
   local function decor(name, parent)
@@ -50,6 +50,6 @@ return function(E)
       red    = {p = "#ff7a3a", s = "#ffb48a", t = "#c4542a", q = "#7a2a18", x = "#ffcf5a", r = "#ff5a2a", k = "#ffa070", bg = "#0e0502"},
     },
     alertEdge = "#ff7a3a", frame = frame, nav = nav,
-    mark = function(i) E.sc():get("marker"):animate{y = 224 + (i - 1) * 66, x = 20 + (i - 1) * 10, dur = 0.45, ease = "inOutCubic"} end,
+    mark = function(i) E.sc():get("marker"):animate{y = 224 + (i - 1) * 66, x = 20 + (i - 1) * 6, dur = 0.45, ease = "inOutCubic"} end,
   }
 end

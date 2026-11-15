@@ -23,6 +23,7 @@ local SYSTEMS = {
   {"weapons", "WEAPONS", "r"}, {"sensors", "SENSORS", "t"}, {"life", "LIFE SUPPORT", "s"},
 }
 
+local M                  -- the ship-console model and panels (model.lua)
 local sc                 -- the scene
 local themed = {}        -- objects recoloured on alert: {obj, role, hover}
 local consoles = {}      -- name -> group object
@@ -130,6 +131,8 @@ local function push()
     ct[#ct + 1] = string.format("%d:%d:%d:%s", i, c.b, c.r, c.t)
   end
   v.lc_ct = table.concat(ct, ";")
+  local lk = sim.c[sim.lock]   -- the locked contact, for panels that show the lock solution
+  v.lc_ln, v.lc_lb, v.lc_lr = lk and lk.n or "", lk and lk.b or 0, lk and lk.r or 0
   for i, val in ipairs(sim.fg) do v["fg_" .. i] = val end
   v.fg_profit = sim.fg[8] - sim.fg[7]
   for k, val in pairs(sim.pw) do v["lc_pw_" .. k] = val end
@@ -152,7 +155,6 @@ local function tick()
   sh.sh_charge = math.min(35000, sh.sh_charge + 2500)
   if sh.sh_charge >= 35000 then sh.sh_charge = 0 end
   sh.sh_deut = sh.sh_deut - 0.7
-  sh.sh_dm_port = math.max(40, sh.sh_dm_port + (math.random() - 0.55) * 0.4)
   sh.sh_comp = 55 + math.random(0, 12)
   push()
 end
@@ -188,7 +190,7 @@ local function tng_frame()
 end
 
 local function tng_nav()
-  local items = {{"SENSORS", "sens", "p"}, {"ENGINEER", "eng", "x"}, {"TACTICAL", "tac", "t"}, {"SHIP", "ship", "q"}, {"COMMS", nil, "r"}}
+  local items = {{"SENSORS", "sens", "p"}, {"POWER", "eng", "x"}, {"TACTICAL", "tac", "t"}, {"DAMAGE", "ship", "q"}, {"OPS", "op", "r"}}
   local P = S.pal.normal
   for i, it in ipairs(items) do
     local y = 206 + (i - 1) * 68
@@ -294,49 +296,30 @@ local function sensors(parent)
   local ctg = sc:group{id = "ctg", parent = parent}
   for i = 1, 6 do
     local y = 640 + (i - 1) * 28
-    local row = text(ctg, "ct" .. i, 1130, y, "{lc_n" .. i .. "|pad:-13} {lc_t" .. i .. "}  {lc_b" .. i .. "|%03d}  {lc_r" .. i .. "|%3d}", 24, P.k, "left",
+    local row = text(ctg, "ct" .. i, 1130, y, "{lc_n" .. i .. "|pad:-13} {lc_t" .. i .. "}  {lc_b" .. i .. "|%03d}  {lc_r" .. i .. "|%3d}", 24 * (S.ctscale or 1), P.k, "left",
       {hit = true, font = S.font})
     row:state("hover", {fill = "#ffffff"}, {dur = 0.08})
     row:on("click", function() L.lock(i) end)
   end
-  text(ctg, "cthead", 1130, 612, "ID NAME           T  BRG  RNG", 22, P.x)
+  text(ctg, "cthead", 1130, 612, "ID NAME           T  BRG  RNG", 22 * (S.ctscale or 1), P.x)
+  -- the scans the operations console offers (srs, lrs, passive/dockscan/internal on the locked contact)
+  local scg = sc:group{id = "scg", parent = parent}
+  M.scans(scg, "scn", 240, 562, 800, {size = 20, row = 30, bh = 40, nohint = true})
 end
 
--- ------------------------------------------------------------------ engineering
+-- ------------------------------------------------------------------ engineering: the game's power model
+-- Power groups 1-7 with percent and watts, the pools, components, repair and battery charge; click a group to see its
+-- components and set it with power <group>=<value>; eng main/aux for the generators (model.lua).
 local function engineering(parent)
   local P = S.pal.normal
-  sc:shader{parent = parent, id = "core", x = 720, y = 120, w = 260, h = 420, shader = "warpcore",
-    u = {uA = "#2a6bff", uB = "#bfe0ff", uSpeed = 1, uPower = 0.7}, glow = 0.8}
+  local st = {size = 22, row = 40, bh = 40, ox = 0}
+  M.powergroups(parent, "pgl", 240, 130, 560, st)
+  M.pools(parent, "pls", 240, 462, 560, {size = 20, row = 30, cols = true})
+  M.pgdetail(parent, "pgd", 840, 130, 560, {size = 22, row = 34, bh = 40, ox = 0})
+  sc:shader{parent = parent, id = "core", x = 1440, y = 140, w = 110, h = 300, shader = "warpcore", u = {uA = "#2a6bff", uB = "#bfe0ff", uSpeed = 1, uPower = 0.7}, glow = 0.8}
   sc:get("core"):bind("u.uPower", "lc_core / 100", 0.9)
-  T("p", sc:rect{parent = parent, id = "coreframe", x = 706, y = 110, w = 288, h = 440, r = R(30), stroke = P.p, strokeWidth = 4, fill = "none", glow = 0.3}, false, "stroke")
-  text(parent, "coretitle", 850, 580, "WARP CORE ASSEMBLY", 28, P.x, "center")
-  text(parent, "coretemp", 850, 620, "CORE TEMPERATURE {lc_core|%d}%", 28, P.s, "center")
-  for i, s in ipairs(SYSTEMS) do
-    local y = 150 + (i - 1) * 66
-    local var = "lc_pw_" .. s[1]
-    text(parent, "pl" .. i, 250, y, s[2], 28, P.k)
-    local track = sc:rect{parent = parent, id = "ptr" .. i, x = 250, y = y + 18, w = 380, h = 26, r = R(13), fill = "#0e151d", hit = true}
-    local fill = sc:rect{parent = parent, id = "pf" .. i, x = 250, y = y + 18, w = 10, h = 26, r = R(13), fill = P[s[3]], glow = 0.4}
-    T(s[3], fill)
-    fill:bind("w", "max(10, " .. var .. " * 3.8)", 0.8)
-    text(parent, "pv" .. i, 690, y + 31, "{" .. var .. "|%3d}", 28, P.s, "right")
-    track:on("click", function(_, e)   -- click on a bar sets its level
-      local lvl = math.max(0, math.min(100, math.floor((e.x - 240 - 250) / 3.8 + 0.5)))
-      sim.pw[s[1]] = lvl
-      push()
-    end)
-    track:state("hover", {fill = "#1a2733"}, {dur = 0.1})
-  end
-  text(parent, "pwhint", 250, 570, "CLICK A BAR TO REDISTRIBUTE POWER", 22, P.x)
-  -- live core graph and gauge
-  text(parent, "gt", 1040, 150, "CORE THERMAL TREND", 26, P.x)
-  sc:graph{parent = parent, id = "coregraph", x = 1040, y = 170, w = 500, h = 150, source = "lc_core", samples = 60, interval = 1, min = 30, max = 100,
-    stroke = "#ff6644", strokeWidth = 3, fill = {type = "linear", angle = 180, stops = {{0, "#ff664466"}, {1, "#ff664400"}}}, glow = 0.35}
-  T("p", sc:arc{parent = parent, id = "gauge_bg", x = 1290, y = 540, r0 = 118, r1 = 134, a0 = 225, a1 = 495, fill = "#1a1208"})
-  local g = T("p", sc:arc{parent = parent, id = "gauge", x = 1290, y = 540, r0 = 118, r1 = 134, a0 = 225, a1 = 300, fill = P.p, glow = 0.6})
-  g:bind("a1", "225 + 270 * clamp(lc_core, 0, 100) / 100", 0.9)
-  text(parent, "gaugev", 1290, 540, "{lc_core|%d}", 72, "#ffffff", "center", {glow = 0.3})
-  text(parent, "gaugel", 1290, 600, "% OUTPUT", 24, P.x, "center")
+  text(parent, "coretitle", 1495, 460, "CORE {lc_core|%d}%", 24, P.s, "center")
+  M.btn(parent, "pgrefresh", 1420, 500, 140, 40, "POWER", "p", function() M.refreshPower() end, 18)
 end
 
 -- ------------------------------------------------------------------ tactical
@@ -360,7 +343,7 @@ local function tactical(parent)
     sizeStart = 12, sizeEnd = 2, colorStart = "#ffdd77", colorEnd = "#ff220000", glow = 1}
   local burst = 0
   local function weapon(id, y, label, role, n)
-    local b = sc:button{parent = parent, id = id, x = 900, y = y, w = 330, h = 64, pill = true, fill = P[role], text = label, color = "#000000", size = 32, font = S.font, glow = 0.2}
+    local b = sc:button{parent = parent, id = id, x = 900, y = y, w = 330, h = 64, pill = true, fill = P[role], text = label, color = "#000000", size = 32 * (S.tscale or 1), font = S.font, glow = 0.2}
     b:state("hover", {fill = lighten(P[role]), scaleX = 1.04, scaleY = 1.04}, {dur = 0.1})
     b:state("down", {scaleX = 0.97, scaleY = 0.97}, {dur = 0.05})
     T(role, b, true)
@@ -373,96 +356,46 @@ local function tactical(parent)
   end
   weapon("phasers", 170, "FIRE PHASERS", "p", 60)
   weapon("torps", 252, "PHOTON TORPEDO", "x", 120)
-  local ra = sc:button{parent = parent, id = "ralert", x = 900, y = 360, w = 330, h = 90, pill = true, fill = "#cc2222", text = "RED ALERT", color = "#ffffff", size = 44, font = S.font, glow = 0.5}
+  local ra = sc:button{parent = parent, id = "ralert", x = 900, y = 360, w = 330, h = 90, pill = true, fill = "#cc2222", text = "RED ALERT", color = "#ffffff", size = 44 * (S.tscale or 1), font = S.font, glow = 0.5}
   ra:state("hover", {scaleX = 1.04, scaleY = 1.04, glow = 0.9}, {dur = 0.1})
   ra:on("click", function() L.alert(alert == "red" and "off" or "red") end)
   text(parent, "tgl", 900, 490, "TARGET LOCK: {lc_lock}   (click a contact on SENSORS)", 24, P.k)
   text(parent, "tgl2", 900, 530, "SHIELDS {lc_pw_shields|%d}%   WEAPONS {lc_pw_weapons|%d}%", 26, P.s)
 end
 
--- ------------------------------------------------------------------ ship systems (the power / damage / fuel / weapons screens)
--- The same data the text consoles of the space game print, as a display. The variables (sh_*) are what a game's
--- GMCP "Ship.Status" package would carry: the handler at the bottom of this file feeds them from squat.on("gmcp"),
--- and a binding may also read gmcp:Ship.Status.<field> directly, with no script in between.
-local GROUPS = {{"arrays", "ARRAYS", "p"}, {"cloak", "CLOAK", "q"}, {"fuel", "FUEL", "x"}, {"ops", "OPERATIONS", "s"},
-  {"shields", "SHIELDS", "q"}, {"warp", "WARP", "p"}, {"weapons", "WEAPONS", "r"}}
-
+-- ------------------------------------------------------------------ damage control (the game's dmg commands)
+-- Teams 1-5 with crew and assignment, the damage statistics, and a click on a system sends dmg assign <team>=<system>.
 local function shipconsole(parent)
+  M.teams(parent, "dct", 240, 130, 520, {size = 24, row = 44})
+  M.systems(parent, "dcs", 840, 130, 560, {size = 24, row = 40})
   local P = S.pal.normal
-  text(parent, "pt", 240, 130, "POWER OVERVIEW", 34, P.x)
-  for i, g in ipairs(GROUPS) do
-    local y = 170 + (i - 1) * 46
-    text(parent, "pg" .. i, 240, y, g[2] .. " ({sh_pg_" .. g[1] .. "|%d}%)", 24, P.k)
-    local tr = sc:rect{parent = parent, id = "pgt" .. i, x = 240, y = y + 12, w = 430, h = 20, r = R(10), fill = "#0e151d", hit = true}
-    T(g[3], sc:rect{parent = parent, id = "pgf" .. i, x = 240, y = y + 12, w = 10, h = 20, r = R(10), fill = P[g[3]], glow = 0.3}):bind("w", "max(10, sh_pg_" .. g[1] .. " * 4.3)", 0.8)
-    text(parent, "pgm" .. i, 680, y + 22, "{sh_pg_" .. g[1] .. " * sh_total / 100 / 1000|%.2f} GW", 22, P.s, "left")
-    tr:on("click", function(_, e)   -- click a bar: ask the ship for that share (the game answers by changing the data)
-      local pct = math.max(0, math.min(100, math.floor((e.x - 240) / 4.3 + 0.5)))
-      squat.tf(string.format("/input power %s %d", g[1], pct))
-    end)
-    tr:state("hover", {fill = "#1a2733"}, {dur = 0.1})
-  end
-  -- pools
-  text(parent, "pp", 900, 130, "POWER POOLS", 34, P.x)
-  local rows = {{"MAIN", "sh_main"}, {"AUX", "sh_aux"}, {"BATTERY", "sh_batt"}}
-  for i, r in ipairs(rows) do
-    text(parent, "pool" .. i, 900, 182 + (i - 1) * 40, r[1], 26, P.k)
-    text(parent, "poolv" .. i, 1190, 182 + (i - 1) * 40, "{" .. r[2] .. "|%.1f} GW", 26, P.s, "right")
-  end
-  text(parent, "pltot", 900, 306, "TOTAL", 26, P.x)
-  text(parent, "pltotv", 1190, 306, "{sh_main + sh_aux + sh_batt|%.1f} GW", 26, "#ffffff", "right")
-  T("p", sc:arc{parent = parent, id = "comp_bg", x = 1400, y = 230, r0 = 70, r1 = 86, a0 = 225, a1 = 495, fill = "#1a1208"})
-  T("p", sc:arc{parent = parent, id = "comp", x = 1400, y = 230, r0 = 70, r1 = 86, a0 = 225, a1 = 300, fill = P.p, glow = 0.5}):bind("a1", "225 + 270 * clamp(sh_comp, 0, 100) / 100", 0.8)
-  text(parent, "compv", 1400, 226, "{sh_comp|%d}%", 40, "#ffffff", "center")
-  text(parent, "compl", 1400, 270, "COMPONENTS", 20, P.x, "center")
-  -- damage statistics, fuel, weapons
-  text(parent, "dt", 900, 380, "DAMAGE STATISTICS", 28, P.x)
-  local dm = {{"PORT NACELLE", "sh_dm_port", 100}, {"STARBOARD NACELLE", "sh_dm_stbd", 100}, {"HULL", "sh_dm_hull", 875}}
-  for i, d in ipairs(dm) do
-    local y = 424 + (i - 1) * 44
-    text(parent, "dml" .. i, 900, y, d[1], 22, P.k)
-    sc:rect{parent = parent, id = "dmt" .. i, x = 1110, y = y - 11, w = 280, h = 22, r = R(11), fill = "#0e151d"}
-    local f = sc:rect{parent = parent, id = "dmf" .. i, x = 1110, y = y - 11, w = 10, h = 22, r = R(11), fill = "#66cc88", glow = 0.25}
-    f:bind("w", "max(10, " .. d[2] .. " / " .. d[3] .. " * 280)", 0.8)
-    f:bind("fill", "color(\"#ff4444\", \"#66cc88\", " .. d[2] .. " / " .. d[3] .. ")")
-    text(parent, "dmv" .. i, 1560, y, "{" .. d[2] .. "|%.1f}", 20, P.s, "right")
-  end
-  text(parent, "ft", 1110, 580, "FUEL STATUS", 28, P.x)
-  local tanks = {{"DEUTERIUM", "sh_deut", 500000, "#66aaff"}, {"ANTIMATTER", "sh_anti", 300000, "#ff77cc"}}
-  for i, t in ipairs(tanks) do
-    local x = 1110 + (i - 1) * 165
-    sc:rect{parent = parent, id = "tk" .. i, x = x, y = 610, w = 48, h = 190, r = R(22), stroke = P.p, strokeWidth = 3, fill = "#0a0e12"}
-    local lvl = sc:rect{parent = parent, id = "tkl" .. i, x = x + 5, y = 790, w = 38, h = 4, r = R(17), fill = t[4], glow = 0.5}
-    lvl:bind("h", "max(4, " .. t[2] .. " / " .. t[3] .. " * 176)", 0.8)
-    lvl:bind("y", "794 - max(4, " .. t[2] .. " / " .. t[3] .. " * 176)", 0.8)
-    text(parent, "tkn" .. i, x + 58, 640, t[1], 18, P.k)
-    text(parent, "tkv" .. i, x + 58, 668, "{" .. t[2] .. "|%.0f}", 18, P.s)
-    text(parent, "tkm" .. i, x + 58, 692, "OF " .. t[3], 16, P.x)
-  end
-  text(parent, "wt", 240, 512, "WEAPONS", 26, P.x)
-  text(parent, "wl", 240, 546, "1  FORE PHASER", 22, P.k)
-  sc:rect{parent = parent, id = "wch", x = 240, y = 562, w = 430, h = 22, r = R(11), fill = "#0e151d"}
-  sc:rect{parent = parent, id = "wchf", x = 240, y = 562, w = 10, h = 22, r = R(11), fill = "#ffcc66", glow = 0.4}:bind("w", "max(10, sh_charge / 35000 * 430)", 0.8)
-  text(parent, "wcv", 680, 573, "{sh_charge|%d} / 35000", 22, P.s)
-  text(parent, "dct", 240, 606, "DAMAGE CONTROL  TEAMS 1-5: 10 CREW EACH, ASSIGNED HULL", 20, P.k)
+  text(parent, "dch1", 840, 440, "HULL INTEGRITY", 20, P.x)
+  sc:graph{parent = parent, id = "dcg1", x = 840, y = 456, w = 260, h = 70, source = "lc_hull", samples = 60, interval = 1, min = 0, max = 105, stroke = "#66cc88", strokeWidth = 3,
+    fill = {type = "linear", angle = 180, stops = {{0, "#66cc8855"}, {1, "#66cc8800"}}}}
+  text(parent, "dch2", 1140, 440, "PORT NACELLE", 20, P.x)
+  sc:graph{parent = parent, id = "dcg2", x = 1140, y = 456, w = 260, h = 70, source = "sh_dm_port", samples = 60, interval = 1, min = 60, max = 105, stroke = P.s, strokeWidth = 3,
+    fill = {type = "linear", angle = 180, stops = {{0, "#ffffff33"}, {1, "#ffffff00"}}}}
+  M.btn(parent, "dcrefresh", 240, 560, 220, 38, "REFRESH: DMG STAT", "p", function() M.refreshDmg() end, 18)
+  text(parent, "dcnote", 480, 580, "SENDS DMG STAT AND DMG TEAM STAT; ASSIGNING SENDS DMG ASSIGN <TEAM>=<SYSTEM>", 17, S.pal.normal.x)
 end
 
-function L.shipsim()
-  return {sh_main = 5.4, sh_aux = 1.0, sh_batt = 0.004, sh_total = 6400, sh_comp = 60, sh_charge = 0, sh_deut = 498815.78, sh_anti = 299334.36,
-    sh_dm_port = 86.4, sh_dm_stbd = 86.4, sh_dm_hull = 875,
-    sh_pg_arrays = 5, sh_pg_cloak = 0, sh_pg_fuel = 0, sh_pg_ops = 0, sh_pg_shields = 0, sh_pg_warp = 55, sh_pg_weapons = 0}
+-- ------------------------------------------------------------------ operations (op stat, hatch, docking, fuel, tractor beam)
+local function opsconsole(parent)
+  M.opstat(parent, "ops", 240, 130, 440, {size = 22, row = 34, bh = 38})
+  M.fuel(parent, "fuel", 740, 130, 300, {size = 20, row = 34, bh = 38})
+  M.tractor(parent, "trc", 1090, 130, 460, {size = 22, row = 40, bh = 40})
 end
+
+function L.shipsim() return M.initial() end
 
 -- ------------------------------------------------------------------ control
 function L.lock(n)
   L.endTour()
   sim.lock = (sim.lock == n) and 0 or n
-  gfx.var("lc_lock", sim.lock)
+  push()   -- lc_lock and the locked contact's name, bearing and range (panels bind to them)
   local ret = sc:get("reticle")
+  if not ret then return end   -- a theme with its own lock display (the bridge wall binds to lc_lock)
   if sim.lock == 1 or sim.lock == 2 or sim.lock == 5 then
-    local sh = ({[1] = "sh1", [2] = "sh2", [5] = "sh5"})[sim.lock]
-    local g = sc:get(sh)
-    ret:set{y = g.y_hint or 0}
     ret:bind("x", "420 + (lc_b" .. sim.lock .. " > 180 ? lc_b" .. sim.lock .. " - 360 : lc_b" .. sim.lock .. ") * 4.2", 0.4)
     ret:set{y = ({[1] = 230, [2] = 120, [5] = 310})[sim.lock]}
     ret:animate{opacity = 1, dur = 0.3}
@@ -528,8 +461,8 @@ local function layout(ex, instant)
   mv(sc:get("vsg"), {scaleX = k, scaleY = k}, instant)
   mv(sc:get("rdg"), {scaleX = k, scaleY = k, x = ex and 1450 or 1370, y = ex and 205 or 330}, instant)
   mv(sc:get("ctg"), {y = ex and -330 or 0}, instant)
-  for _, id in ipairs{"vslabel", "vshead", "rdlabel"} do mv(sc:get(id), {opacity = ex and 0 or 1}, instant) end
-  for _, name in ipairs{"eng", "tac", "ship"} do
+  for _, id in ipairs{"vslabel", "vshead", "rdlabel", "scg"} do mv(sc:get(id), {opacity = ex and 0 or 1}, instant) end
+  for _, name in ipairs{"eng", "tac", "ship", "op"} do
     local m, mi = sc:get("m_" .. name), sc:get("mini_" .. name)
     if m and mi then
       if ex then
@@ -557,9 +490,10 @@ end
 local function minis()
   local P = S.pal.normal
   local defs = {
-    eng = "ENGINEERING   WARP {lc_pw_warp|%d}%   IMPULSE {lc_pw_impulse|%d}%   SHIELDS {lc_pw_shields|%d}%   CORE {lc_core|%d}%",
+    eng = "POWER   WARP {sh_pg_warp|%d}%   SHIELDS {sh_pg_shields|%d}%   MAIN {sh_main|%.1f} GW   AUX {sh_aux|%.1f} GW   COMPONENTS {sh_comp|%d}%",
     tac = "TACTICAL   SHIELDS {lc_pw_shields|%d}%   WEAPONS {lc_pw_weapons|%d}%   TARGET LOCK {lc_lock}",
-    ship = "SHIP   MAIN {sh_main|%.1f} GW   AUX {sh_aux|%.1f} GW   COMPONENTS {sh_comp|%d}%   DEUTERIUM {sh_deut|%.0f}   ANTIMATTER {sh_anti|%.0f}",
+    ship = "DAMAGE CONTROL   HULL <{sh_dm_hull|%.0f}/875>   PORT <{sh_dm_port|%.1f}/100>   STBD <{sh_dm_stbd|%.1f}/100>   TEAMS 1-5: {dc_a1}",
+    op = "OPERATIONS   HATCH {op_hatch}   DOCKING {op_dock}   TRACTOR {tr_state}   TRANSPONDER {op_tx}",
   }
   for name, str in pairs(defs) do
     local g = sc:group{id = "mini_" .. name, parent = consoles[name], visible = false, opacity = 0}
@@ -570,7 +504,7 @@ end
 
 function L.show(name)
   if not consoles[name] then return end
-  local order = {sens = 1, eng = 2, tac = 3, ship = 4}
+  local order = {sens = 1, eng = 2, tac = 3, ship = 4, op = 5}
   for n, g in pairs(consoles) do
     if n == name then
       g:set{visible = true}
@@ -582,12 +516,14 @@ function L.show(name)
     end
   end
   current = name
+  local joy = sc:get("joy")   -- the helm stick only where the ship is flown or aimed
+  if joy then joy:set{visible = (name == "sens" or name == "tac")} end
   layout(expanded, true)
   if S.mark then S.mark(order[name]) end
   gfx.var("lc_mode", name)
 end
 
-local DEFAULT_BUILD = {sens = sensors, eng = engineering, tac = tactical, ship = shipconsole}
+local DEFAULT_BUILD = {sens = sensors, eng = engineering, tac = tactical, ship = shipconsole, op = opsconsole}
 
 function L.start(console, alertState, themeName)
   closed = false
@@ -654,7 +590,8 @@ function L.tour()
   tourTimer = every(12, function() if closed then L.endTour() else nextTheme() end end)
 end
 
-local ALIASES = {picard = "bridge", calm_theme = "soft"}
+local ALIASES = {bridge = "ops", picard = "ops", calm_theme = "soft"}
+local CONSOLES = {power = "eng", dc = "ship", dmg = "ship", damage = "ship", operations = "op", opscon = "op"}
 
 local function command(m)
   local raw = (m[1] or "")
@@ -663,7 +600,7 @@ local function command(m)
   end
   local arg = raw:gsub("^%s+", ""):gsub("%s+$", "")
   local first, rest = arg:match("^(%S*)%s*(.*)$")
-  first = ALIASES[first] or first
+  first = ALIASES[first] or CONSOLES[first] or first
   if first ~= "" and first ~= "stop" and first ~= "off" and first ~= "tour" then L.endTour() end
   if first == "stop" or first == "off" then L.stop()
   elseif first == "themes" then
@@ -686,14 +623,14 @@ local function command(m)
     L.start(current or "sens")
   elseif first == "log" then
     if sc and usePort then L.toggle() else squat.echo("/lcars log needs the framed console (/lcars full)") end
-  elseif first == "eng" or first == "tac" or first == "sens" or first == "ship" or first == "" then
+  elseif first == "eng" or first == "tac" or first == "sens" or first == "ship" or first == "op" or first == "" then
     if sc and consoles[first == "" and "sens" or first] then
       closed = false
       sc:open{dock = dock, size = size, portNode = usePort and "textport" or "none", open = true, calm = calm}   -- reopens after the close button / Escape / /lcars stop
       if not timerId then timerId = every(1, tick) end
       L.show(first == "" and "sens" or first)
     else L.start(first ~= "" and first or "sens") end
-  else squat.echo("usage: /lcars [theme|sens|eng|tac|ship|themes|tour|calm N|full|size N|log|alert red|off|stop]") end
+  else squat.echo("usage: /lcars [theme|sens|eng|tac|ship|op|themes|tour|calm N|full|size N|log|alert red|off|stop]") end
 end
 
 function L.command(m) with(m.world, command, m) end
@@ -707,6 +644,13 @@ squat.on("gmcp", function(m)
       if type(val) == "number" then v["sh_" .. k] = val end
     end
     gfx.vars(v)
+  end)
+end)
+
+-- the game's own output feeds the panels: dmg stat, dmg team stat, op stat, power, pg <group> (model.lua)
+squat.on("line", function(m)
+  with(m.world, function()
+    if sim and M and M.parse(m.text or "") then push() end
   end)
 end)
 
@@ -731,6 +675,17 @@ register{
 
 E.register, E.T, E.text, E.lighten, E.R, E.L, E.gfx, E.PORT_C, E.W, E.H = register, T, text, lighten, R, L, gfx, PORT_C, W, H
 E.sc = function() return sc end
+E.alertState = function() return alert end
+E.sim = function() return sim end
+E.push = function() push() end
+E.world = function() return cw end
+E.after = function(sec, fn) after(sec, fn) end
+-- set a system's power level (or change it by delta) and push the variables
+E.setPower = function(name, level, delta)
+  if not sim then return end
+  sim.pw[name] = math.max(0, math.min(100, level or (sim.pw[name] + (delta or 0))))
+  push()
+end
 E.S = function() return S end
 E.calm = function() return calm end
 
@@ -770,6 +725,8 @@ function E.navbtns(items, o)
 end
 
 -- the theme files (each registers one theme through E)
+M = require("model")(E)
+E.M = M
 for _, name in ipairs{"theme_soft", "theme_romulan", "theme_klingon", "theme_tos", "theme_ferengi", "theme_bridge"} do
   local ok, err = pcall(function() require(name)(E) end)
   if not ok then squat.log("lcars: theme " .. name .. " failed to load: " .. tostring(err), "warn") end

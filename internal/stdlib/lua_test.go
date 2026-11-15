@@ -3,9 +3,12 @@ package stdlib
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -32,10 +35,18 @@ type luaHost struct {
 	tfLines []string
 	echoes  []string
 	failTF  bool
+	offline bool                // squat.send fails: the session is not connected
+	sent    []string            // lines squat.send delivered to the game
 	hubs    map[string]*gfx.Hub // per-session graphics, when a test runs several worlds
 }
 
-func (h *luaHost) Send(w, t string) error { return nil }
+func (h *luaHost) Send(w, t string) error {
+	if h.offline {
+		return fmt.Errorf("not connected")
+	}
+	h.sent = append(h.sent, t)
+	return nil
+}
 func (h *luaHost) Echo(w string, s []proto.Span) {
 	for _, sp := range s {
 		h.echoes = append(h.echoes, sp.S)
@@ -267,7 +278,7 @@ func TestLcarsDemoInLua(t *testing.T) {
 		t.Fatal("/lcars alias did not run")
 	}
 	f.errors(t)
-	need := []string{"joyknob", "joyhdg", "pgf1", "tkl1", "dmf3", "wchf", "portframe", "el_top", "nav1", "nav2", "nav3", "radar", "planet", "stars", "core", "gauge", "phasers", "ralert", "sh1"}
+	need := []string{"joyknob", "joyhdg", "pglb1f", "dctr1", "dcsb1f", "opsv1", "trcen", "pgdpr1", "portframe", "el_top", "nav1", "nav2", "nav3", "radar", "planet", "stars", "core", "phasers", "ralert", "sh1"}
 	for _, id := range need {
 		if f.find("create", id) == nil {
 			t.Errorf("object %s not created", id)
@@ -409,7 +420,7 @@ func TestRecordDevPageStreams(t *testing.T) {
 		}
 		return s
 	}
-	for _, th := range []string{"soft", "romulan", "klingon", "tos", "ferengi", "bridge"} {
+	for _, th := range []string{"soft", "romulan", "klingon", "tos", "ferengi", "ops"} {
 		f := startLua(t)
 		f.rt.OnInput("w", "/lcars "+th)
 		first := devFonts(f.ops)
@@ -642,8 +653,8 @@ func TestRecordThemeStreams(t *testing.T) {
 	if dir == "" {
 		t.Skip("set GFX_RECORD_THEMES=<dir>")
 	}
-	for _, theme := range []string{"tng", "soft", "romulan", "klingon", "tos", "ferengi", "bridge"} {
-		for _, con := range []string{"sens", "eng", "tac", "ship"} {
+	for _, theme := range []string{"tng", "soft", "romulan", "klingon", "tos", "ferengi", "ops"} {
+		for _, con := range []string{"sens", "eng", "tac", "ship", "op"} {
 			f := startLua(t)
 			f.rt.OnInput("w", "/lcars "+theme)
 			f.rt.OnInput("w", "/lcars "+con)
@@ -693,7 +704,7 @@ func devFonts(ops []gfx.Op) []gfx.Op {
 	return out
 }
 
-var allThemes = []string{"tng", "soft", "romulan", "klingon", "tos", "ferengi", "bridge"}
+var allThemes = []string{"tng", "soft", "romulan", "klingon", "tos", "ferengi", "ops"}
 
 // Every theme opens, builds the shared pieces (text port object, frame round it, LOG toggle, console buttons), obeys the
 // alert, survives switching to every other theme without losing the LOG state, and reopens after a window close.
@@ -756,11 +767,11 @@ func TestEveryThemeOpensSwitchesAndKeepsTheLogState(t *testing.T) {
 func TestThemesListAliasesAndTour(t *testing.T) {
 	f := startLua(t)
 	f.rt.OnInput("w", "/lcars themes")
-	if len(f.h.echoes) == 0 || !strings.Contains(f.h.echoes[len(f.h.echoes)-1], "bridge") || !strings.Contains(f.h.echoes[len(f.h.echoes)-1], "soft") {
+	if len(f.h.echoes) == 0 || !strings.Contains(f.h.echoes[len(f.h.echoes)-1], "ops") || !strings.Contains(f.h.echoes[len(f.h.echoes)-1], "soft") {
 		t.Fatalf("themes: %v", f.h.echoes)
 	}
 	f.rt.OnInput("w", "/lcars picard") // alias of bridge
-	if f.find("create", "ship") == nil {
+	if f.find("create", "pB_sens") == nil {
 		t.Fatal("/lcars picard did not open the bridge")
 	}
 	// the tour cycles through every theme every 12 seconds and /lcars stop ends it
@@ -776,10 +787,10 @@ func TestThemesListAliasesAndTour(t *testing.T) {
 			if o["op"] == "create" && o["id"] == "topplate" {
 				seen["klingon"] = true
 			}
-			if o["op"] == "create" && o["id"] == "bB" {
+			if o["op"] == "create" && o["id"] == "pB_sens" {
 				seen["bridge"] = true
 			}
-			if o["op"] == "create" && o["id"] == "coin1" {
+			if o["op"] == "create" && o["id"] == "gly1" {
 				seen["ferengi"] = true
 			}
 			if o["op"] == "create" && o["id"] == "rv1" {
@@ -959,6 +970,418 @@ func TestLcarsIsPerSession(t *testing.T) {
 	for _, l := range h.logs {
 		if strings.Contains(l, "error") {
 			t.Errorf("log: %s", l)
+		}
+	}
+}
+
+// The consoles speak the game's own commands: every button sends the real command in this session (only while connected,
+// and shows it first), and the game's output feeds the panels back.
+func TestOpsConsolesSendRealCommandsAndParseTheGamesOutput(t *testing.T) {
+	f := startLua(t)
+	f.rt.OnInput("w", "/lcars")
+	click := func(id string) {
+		t.Helper()
+		if err := f.hub.Event("lcars", id, "click", 5, 5); err != nil {
+			t.Fatal(err)
+		}
+	}
+	has := func(lines []string, want string) bool {
+		for _, l := range lines {
+			if l == want {
+				return true
+			}
+		}
+		return false
+	}
+	f.rt.OnInput("w", "/lcars dc")
+	// pick team 3, click the port nacelle: dmg assign 3=Port_Nacelle goes to the game, shown first
+	click("dcts3")
+	click("dcsz2")
+	if !has(f.h.sent, "dmg assign 3=Port_Nacelle") {
+		t.Fatalf("sent %v", f.h.sent)
+	}
+	if !has(f.h.echoes, "lcars> dmg assign 3=Port_Nacelle") {
+		t.Fatalf("not echoed: %v", f.h.echoes)
+	}
+	// the answer of the game comes back as output lines and updates the display
+	for _, l := range []string{"Damage Statistics", "Port_Nacelle [=================---] <91.5/100.0>", "Starboard_Nacelle [=================---] <86.4/100.0>", "Hull Status [====] <875.00/875.00>",
+		"T#  Crew  Assignment", "1   10   Hull", "2   10   Hull", "3   10   Port_Nacelle", "4   10   Hull", "5   10   Hull"} {
+		f.rt.OnLine("w", proto.Line{V: 1, T: "line", Kind: "game", Spans: []proto.Span{{S: l}}}, true)
+	}
+	vars := map[string]any{}
+	for _, o := range f.ops {
+		if o["op"] == "vars" {
+			for k, v := range o["vars"].(map[string]any) {
+				vars[k] = v
+			}
+		}
+	}
+	if vars["sh_dm_port"] != 91.5 || vars["dc_a3"] != "Port_Nacelle" || vars["dc_a1"] != "Hull" {
+		t.Fatalf("parsed vars: port=%v a3=%v a1=%v", vars["sh_dm_port"], vars["dc_a3"], vars["dc_a1"])
+	}
+	// without a team picked the click sends nothing and asks for one
+	f.h.sent = nil
+	click("dcts3") // deselect
+	click("dcsz1")
+	if len(f.h.sent) != 0 {
+		t.Fatalf("sent without a team: %v", f.h.sent)
+	}
+	// the power model
+	f.rt.OnInput("w", "/lcars power")
+	click("pgls3") // fuel group: opens it and asks the game
+	click("pgdpr3")
+	if !has(f.h.sent, "pg fuel") || !has(f.h.sent, "power fuel=50%") {
+		t.Fatalf("sent %v", f.h.sent)
+	}
+	// operations
+	f.rt.OnInput("w", "/lcars operations")
+	click("opsb2")
+	click("opsb3")
+	click("trcen")
+	for _, want := range []string{"hatch", "dd open", "tractor engage"} {
+		if !has(f.h.sent, want) {
+			t.Errorf("missing %q in %v", want, f.h.sent)
+		}
+	}
+	// the "not available" reply becomes a hint, not an error
+	f.h.echoes = nil
+	f.rt.OnLine("w", proto.Line{V: 1, T: "line", Kind: "game", Spans: []proto.Span{{S: "That function is not available from this console"}}}, true)
+	if len(f.h.echoes) == 0 || !strings.Contains(f.h.echoes[0], "man opera") {
+		t.Fatalf("no hint: %v", f.h.echoes)
+	}
+	// not connected: the command is shown, nothing is sent, and the player is told
+	f.h.offline = true
+	f.h.sent, f.h.echoes = nil, nil
+	click("opsb2")
+	if len(f.h.sent) != 0 || len(f.h.echoes) < 2 || !strings.Contains(f.h.echoes[len(f.h.echoes)-1], "not connected") {
+		t.Fatalf("offline: sent=%v echoes=%v", f.h.sent, f.h.echoes)
+	}
+	f.errors(t)
+}
+
+// The joystick belongs to the consoles that fly or aim the ship.
+func TestJoystickOnlyWhereTheShipIsFlown(t *testing.T) {
+	f := startLua(t)
+	f.rt.OnInput("w", "/lcars")
+	vis := func() bool {
+		v := true
+		for _, o := range f.ops {
+			if (o["op"] == "set" || o["op"] == "create") && o["id"] == "joy" {
+				if p, ok := o["props"].(map[string]any); ok {
+					if b, ok := p["visible"].(bool); ok {
+						v = b
+					}
+				}
+			}
+		}
+		return v
+	}
+	for con, want := range map[string]bool{"ship": false, "op": false, "eng": false, "tac": true, "sens": true} {
+		f.rt.OnInput("w", "/lcars "+con)
+		if vis() != want {
+			t.Errorf("joystick visible on %s = %v, want %v", con, vis(), want)
+		}
+	}
+}
+
+// ---- geometry: what is drawn must not cover what is used ------------------------------------------------------------
+// For every theme and console: decorative layers (particle emitters, ornament and frame paths and the like) never overlap a
+// button, a clickable object or a text, and buttons never overlap each other. Boxes are conservative (a path counts as the
+// box of its points); text width is estimated from the length and size, so the check finds real collisions, not hairlines.
+type gbox struct {
+	id, kind       string
+	x0, y0, x1, y1 float64
+}
+
+func (b gbox) hit(o gbox) bool {
+	w := math.Min(b.x1, o.x1) - math.Max(b.x0, o.x0)
+	h := math.Min(b.y1, o.y1) - math.Max(b.y0, o.y0)
+	return w > 3 && h > 3
+}
+
+func num(v any) float64 {
+	switch n := v.(type) {
+	case float64:
+		return n
+	case int:
+		return float64(n)
+	}
+	return 0
+}
+
+// pathPoints samples an SVG-style path (absolute M, L, C, S) into points along the curve.
+func pathPoints(d string) [][2]float64 {
+	tok := regexp.MustCompile(`[MLCSZ]|-?[0-9]*\.?[0-9]+`).FindAllString(d, -1)
+	var pts [][2]float64
+	var cx, cy, lx, ly float64 // current point, last control point
+	i := 0
+	nextN := func() float64 { v, _ := strconv.ParseFloat(tok[i], 64); i++; return v }
+	cmd := ""
+	for i < len(tok) {
+		if strings.ContainsAny(tok[i], "MLCSZ") {
+			cmd = tok[i]
+			i++
+			continue
+		}
+		switch cmd {
+		case "M", "L":
+			cx, cy = nextN(), nextN()
+			lx, ly = cx, cy
+			pts = append(pts, [2]float64{cx, cy})
+		case "C", "S":
+			var x1, y1 float64
+			if cmd == "C" {
+				x1, y1 = nextN(), nextN()
+			} else {
+				x1, y1 = 2*cx-lx, 2*cy-ly
+			}
+			x2, y2, x, y := nextN(), nextN(), nextN(), nextN()
+			for k := 1; k <= 20; k++ {
+				u := float64(k) / 20
+				a, b, c, e := (1-u)*(1-u)*(1-u), 3*(1-u)*(1-u)*u, 3*(1-u)*u*u, u*u*u
+				pts = append(pts, [2]float64{a*cx + b*x1 + c*x2 + e*x, a*cy + b*y1 + c*y2 + e*y})
+			}
+			lx, ly, cx, cy = x2, y2, x, y
+		default:
+			i++
+		}
+	}
+	return pts
+}
+
+func sceneBoxes(ops []gfx.Op) (decor, inter, texts []gbox) {
+	type node struct {
+		op     gfx.Op
+		props  map[string]any
+		parent string
+	}
+	nodes := map[string]*node{}
+	var order []string
+	handlers := map[string]bool{}
+	for _, o := range ops {
+		id, _ := o["id"].(string)
+		switch o["op"] {
+		case "create":
+			p, _ := o["props"].(map[string]any)
+			c := map[string]any{}
+			for k, v := range p {
+				c[k] = v
+			}
+			par, _ := o["parent"].(string)
+			nodes[id] = &node{op: o, props: c, parent: par}
+			order = append(order, id)
+		case "set":
+			if n := nodes[id]; n != nil {
+				p, _ := o["props"].(map[string]any)
+				for k, v := range p {
+					n.props[k] = v
+				}
+			}
+		case "on":
+			if evs, ok := o["events"].([]any); ok {
+				for _, e := range evs {
+					if e == "click" {
+						handlers[id] = true
+					}
+				}
+			}
+		}
+	}
+	visible := func(id string) bool {
+		for cur := id; cur != ""; cur = nodes[cur].parent {
+			n := nodes[cur]
+			if v, ok := n.props["visible"].(bool); ok && !v {
+				return false
+			}
+			if num(n.props["opacity"]) == 0 && n.props["opacity"] != nil {
+				return false
+			}
+		}
+		return true
+	}
+	origin := func(id string) (float64, float64, *[4]float64) { // absolute position of the node's parent, and the nearest clip in absolute terms
+		ax, ay := 0.0, 0.0
+		var clip *[4]float64
+		var chain []string
+		for cur := nodes[id].parent; cur != ""; cur = nodes[cur].parent {
+			chain = append(chain, cur)
+		}
+		for i := len(chain) - 1; i >= 0; i-- {
+			n := nodes[chain[i]]
+			ax += num(n.props["x"])
+			ay += num(n.props["y"])
+			var c []float64
+			switch v := n.props["clip"].(type) {
+			case []any:
+				for _, e := range v {
+					c = append(c, num(e))
+				}
+			case []float64:
+				c = v
+			case []int:
+				for _, e := range v {
+					c = append(c, float64(e))
+				}
+			}
+			if len(c) == 4 {
+				cl := [4]float64{ax + c[0], ay + c[1], ax + c[0] + c[2], ay + c[1] + c[3]}
+				clip = &cl
+			}
+		}
+		return ax, ay, clip
+	}
+	for _, id := range order {
+		n := nodes[id]
+		typ, _ := n.op["type"].(string)
+		if typ == "group" || id == "textport" || id == "portframe" || id == "alert_edge" || !visible(id) {
+			continue
+		}
+		ax, ay, clip := origin(id)
+		p := n.props
+		x, y := num(p["x"]), num(p["y"])
+		var b gbox
+		b.id = id
+		switch typ {
+		case "rect", "button", "image", "shader", "graph", "elbow", "starfield", "planet", "radar":
+			w, h := num(p["w"]), num(p["h"])
+			if typ == "planet" || typ == "radar" {
+				w, h = 2*num(p["r"]), 2*num(p["r"])
+				x, y = x-w/2, y-h/2
+			}
+			b.x0, b.y0, b.x1, b.y1 = ax+x, ay+y, ax+x+w, ay+y+h
+		case "circle", "arc":
+			r := num(p["r"])
+			if typ == "arc" {
+				r = num(p["r1"])
+			}
+			b.x0, b.y0, b.x1, b.y1 = ax+x-r, ay+y-r, ax+x+r, ay+y+r
+		case "ellipse":
+			b.x0, b.y0, b.x1, b.y1 = ax+x-num(p["rx"]), ay+y-num(p["ry"]), ax+x+num(p["rx"]), ay+y+num(p["ry"])
+		case "emitter":
+			if num(p["rate"]) == 0 {
+				continue // a burst emitter (a weapon flash the player fires) draws nothing until it is told to
+			}
+			r := math.Max(num(p["radius"]), 0) + num(p["speedMax"])*num(p["lifeMax"])
+			b.x0, b.y0, b.x1, b.y1 = ax+x-r, ay+y-r, ax+x+r, ay+y+r
+		case "path", "polyline", "polygon", "line":
+			var xs, ys []float64
+			if d, ok := p["d"].(string); ok {
+				pp := pathPoints(d)
+				for k := 0; k+1 < len(pp); k++ { // one box per piece of the curve: a swoop is not a rectangle
+					piece := gbox{id: id, kind: "decor", x0: math.Min(pp[k][0], pp[k+1][0]) + ax + x - 2, x1: math.Max(pp[k][0], pp[k+1][0]) + ax + x + 2,
+						y0: math.Min(pp[k][1], pp[k+1][1]) + ay + y - 2, y1: math.Max(pp[k][1], pp[k+1][1]) + ay + y + 2}
+					decor = append(decor, piece)
+				}
+				continue
+			}
+			if pts, ok := p["points"].([]any); ok {
+				for i := 0; i+1 < len(pts); i += 2 {
+					xs, ys = append(xs, num(pts[i])), append(ys, num(pts[i+1]))
+				}
+			}
+			if typ == "line" {
+				xs, ys = []float64{num(p["x1"]), num(p["x2"])}, []float64{num(p["y1"]), num(p["y2"])}
+			}
+			if len(xs) == 0 {
+				continue
+			}
+			b.x0, b.y0, b.x1, b.y1 = xs[0], ys[0], xs[0], ys[0]
+			for i := range xs {
+				b.x0, b.x1 = math.Min(b.x0, xs[i]), math.Max(b.x1, xs[i])
+				b.y0, b.y1 = math.Min(b.y0, ys[i]), math.Max(b.y1, ys[i])
+			}
+			if typ != "line" {
+				b.x0, b.x1, b.y0, b.y1 = b.x0+ax+x, b.x1+ax+x, b.y0+ay+y, b.y1+ay+y
+			}
+		case "text":
+			s, _ := p["text"].(string)
+			plain := regexp.MustCompile(`\{[^}]*\}`).ReplaceAllString(s, "00000")
+			size := num(p["size"])
+			face, _ := p["font"].(string)
+			k := map[string]float64{"Orbitron": 0.68, "Cinzel": 0.58, "Antonio": 0.36, "Rajdhani": 0.44}[face]
+			if k == 0 {
+				k = 0.5
+			}
+			w := float64(len([]rune(plain))) * size * k
+			al, _ := p["align"].(string)
+			x0 := ax + x
+			if al == "center" {
+				x0 -= w / 2
+			} else if al == "right" {
+				x0 -= w
+			}
+			b.x0, b.y0, b.x1, b.y1 = x0, ay+y-size*0.4, x0+w, ay+y+size*0.4
+		default:
+			continue
+		}
+		if clip != nil {
+			b.x0, b.y0 = math.Max(b.x0, clip[0]), math.Max(b.y0, clip[1])
+			b.x1, b.y1 = math.Min(b.x1, clip[2]), math.Min(b.y1, clip[3])
+			if b.x1 <= b.x0 || b.y1 <= b.y0 {
+				continue
+			}
+		}
+		interactive := typ == "button" || handlers[id] || p["hit"] == true || id == "joybase"
+		isDecor := typ == "emitter" || typ == "path" || typ == "polyline" || strings.HasPrefix(id, "orn") || strings.HasPrefix(id, "fil") || strings.HasPrefix(id, "gly")
+		switch {
+		case isDecor:
+			b.kind = "decor"
+			decor = append(decor, b)
+		case interactive && typ != "text":
+			b.kind = "widget"
+			inter = append(inter, b)
+		case typ == "text":
+			b.kind = "text"
+			texts = append(texts, b)
+			if interactive {
+				inter = append(inter, b)
+			}
+		}
+	}
+	return
+}
+
+func TestDecorationNeverCoversWidgetsOrText(t *testing.T) {
+	for _, theme := range allThemes {
+		for _, con := range []string{"sens", "eng", "tac", "ship", "op"} {
+			f := startLua(t)
+			f.rt.OnInput("w", "/lcars "+theme)
+			f.rt.OnInput("w", "/lcars "+con)
+			f.h.advance(time.Second) // the console that was shown first hides after its fade
+			decor, inter, texts := sceneBoxes(f.hub.Snapshot())
+			if len(inter) == 0 || len(texts) == 0 {
+				t.Fatalf("%s/%s: nothing to check (%d widgets, %d texts)", theme, con, len(inter), len(texts))
+			}
+			for _, d := range decor {
+				for _, w := range inter {
+					if d.hit(w) {
+						t.Errorf("%s/%s: decoration %s covers widget %s", theme, con, d.id, w.id)
+					}
+				}
+				for _, x := range texts {
+					if d.hit(x) {
+						t.Errorf("%s/%s: decoration %s covers text %s", theme, con, d.id, x.id)
+					}
+				}
+			}
+			for i, a := range inter {
+				for _, b := range inter[i+1:] {
+					if a.kind == "widget" && b.kind == "widget" && a.hit(b) && !strings.HasPrefix(a.id, "joy") && !strings.HasPrefix(b.id, "joy") {
+						t.Errorf("%s/%s: widget %s overlaps widget %s", theme, con, a.id, b.id)
+					}
+				}
+			}
+			// texts of the joystick (always the same place) never collide with a console's own texts or widgets
+			for _, j := range texts {
+				if !strings.HasPrefix(j.id, "joy") {
+					continue
+				}
+				for _, x := range append(append([]gbox{}, texts...), inter...) {
+					if !strings.HasPrefix(x.id, "joy") && j.hit(x) {
+						t.Errorf("%s/%s: the joystick label %s collides with %s", theme, con, j.id, x.id)
+					}
+				}
+			}
 		}
 	}
 }
