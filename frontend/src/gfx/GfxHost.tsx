@@ -8,6 +8,7 @@ import { holeClip, planScene, portNodeOf, stripBasis, type Plan, type Rect } fro
 import type { GfxNode } from './scene';
 import { CmcpController } from '../cmcp/controller';
 import { CmcpAudio, WebAudioBackend } from '../cmcp/audio';
+import { collectPrompts } from '../cmcp/prompts';
 
 /** The rectangle where the real game text sits while a scene has a text port (CSS px in the output area). Mutable on
  * purpose: an animated port (the console's LOG toggle) changes every frame and must not go through React renders. */
@@ -170,6 +171,7 @@ export function GfxProvider({ engine, children }: { engine: EngineAPI; children:
   useEffect(() => {
     const c = new CmcpController(engine, (id) => get(id).rt);
     c.onError = (text) => useUi.getState().toast('warn', text);
+    c.onNotes = collectPrompts;
     cmcp.current = c;
     const off = c.attach();
     // sound: the Go side resolved what to play; this plays it, for the session in front only

@@ -192,6 +192,7 @@ export class WailsEngine implements EngineAPI {
   cmcpRelease = (session: string, owner: string) => call<void>('CmcpRelease', session, owner);
   cmcpSetUi = (session: string, key: string, value: unknown) =>
     call<void>('CmcpSetUI', session, key, value === undefined || value === null ? '' : JSON.stringify(value));
+  cmcpPackConsent = (session: string, packId: string, allow: boolean) => call<void>('CmcpPackConsent', session, packId, allow);
   cmcpSprite = (session: string, sprite: string) => call<string>('CmcpSprite', session, sprite);
   gfxSnapshot = () => list(call<GfxOp[] | null>('GfxSnapshot'));
   gfxEvent = (scene: string, id: string, event: string, x: number, y: number) =>

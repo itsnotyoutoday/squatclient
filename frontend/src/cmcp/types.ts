@@ -72,7 +72,7 @@ export interface CmcpEventResult { tickets: { id: number; cmd: string; mutating:
 
 /** Notes that are not model state: sounds, events, replies. */
 export interface CmcpNote {
-  kind: 'state' | 'ready' | 'reset' | 'console' | 'data' | 'event' | 'scan' | 'reply' | 'timeout' | 'pack' | 'bye' | 'error' | 'log' | 'sound' | 'ui-sound';
+  kind: 'state' | 'ready' | 'reset' | 'console' | 'data' | 'event' | 'scan' | 'reply' | 'timeout' | 'pack' | 'bye' | 'error' | 'log' | 'sound' | 'ui-sound' | 'pack-consent' | 'pack-ready';
   pkg?: string;
   text?: string;
   event?: { type: string; level?: string; text?: string; data?: Record<string, unknown> };
@@ -82,4 +82,6 @@ export interface CmcpNote {
   stopAll?: boolean;
   fadeMs?: number;
   params?: Record<string, unknown>;
+  /** pack-consent / pack-ready: the pack entry */
+  pack?: { id: string; kind: string; version: string; sha256: string; size?: number };
 }

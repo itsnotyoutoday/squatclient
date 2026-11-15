@@ -27,6 +27,7 @@ import { RenameDialog } from './components/dialogs/RenameDialog';
 import { AwayDialog } from './components/dialogs/AwayDialog';
 import HistoryBrowser from './components/history/HistoryBrowser';
 import { UploadHost } from './components/upload/UploadDialog';
+import { PackConsentHost } from './components/dialogs/PackConsentDialog';
 import { useGlobalKeys } from './global-keys';
 import { insertIntoInput, openHelp } from './help/command';
 import { applyTfVar } from './lib/tfvars';
@@ -225,6 +226,7 @@ export function App({ engine }: { engine: EngineAPI }) {
         <Toasts />
         <Dialogs />
         <UploadHost />
+        <PackConsentHost />
       </div>
       </GfxProvider>
     </ControllerContext.Provider>

@@ -645,6 +645,8 @@ export interface EngineAPI {
   /** Extra packages an owner needs (reference counted); an empty list releases the owner. */
   cmcpAcquire(session: string, owner: string, subs: { pkg: string; rate_ms?: number }[]): Promise<void>;
   cmcpRelease(session: string, owner: string): Promise<void>;
+  /** The player's answer to the first-use question about a game's interface pack. */
+  cmcpPackConsent(session: string, packId: string, allow: boolean): Promise<void>;
   /** A widget wrote a screen UI key ($ui.team). */
   cmcpSetUi(session: string, key: string, value: unknown): Promise<void>;
   /** A sprite of the current pack with the theme's tokens resolved (JSON text). */

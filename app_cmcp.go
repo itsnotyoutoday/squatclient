@@ -70,3 +70,12 @@ func (a *App) CmcpSetUI(session, key, valueJSON string) error {
 	}
 	return s.CmcpSetUI(session, key, valueJSON)
 }
+
+// CmcpPackConsent answers "This game wants to use its interface ... Allow?" for a pack.
+func (a *App) CmcpPackConsent(session, packID string, allow bool) error {
+	s, err := a.service()
+	if err != nil {
+		return err
+	}
+	return s.CmcpPackConsent(session, packID, allow)
+}

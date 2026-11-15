@@ -638,6 +638,9 @@ export class MockEngine implements EngineAPI {
   async cmcpSetUi(session: string, key: string, value: unknown): Promise<void> {
     this.cmcpCall('cmcpSetUi', session, key, value);
   }
+  async cmcpPackConsent(session: string, packId: string, allow: boolean): Promise<void> {
+    this.cmcpCall('cmcpPackConsent', session, packId, allow);
+  }
   /** Sprite JSON by id, set by tests / the dev page (the real engine resolves it from the pack). */
   readonly cmcpSprites = new Map<string, string>();
   async cmcpSprite(session: string, sprite: string): Promise<string> {

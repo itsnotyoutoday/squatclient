@@ -104,3 +104,8 @@ func (s *Service) CmcpSetUI(session, key, valueJSON string) error {
 	}
 	return s.eng.CmcpSetUI(session, key, v)
 }
+
+// CmcpPackConsent answers the first-use question about a game's interface pack (spec 8.8).
+func (s *Service) CmcpPackConsent(session, packID string, allow bool) error {
+	return s.eng.CmcpPackConsent(session, packID, allow)
+}
