@@ -1,6 +1,6 @@
 import type { CmcpUI } from './types';
 import type { Prim } from './widgets';
-import type { Colour, Pal, Role, Shape, Skin } from './skins/types';
+import type { Colour, Pal, Role, Shape, Skin, TextMap } from './skins/types';
 
 const ROLES = new Set(['p', 's', 't', 'q', 'x', 'r', 'k', 'bg']);
 /** palette role or literal colour */
@@ -24,7 +24,24 @@ export function templateVars(ui: CmcpUI, modeLabel: string): Record<string, stri
     alert: alert === 'green' ? 'OFF' : alert.toUpperCase(),
   };
 }
-const fill = (s: string, v: Record<string, string>): string => s.replace(/\{(\w+)\}/g, (_m, k: string) => v[k] ?? '');
+/** {name} and {name|fmt}: fmt is upper, lower, %d or %.Nf */
+const fmtVar = (val: string, f: string | undefined): string => {
+  if (!f) return val;
+  if (f === 'upper') return val.toUpperCase();
+  if (f === 'lower') return val.toLowerCase();
+  const n = Number(val);
+  if (f === '%d') return Number.isFinite(n) ? String(Math.round(n)) : val;
+  const m = /^%\.(\d)f$/.exec(f);
+  return m && Number.isFinite(n) ? n.toFixed(Number(m[1])) : val;
+};
+const fill = (s: string, v: Record<string, string>): string => s.replace(/\{(\w+)(?:\|([^}]*))?\}/g, (_m, k: string, f?: string) => fmtVar(v[k] ?? '', f));
+const MODE_ALIAS: Record<string, string> = { operations: 'ops', engineering: 'power', helm: 'sensors' };
+/** a pack's `text: {by, map, default}`: the entry for this screen (vars.screen is its short name), else the default */
+const pick = (t: string | TextMap, v: Record<string, string>): string => {
+  if (typeof t === 'string') return t;
+  const key = (v[t.by === 'mode' ? 'screen' : t.by] ?? '').toLowerCase();
+  return t.map[key] ?? t.map[MODE_ALIAS[key] ?? ''] ?? t.default ?? '';
+};
 
 /** The skin's static decoration as scene primitives (back to front). Every shape's colours are palette roles, so a palette swap recolours it. */
 export function frameShapes(shapes: Shape[], pal: Pal, vars: Record<string, string>, idp: string): Prim[] {
@@ -42,7 +59,7 @@ export function frameShapes(shapes: Shape[], pal: Pal, vars: Record<string, stri
       case 'circle': return { id, type: 'circle', props: { ...base, x: s.x, y: s.y, r: s.r, fill: col(s.fill, pal), stroke: s.stroke ? col(s.stroke, pal) : undefined, strokeWidth: s.sw } };
       case 'arc': return { id, type: 'arc', props: { ...base, x: s.x, y: s.y, r0: s.r0, r1: s.r1, a0: s.a0, a1: s.a1, fill: col(s.fill, pal) } };
       case 'line': return { id, type: 'line', props: { ...base, x1: s.x1, y1: s.y1, x2: s.x2, y2: s.y2, stroke: col(s.stroke, pal), strokeWidth: s.sw ?? 2 } };
-      case 'text': return { id, type: 'text', props: { ...base, x: s.x, y: s.y, text: fill(s.text, vars), size: s.size, fill: col(s.fill ?? 'k', pal), align: s.align ?? 'left', baseline: 'middle', weight: s.weight ?? '700' } };
+      case 'text': return { id, type: 'text', props: { ...base, x: s.x, y: s.y, text: fill(pick(s.text, vars), vars), size: s.size, fill: col(s.fill ?? 'k', pal), align: s.align ?? 'left', baseline: 'middle', weight: s.weight ?? '700' } };
     }
   });
 }

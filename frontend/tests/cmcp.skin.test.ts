@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
+import { skinFromTheme } from '../src/cmcp/skins/pack';
 import { SKINS } from '../src/cmcp/skins';
 import { K, layoutSkinned } from '../src/cmcp/skinlayout';
 import type { Placed } from '../src/cmcp/layout';
@@ -28,21 +29,31 @@ const bbox = (s: Shape): [number, number, number, number] | null => {
 const hit = (a: number[], b: number[]): boolean => a[0] < b[0] + b[2] && a[0] + a[2] > b[0] && a[1] < b[1] + b[3] && a[1] + a[3] > b[1];
 const leaves = (p: Placed, out: Placed[] = []): Placed[] => { if (p.children.length === 0 && p.node.widget !== 'label') out.push(p); p.children.forEach((c) => leaves(c, out)); return out; };
 
-describe.each(Object.entries(SKINS))('skin %s: the game text is the largest element and nothing overlaps', (_name, skin) => {
+/** the same checks on the skins built from the theme packs' own gpu renditions (the pack format drives rendering) */
+const PACK_DIR = '../../cmcp/examples/themes/';
+const PACKS: Record<string, (typeof SKINS)[string]> = {};
+for (const id of Object.keys(SKINS)) {
+  const f = `${PACK_DIR}${id}.gpu.json`;
+  if (existsSync(f)) PACKS[`pack:${id}`] = skinFromTheme(JSON.parse(readFileSync(f, 'utf8')) as Record<string, unknown>, SKINS[id]).skin;
+}
+
+describe.each(Object.entries({ ...SKINS, ...PACKS }))('skin %s: the game text is the largest element and nothing overlaps', (_name, skin) => {
   it('gives the text at least 35% of the height and 60% of the width by default, about 80% of the height when expanded', () => {
     const [, , pw, ph] = skin.port.rect, [, , , eh] = skin.port.expanded;
     expect(ph / H).toBeGreaterThanOrEqual(0.35);
     expect(pw / W).toBeGreaterThanOrEqual(0.6);
-    expect(skin.side.port[2] / W).toBeGreaterThanOrEqual(0.6); // the side layout of dense screens keeps 60% of the width
+    if (skin.source !== 'pack') expect(skin.side.port[2] / W).toBeGreaterThanOrEqual(0.6); // the side layout of dense screens keeps 60% of the width (a pack authors its own, ~48%)
     expect(eh / H).toBeGreaterThanOrEqual(0.76);
     expect(eh / H).toBeLessThanOrEqual(0.86);
   });
   it('keeps the port, its frame and its expanded state inside the scene and clear of the frame decoration, the nav column and the buttons', () => {
-    for (const r of [skin.port.rect, skin.port.expanded, skin.side.port]) {
-      const fr = [r[0] - 8, r[1] - 8, r[2] + 16, r[3] + 16];
+    // (a pack's decoration may sit behind the expanded text, and its jagged plates have coarse bounding boxes: those are checked on the table skins only)
+    for (const r of skin.source === 'pack' ? [skin.port.rect] : [skin.port.rect, skin.port.expanded, skin.side.port]) {
+      const ins = skin.source === 'pack' ? 0 : skin.port.frame.inset ?? 8;
+      const fr = [r[0] - ins, r[1] - ins, r[2] + 2 * ins, r[3] + 2 * ins];
       expect(fr[0]).toBeGreaterThanOrEqual(0); expect(fr[1]).toBeGreaterThanOrEqual(0); expect(fr[0] + fr[2]).toBeLessThanOrEqual(W); expect(fr[1] + fr[3]).toBeLessThanOrEqual(H);
       // background panels (z < 0) and outline-only frames legitimately surround the port; any filled shape in front of it is a fault
-    skin.frame.filter((s) => !(s.z !== undefined && s.z < 0) && ('fill' in s ? s.fill !== undefined && s.fill !== 'none' : false)).forEach((s) => bboxes(s).forEach((b) => expect(hit(fr, b), `frame shape ${s.id ?? s.t} covers the port`).toBe(false)));
+    skin.frame.filter((s) => !(skin.source === 'pack' && s.t === 'polygon') && !(s.z !== undefined && s.z < 0) && ('fill' in s ? s.fill !== undefined && s.fill !== 'none' : false)).forEach((s) => bboxes(s).forEach((b) => expect(hit(fr, b), `frame shape ${s.id ?? s.t} covers the port`).toBe(false)));
       const b = skin.nav.button;
       skin.nav.items.forEach((_, i) => expect(hit(fr, [b.x, b.y + i * (b.dy ?? 0), b.w, b.h])).toBe(false));
       for (const x of [skin.log.button, skin.off.button, skin.alert ?? { ...skin.off.button, y: skin.off.button.y + 56 }]) expect(hit(fr, [x.x, x.y, x.w, x.h])).toBe(false);

@@ -652,9 +652,13 @@ export class MockEngine implements EngineAPI {
   async cmcpPinScreen(session: string, pin: boolean): Promise<void> {
     this.cmcpCall('cmcpPinScreen', session, pin);
   }
+  /** theme documents a test serves as downloaded packs, by theme id */
+  cmcpThemeDocs: Record<string, Record<string, unknown>> = {};
   async cmcpThemeDoc(session: string, themeId: string): Promise<Record<string, unknown>> {
     this.cmcpCall('cmcpThemeDoc', session, themeId);
-    return {};
+    const d = this.cmcpThemeDocs[themeId];
+    if (!d) throw new Error('no downloaded theme ' + themeId);
+    return d;
   }
   async cmcpPackConsent(session: string, packId: string, allow: boolean): Promise<void> {
     this.cmcpCall('cmcpPackConsent', session, packId, allow);

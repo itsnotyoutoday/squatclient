@@ -47,9 +47,24 @@ export function layoutSkinned(tree: CmcpNode, skin: Skin, screenName: string, lo
   // a screen that still needs more height than the band has is drawn smaller as a whole (never below 55%) rather than overlapping
   const need = dense ? intrinsic(withoutPort(root, tp), 'h') : 0;
   const scale = dense ? Math.max(0.55, Math.min(1, (band[3] * K) / Math.max(1, need))) : 1;
-  const ov = dense ? new Map<string, { x: number; y: number; w: number; h: number }>() : resolveArrange(root, arranged ? skin.arrange[screenName] : undefined, K);
+  const ov = dense
+    ? resolveArrange(root, skin.sideArrange?.[screenName], K, skin.sideArrange ? skin.sideSlots : undefined)
+    : resolveArrange(root, arranged ? skin.arrange[screenName] : undefined, K, arranged && skin.slots && Object.keys(skin.slots).length ? skin.slots : undefined);
+  if (dense && scale !== 1) for (const [k, r] of ov) ov.set(k, { x: r.x / scale, y: r.y / scale, w: r.w / scale, h: r.h / scale }); // the group is drawn at `scale`
+  // a pack's slots place only what they name; the rest would flow over them. Use them only when they cover every widget of the screen
+  // (the others are not carved out yet): otherwise the generic flow lays the screen out.
+  if (skin.source === 'pack' && ov.size > 0) {
+    const missing = leafWidgets(root).filter((n) => n.path !== tp && n.widget !== 'label' && !ov.has(n.path) && ![...ov.keys()].some((k) => n.path.startsWith(k + '.')));
+    if (missing.length > 0) ov.clear();
+  }
   ov.set(tp, { x: (port[0] * K) / scale, y: (port[1] * K) / scale, w: (port[2] * K) / scale, h: (port[3] * K) / scale });
   return { root: place(root, { x: (band[0] * K) / scale, y: (band[1] * K) / scale, w: (band[2] * K) / scale, h: (band[3] * K) / scale }, ov), port, mode, tree: root, scale };
+}
+
+function leafWidgets(n: CmcpNode, out: CmcpNode[] = []): CmcpNode[] {
+  if (!(n.children ?? []).length) out.push(n);
+  (n.children ?? []).forEach((c) => leafWidgets(c, out));
+  return out;
 }
 
 /** the tree without its textport (its fixed size must not count against the band) */

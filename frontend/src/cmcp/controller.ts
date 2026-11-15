@@ -7,6 +7,7 @@ import { layoutSkinned } from './skinlayout';
 import type { Skin } from './skins/types';
 import { col, frameShapes, navShapes, templateVars } from './skinframe';
 export type AlertRecolour = 'full' | 'edge' | 'off';
+import { skinFromTheme } from './skins/pack';
 import { setActiveCmcp, usePane, useScreenHelp, useThemeInUse } from './pane';
 import { useSettings } from '../state/stores';
 import { diffOps, PORT_ID, SCENE, sceneOp, type Ease } from './ops';
@@ -334,12 +335,37 @@ export class CmcpController {
     if (!keepKey) s.key = '';
   }
 
+  /** downloaded theme packs turned into skins, by `id@version` (undefined = the pack could not be turned into a skin: the built-in one is used) */
+  private packSkins = new Map<string, Skin | undefined>();
+  private packAsked = new Set<string>();
+  /** what the last loaded packs could not express (the Settings dialog can show it) */
+  packNotes: Record<string, string[]> = {};
+
+  /** The skin of the tree's theme: a downloaded pack (loaded through the engine, once) drives rendering; the built-in table is the fallback
+   * until it arrives and whenever there is no usable pack. */
+  private skinOf(s: SessionState, t: CmcpTree): Skin | undefined {
+    const builtin = skinFor(t.theme);
+    if (t.themeSource !== 'pack') return builtin;
+    const key = `${s.id}|${t.theme}@${t.themeVersion ?? ''}`;
+    if (this.packSkins.has(key)) return this.packSkins.get(key) ?? builtin;
+    if (!this.packAsked.has(key)) {
+      this.packAsked.add(key);
+      void this.engine.cmcpThemeDoc(s.id, t.theme).then((doc) => {
+        const r = skinFromTheme(doc, builtin);
+        this.packSkins.set(key, r.skin);
+        this.packNotes[t.theme] = r.notes;
+        this.render(s);
+      }).catch(() => { this.packSkins.set(key, undefined); });
+    }
+    return builtin;
+  }
+
   /** Builds the primitives for the current tree and applies the difference. */
   render(s: SessionState): void {
     const t = s.tree;
     if (!t || s.dismissed === s.key || s.off) return;
     useThemeInUse.getState().set(t.theme, t.themeSource ?? '', t.themeVersion ?? '');
-    const skin = skinFor(t.theme);
+    const skin = this.skinOf(s, t);
     if (skin) { this.renderSkinned(s, t, skin); return; }
     const W = BASE_W, H = Math.round(BASE_W * s.aspect);
     const stack = s.ui?.stack ?? [];
@@ -434,18 +460,18 @@ export class CmcpController {
     // alert_recolour: full = every role swaps to the red set; edge = only the edge roles (port frame, alert pill, screen edge) do; off = nothing
     // recolours (the pill and the strip still say ALERT RED). The theme default: green-identity themes (romulan, ferengi) use edge.
     const want = this.alertRecolour();
-    const mode: AlertRecolour = want === 'theme' ? (skin.name === 'romulan' || skin.name === 'ferengi' ? 'edge' : 'full') : want;
+    const mode: AlertRecolour = want === 'theme' ? (skin.alertRecolour ?? (skin.name === 'romulan' || skin.name === 'ferengi' ? 'edge' : 'full')) : want;
     const pal = alert && mode === 'full' ? skin.pal.red : skin.pal.normal;
     const edgePal = alert && mode !== 'off' ? skin.pal.red : pal;
     const screenName = t.screen.split(/[./]/).pop() ?? '';
     const cur = skin.nav.items.findIndex((i) => i.screens.includes(screenName));
     const label = cur >= 0 ? skin.nav.items[cur].label : (t.title || screenName);
-    const vars = templateVars(s.ui!, label);
+    const vars: Record<string, string> = { ...templateVars(s.ui!, label), screen: screenName };
     // port.max_cols (default 80): the side layout's text is at most 80 monospace columns wide; the box size and font give the scene units
     const lg = this.rtFor(s.id).slot(SCENE).logical;
     const k = lg && lg.w > 0 ? Math.min(lg.w / 1600, lg.h / 900) : 0;
     const fontPx = useSettings.getState().settings.fontSize || 14;
-    const maxPortW = k > 0 ? (80 * 0.6 * fontPx + 28) / k : Infinity;
+    const maxPortW = k > 0 ? ((skin.maxCols ?? 80) * 0.6 * fontPx + 28) / k : Infinity;
     const L = layoutSkinned(t.root, skin, screenName, s.log, t.view?.portDefault ?? 'balanced', maxPortW);
     if (!L) return;
     const { root, port } = L;
@@ -462,7 +488,7 @@ export class CmcpController {
     for (const p of content) prims.push({ ...p, parent: p.parent ?? 'cw' });
     if (s.vsRect) prims.push({ id: 'fxclip', type: 'group', parent: 'cw', props: { x: 0, y: 0, clip: [s.vsRect.x, s.vsRect.y, s.vsRect.w, s.vsRect.h], z: 9000 } });
     s.skinned = true;
-    prims.push({ id: 'portframe', type: 'rect', props: { x: port[0] - 8, y: port[1] - 8, w: port[2] + 16, h: port[3] + 16, r: skin.port.frame.r, stroke: col(skin.port.frame.role, edgePal), strokeWidth: skin.port.frame.width, fill: '#00000000', glow: skin.port.frame.glow } });
+    prims.push({ id: 'portframe', type: 'rect', props: { x: port[0] - (skin.port.frame.inset ?? 8), y: port[1] - (skin.port.frame.inset ?? 8), w: port[2] + 2 * (skin.port.frame.inset ?? 8), h: port[3] + 2 * (skin.port.frame.inset ?? 8), r: skin.port.frame.r, stroke: col(skin.port.frame.role, edgePal), strokeWidth: skin.port.frame.width, fill: '#00000000', glow: skin.port.frame.glow } });
     if (s.log) prims.push({ id: 'logsum', type: 'text', props: { x: port[0] + 4, y: port[1] - 22, text: `${label}   ${vars.ship}   HULL ${vars.hull}%   CORE ${vars.core}%   ALERT ${vars.alert}`, size: 22, fill: col('x', pal), baseline: 'middle', weight: '700', font: skin.font.family } });
     const menu = s.ui?.screens ?? [];
     prims.push(...navShapes(skin, pal, cur, 'nv.', (id) => { const o = menu.find((x) => x.id === id); return { available: o ? o.available : true, hint: o?.hintCmd }; }));
@@ -486,7 +512,7 @@ export class CmcpController {
     const ob = skin.off.button;
     prims.push({ id: 'offbtn', type: 'button', events: ['click'], target: { path: '', event: '', special: 'off' }, props: { x: ob.x, y: ob.y, w: ob.w, h: ob.h, r: ob.r ?? ob.h / 2, fill: col(ob.role, pal), text: skin.off.label, color: col(ob.color, pal), size: ob.size * (skin.font.tscale ?? 1), weight: skin.font.weight, align: ob.align ?? 'center', font: skin.font.family, key: 'alt+s', glow: 0.04 } });
     prims.forEach((p, i) => { p.props = { ...p.props, z: i }; });
-    if (alert && mode === 'edge') prims.push({ id: 'alertedge', type: 'rect', props: { x: 4, y: 4, w: 1592, h: 892, r: 0, stroke: skin.pal.red.r, strokeWidth: 8, fill: '#00000000', z: 9500 } });
+    if (alert && mode === 'edge') prims.push({ id: 'alertedge', type: 'rect', props: { x: 4, y: 4, w: 1592, h: 892, r: skin.alertEdge?.r ?? 0, stroke: skin.alertEdge?.color ?? skin.pal.red.r, strokeWidth: skin.alertEdge?.width ?? 8, fill: '#00000000', z: 9500 } });
     const palKey = alert ? (mode === 'full' ? 'red' : mode === 'edge' ? 'edge' : 'normal') : 'normal';
     const palChanged = s.lastPal !== '' && s.lastPal !== palKey;
     s.lastPal = palKey;
@@ -495,7 +521,7 @@ export class CmcpController {
       if (!slow) return 0;
       const calm = t.view?.calm ? 2.5 : 1; // calm mode: 2.5 times slower
       if ((id === PORT_ID || id === 'portframe' || id === 'cw' || id === 'logsum') && /^(x|y|w|h|opacity)$/.test(prop)) return 0.35 * calm; // the animated LOG toggle (the Lua themes' portNode tween)
-      if (palChanged && /^(fill|stroke|color)$/.test(prop)) return 0.9 * calm;
+      if (palChanged && /^(fill|stroke|color)$/.test(prop)) return ((skin.motion?.alertMs ?? 900) / 1000) * calm;
       return 0;
     };
     const { ops, map } = diffOps(s.prev, prims, ease);

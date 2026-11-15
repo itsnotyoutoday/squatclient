@@ -96,9 +96,16 @@ export function findTextport(p: Placed): Placed | null {
 }
 
 /** Resolves a skin's arrangement selectors (`widget#n`, `container-of:widget#n`; n counts in document order) to node paths. */
-export function resolveArrange(root: CmcpNode, arr: Record<string, [number, number, number, number]> | undefined, k = 1): Map<string, Rect> {
+/** where a widget kind goes when no `widget#n` selector names it: the slot of its class (theme packs, 19.7) */
+export const SLOT_OF: Record<string, string> = {
+  viewscreen: 'picture', portrait: 'picture', radar: 'plot', scope: 'plot', 'sector-map': 'plot', schematic: 'plot', 'pad-diagram': 'plot',
+  bar: 'data', 'bar-list': 'data', list: 'data', table: 'data', gauge: 'data', graph: 'data', label: 'data', 'contact-picker': 'data',
+  button: 'controls', toggle: 'controls', slider: 'controls', joystick: 'controls', 'helm-controls': 'controls', 'team-assigner': 'controls', 'group-picker': 'controls', lights: 'controls', log: 'log',
+};
+
+export function resolveArrange(root: CmcpNode, arr: Record<string, [number, number, number, number]> | undefined, k = 1, slots?: Record<string, [number, number, number, number]>): Map<string, Rect> {
   const out = new Map<string, Rect>();
-  if (!arr) return out;
+  if (!arr && !slots) return out;
   const seen: Record<string, number> = {};
   const list: { n: CmcpNode; parent: CmcpNode | null; idx: number; kind: string }[] = [];
   const walk = (n: CmcpNode, parent: CmcpNode | null): void => {
@@ -107,7 +114,18 @@ export function resolveArrange(root: CmcpNode, arr: Record<string, [number, numb
     (n.children ?? []).forEach((c) => walk(c, n));
   };
   walk(root, null);
-  for (const [sel, r] of Object.entries(arr)) {
+  if (slots) {
+    // generic slots: the n-th widget of a class takes `<class>#n` (or `<class>` for the first); a selector in arr wins
+    const cnt: Record<string, number> = {};
+    for (const e of list) {
+      const cls = SLOT_OF[e.kind];
+      if (!cls || e.kind === 'button' || e.kind === 'label') continue;
+      const n = (cnt[cls] = (cnt[cls] ?? -1) + 1);
+      const r = slots[`${cls}#${n}`] ?? (n === 0 ? slots[cls] : undefined);
+      if (r) out.set(e.n.path, { x: r[0] * k, y: r[1] * k, w: r[2] * k, h: r[3] * k });
+    }
+  }
+  for (const [sel, r] of Object.entries(arr ?? {})) {
     const m = /^(?:(container-of):)?([\w-]+)#(\d+)$/.exec(sel);
     if (!m) continue;
     const hit = list.find((e) => e.kind === m[2] && e.idx === Number(m[3]));
