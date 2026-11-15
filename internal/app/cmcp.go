@@ -48,7 +48,7 @@ func (s *Service) applyCmcpSettings() {
 	} else {
 		s.eng.SetCmcp(nil)
 	}
-	s.eng.SetCmcpRender(engine.CmcpRender{PortDefault: st.CmcpPortDefault, Calm: st.CmcpCalm, StartCollapsed: st.CmcpStartCollapsed, PackConsent: st.CmcpPackConsent, TextLayout: st.CmcpTextLayout, AlertPulse: st.CmcpAlertPulse, AlertAmbient: st.CmcpAlertAmbient, HitShake: st.CmcpHitShake, AlertRecolour: st.CmcpAlertRecolour, Reduced: s.reducedMotion.Load(), Theme: st.ConsoleTheme, UseShipTheme: st.ConsoleThemeMode != "fixed", Tokens: CmcpThemeTokens})
+	s.eng.SetCmcpRender(engine.CmcpRender{PortDefault: st.CmcpPortDefault, Calm: st.CmcpCalm, StartCollapsed: st.CmcpStartCollapsed, RoomScreens: st.CmcpRoomScreens, PackConsent: st.CmcpPackConsent, TextLayout: st.CmcpTextLayout, AlertPulse: st.CmcpAlertPulse, AlertAmbient: st.CmcpAlertAmbient, HitShake: st.CmcpHitShake, AlertRecolour: st.CmcpAlertRecolour, Reduced: s.reducedMotion.Load(), Theme: st.ConsoleTheme, UseShipTheme: st.ConsoleThemeMode != "fixed", Tokens: CmcpThemeTokens})
 }
 
 type cmcpNotesPayload struct {

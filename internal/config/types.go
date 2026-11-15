@@ -138,6 +138,7 @@ type Settings struct {
 	CmcpHitShake       string         `json:"cmcpHitShake"`                   // theme (default) | on | off: the display shakes when your ship is hit
 	CmcpAlertPulse     string         `json:"cmcpAlertPulse"`                 // theme (default) | on | off: whether a red alert pulses
 	CmcpAlertRecolour  string         `json:"cmcpAlertRecolour"`              // theme (default) | full | edge | off
+	CmcpRoomScreens    bool           `json:"cmcpRoomScreens"`                // draw a screen for ship rooms, the turbolift, away teams (default off: only a console you man gets one)
 	CmcpStartCollapsed bool           `json:"cmcpStartCollapsed"`             // a console screen starts switched off
 	SoundCategoryV     map[string]int `json:"soundCategoryVolumes,omitempty"` // 0..100 per category (alert, weapons, hits, ui, comms, ...)
 }

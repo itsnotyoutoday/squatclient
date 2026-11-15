@@ -206,6 +206,8 @@ export interface Settings {
   soundVolume: number;
   soundMuted: boolean;
   /** CMCP screens start switched off (the text has the whole area); Alt+S or the pane's button brings them back. */
+  /** Draw a screen for ship rooms, the turbolift and away teams too (default off: only a console you man gets a screen). */
+  cmcpRoomScreens: boolean;
   cmcpStartCollapsed: boolean;
   cmcpPackConsent: 'always' | 'ask' | 'never';
   cmcpAlertRecolour: 'theme' | 'full' | 'edge' | 'off';
@@ -942,6 +944,7 @@ export const DEFAULT_SETTINGS: Settings = {
   soundFolder: '',
   soundVolume: 70,
   soundMuted: false,
+  cmcpRoomScreens: false,
   cmcpStartCollapsed: false,
   cmcpPackConsent: 'always',
   cmcpAlertRecolour: 'theme',

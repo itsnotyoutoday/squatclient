@@ -289,6 +289,7 @@ export function SettingsDialog() {
           />
         </Field>
         <h3 className="group">Game consoles (CMCP) and sound</h3>
+        {check('cmcpRoomScreens', 'Also draw screens for ship rooms, the turbolift and away teams', '(off = only a console you man gets a screen; the text stays plain everywhere else)')}
         {check('cmcp', 'Let games draw their consoles from protocol data', '(advertised when you connect; off = text only. Takes effect on the next connection.)')}
         <Field label="Console theme" hint="Follow the ship (default): a Klingon ship looks Klingon, a Romulan one Romulan. Fixed: always the theme chosen here.">
           <select aria-label="Console theme" value={settings.consoleThemeMode === 'fixed' ? settings.consoleTheme : 'ship'} onChange={(e) => (e.target.value === 'ship' ? update({ consoleThemeMode: 'ship' }) : update({ consoleThemeMode: 'fixed', consoleTheme: e.target.value }))}>

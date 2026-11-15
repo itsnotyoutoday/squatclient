@@ -80,6 +80,9 @@ interface SessionState {
 
 /** Draws the Go engine's bound CMCP screen trees into each session's graphics runtime and sends widget events back.
  * It evaluates nothing: bindings, fallbacks, enabled flags and actions all come from the shared core through the engine. */
+/** the debug trail is off unless localStorage 'squat-debug' is '1' (or the client runs with SQUAT_DEBUG=1: the core's own lines) */
+const dbgOn = (): boolean => { try { return localStorage.getItem('squat-debug') === '1'; } catch { return false; } };
+
 export class CmcpController {
   private sess = new Map<string, SessionState>();
   reduceMotion = false;
@@ -102,11 +105,17 @@ export class CmcpController {
     return () => { offs.forEach((o) => o()); setActiveCmcp(null); };
   }
 
+  private lastDbg = '';
+  /** a line of the web view's debug trail for client.log (what the player did and what the view decided), next to the core's wire lines */
+  private dbg(msg: string): void { if (!dbgOn()) return; void this.engine.clientLog(`dbg ui: ${msg}`).catch(() => undefined); }
+
   /** The text view's state comes from the shared core through the engine (LOG and screen-off are its state machine); these ask it to toggle. */
   private viewEvent(session: string, ev: 'log_toggle' | 'screen_toggle'): void {
     const s = this.sess.get(session);
     if (!s) return;
+    this.dbg(`${session} view event ${ev} (was ${s.viewState}, screen ${s.tree?.screen ?? 'none'})`);
     void this.engine.cmcpViewEvent(session, ev).then((st) => {
+      this.dbg(`${session} view state now ${String(st)}`);
       s.viewState = st as SessionState['viewState']; // do not wait for the next model event
       this.applyView(s);
     }).catch((e: unknown) => this.onError?.(String(e)));
@@ -189,6 +198,7 @@ export class CmcpController {
    * Cobra.Console null) takes it away; a refusal or a missing answer arrives as a notice from the core. */
   requestClose(session: string): void {
     const s = this.sess.get(session);
+    this.dbg(`${session} X pressed (screen ${s?.tree?.screen ?? 'none'}, view ${s?.viewState})`);
     void this.engine.cmcpClose(session, 'user').catch((e: unknown) => this.onError?.(String(e).replace(/^Error: /, '')));
     if (!s?.tree) return;
     // The game decides, but the player must never be stuck in a console layout: when the game refuses (the core posts an error notice "close"), does not
@@ -206,6 +216,7 @@ export class CmcpController {
     window.clearTimeout(s.closeWatch);
     s.closeWatch = undefined;
     s.closeScreen = undefined;
+    this.dbg(`${session} close fallback (screen ${screen}, now ${s.tree?.screen ?? 'none'}, view ${s.viewState})`);
     if (s.tree && s.tree.screen === screen && s.viewState !== 'off') {
       this.setOff(session, true);
       this.onHint?.('The game did not close this screen, so it is hidden here: the text has the whole window. Alt+S or the Console button brings it back.');
@@ -271,6 +282,7 @@ export class CmcpController {
     }
     s.lastRev = ui.rev;
     s.ui = ui;
+    { const d = `${ui.session} model state=${ui.state} screen=${ui.tree?.screen ?? 'none'} view=${ui.tree?.view?.state ?? '-'} readonly=${ui.readonly} console=${ui.console?.id ?? ''} notice=${ui.notice?.id ?? ''}`; if (d !== this.lastDbg) { this.lastDbg = d; this.dbg(d); } }
     // a refused close (the core's error notice) ends the wait at once: the screen is hidden locally
     if (s.closeScreen && ui.notice?.id === 'close' && ui.notice.kind === 'error') this.closeFallback(ui.session, s.closeScreen);
     const t = ui.tree;
@@ -650,6 +662,7 @@ export class CmcpController {
   handleGfxEvent(session: string, e: GfxEventOut): boolean {
     if (e.scene !== SCENE) return false;
     const s = this.state(session);
+    if (e.event !== 'enter' && e.event !== 'leave' && e.event !== 'drag') this.dbg(`${session} scene event ${e.event} on ${e.id}${s.targets.get(e.id)?.special ? ' (' + s.targets.get(e.id)!.special + ')' : ''}`);
     if (e.id === '#scene' && e.event === 'close') { this.requestClose(session); return true; } // the X: ask the game; it decides (a manned console is unmanned and popped), nothing is hidden here
     const tg = s.targets.get(e.id);
     if (!tg) return true;
