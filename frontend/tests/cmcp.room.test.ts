@@ -60,3 +60,40 @@ describe('the room screen (aboard, no console)', () => {
     expect(fin('alertedge')?.stroke).toBe('#ffcc33');
   });
 });
+
+describe('a ship room does not look like a console', () => {
+  const runRoom = (view?: 'off') => {
+    const engine = new MockEngine();
+    const rt = new GfxRuntime();
+    rt.paused = true;
+    const ops: GfxOp[] = [];
+    const apply = rt.apply.bind(rt);
+    rt.apply = (o: GfxOp[]): void => { ops.push(...o); apply(o); };
+    const ctl = new CmcpController(engine, () => rt);
+    ctl.attach();
+    const ui = { ...(JSON.parse(readFileSync('public/cmcp/sensors.json', 'utf8')) as CmcpUI), session: 's1', alert: 'green', status: { alert: 'green', name: 'Resolute' }, commands: [],
+      screens: [{ id: 'std.operations', title: 'Ops', available: true, active: false }, { id: 'std.shiproom', title: 'Room', available: true, active: true }],
+      stack: [{ key: 'room:shiproom', kind: 'room', id: 'shiproom', name: 'Mess Hall', screen: 'std.shiproom', active: true }] } as unknown as CmcpUI;
+    ui.tree = { ...ui.tree!, session: 's1', screen: 'std.shiproom', title: 'Ship room', theme: 'tng', root: roomRoot(), ui: {}, view: { state: view ?? 'balanced', portDefault: 'balanced', fraction: 0.35 } as never };
+    engine.pushCmcp(ui);
+    return { engine, ctl, ui, rt, ops };
+  };
+  const created = (ops: GfxOp[], id: string): Record<string, unknown> | undefined => ops.filter((o) => o.op === 'create' && o.id === id).at(-1)?.props as Record<string, unknown> | undefined;
+
+  it('has no console tabs, a ROOM tag, the room\'s name as its title and no CONSOLE word', () => {
+    const { ops } = runRoom();
+    expect(created(ops, 'nv.room')?.text).toBe('ROOM');
+    expect(ops.some((o) => o.op === 'create' && String(o.id).startsWith('nv.nav'))).toBe(false); // no SENSORS / POWER / TACTICAL tabs
+    const texts = ops.filter((o) => o.op === 'create' && String(o.id).startsWith('fr.')).map((o) => String((o.props as { text?: string }).text ?? ''));
+    expect(texts.some((t) => t.includes('MESS HALL'))).toBe(true);
+    expect(texts.some((t) => /CONSOLE/i.test(t))).toBe(false);
+  });
+
+  it('SCREEN OFF hides it though the game never pops the context, and it stays hidden through every later update', () => {
+    const { engine, rt, ui } = runRoom('off');
+    expect(rt.slot('cmcp').scene.cfg.open).toBe(false);
+    engine.pushCmcp({ ...ui, rev: ui.rev + 1 });
+    engine.pushCmcp({ ...ui, rev: ui.rev + 2, status: { alert: 'red', name: 'Resolute' } as never });
+    expect(rt.slot('cmcp').scene.cfg.open).toBe(false);
+  });
+});

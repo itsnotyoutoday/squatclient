@@ -525,8 +525,11 @@ export class CmcpController {
     const edgePal = (alert && mode !== 'off') || amb ? { ...red, r: ambCol } as Pal : pal;
     const screenName = t.screen.split(/[./]/).pop() ?? '';
     const cur = skin.nav.items.findIndex((i) => i.screens.includes(screenName));
-    const label = cur >= 0 ? skin.nav.items[cur].label : (t.title || screenName);
-    const vars: Record<string, string> = { ...templateVars(s.ui!, label), screen: screenName };
+    // a ship room is not a console: its frame names the ROOM (the game's room name), has no console tabs and says ROOM where the console frames say CONSOLE
+    const isRoom = screenName === 'shiproom' || screenName === 'room';
+    const roomName = isRoom ? ((s.ui?.stack ?? []).find((e) => e.active && e.kind === 'room')?.name ?? '').toUpperCase() : '';
+    const label = isRoom ? roomName || 'SHIP ROOM' : cur >= 0 ? skin.nav.items[cur].label : (t.title || screenName);
+    const vars: Record<string, string> = { ...templateVars(s.ui!, label), screen: screenName, ...(isRoom ? { room: '1' } : {}) };
     // port.max_cols (default 80): the side layout's text is at most 80 monospace columns wide; the box size and font give the scene units
     const lg = this.rtFor(s.id).slot(SCENE).logical;
     const k = lg && lg.w > 0 ? Math.min(lg.w / 1600, lg.h / 900) : 0;
@@ -560,7 +563,13 @@ export class CmcpController {
     prims.push({ id: 'portframe', type: 'rect', props: { x: port[0] - (skin.port.frame.inset ?? 8), y: port[1] - (skin.port.frame.inset ?? 8), w: port[2] + 2 * (skin.port.frame.inset ?? 8), h: port[3] + 2 * (skin.port.frame.inset ?? 8), r: skin.port.frame.r, stroke: col(skin.port.frame.role, edgePal), strokeWidth: skin.port.frame.width, fill: '#00000000', glow: skin.port.frame.glow } });
     if (s.log) prims.push({ id: 'logsum', type: 'text', props: { x: port[0] + 4, y: port[1] - 22, text: `${label}   ${vars.ship}   HULL ${vars.hull}%   CORE ${vars.core}%   ALERT ${vars.alert}`, size: 22, fill: col('x', pal), baseline: 'middle', weight: '700', font: skin.font.family } });
     const menu = s.ui?.screens ?? [];
-    prims.push(...navShapes(skin, pal, cur, 'nv.', (id) => { const o = menu.find((x) => x.id === id); return { available: !!o && o.available, hint: o?.hintCmd }; }));
+    if (isRoom) {
+      // one quiet pill in the nav column's first slot: where the console frames have their tabs, a room has only its tag
+      const b = skin.nav.button;
+      prims.push({ id: 'nv.room', type: 'button', props: { x: b.x, y: b.y, w: b.w, h: b.h, r: b.r ?? b.h / 2, fill: col('t', pal), text: 'ROOM', color: col(b.color, pal), size: b.size * (skin.font.tscale ?? 1), weight: skin.font.weight, align: b.align ?? 'center', padX: b.padX ?? 16, font: skin.font.family, skewX: b.skewX ?? 0, opacity: 0.9 } });
+    } else {
+      prims.push(...navShapes(skin, pal, cur, 'nv.', (id) => { const o = menu.find((x) => x.id === id); return { available: !!o && o.available, hint: o?.hintCmd }; }));
+    }
     // a screen too big for one readable widget column is paged: the pager sits at the top of the column (Alt+PageUp / Alt+PageDown too)
     if (L.pages && L.pager) {
       const [px, py, pw, ph] = L.pager, pb = skin.log.button, bw = Math.min(64, pw / 4);
