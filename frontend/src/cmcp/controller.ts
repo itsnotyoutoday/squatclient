@@ -5,6 +5,7 @@ import { findTextport, place } from './layout';
 import { diffOps, PORT_ID, SCENE, sceneOp } from './ops';
 import { drawSprite, type SpriteView } from './sprite';
 import type { CmcpNode, CmcpNote, CmcpTree, CmcpUI } from './types';
+import { useOverlays } from './overlays';
 import { contextStrip, draw, readonlyBadge, recordHistory, type Ctx, type Prim, type Target } from './widgets';
 
 const BASE_W = 1200;
@@ -165,6 +166,7 @@ export class CmcpController {
   }
 
   private close(s: SessionState): void {
+    useOverlays.getState().clear(s.id);
     if (!s.open) return;
     this.rtFor(s.id).apply([{ op: 'clear', scene: SCENE }, { op: 'scene', scene: SCENE, open: false }]);
     s.open = false;
@@ -183,8 +185,9 @@ export class CmcpController {
     const root = place(t.root, { x: 0, y: strip, w: W, h: H - strip });
     const tp = findTextport(root);
     if (!tp) return; // a screen without a text port is invalid (spec 6.2); never draw it
-    const ctx: Ctx = { tree: t, local: s.local, history: s.history, images: s.images, readonly: s.ui?.readonly ?? false, reduceMotion: this.reduceMotion };
+    const ctx: Ctx = { tree: t, local: s.local, history: s.history, images: s.images, readonly: s.ui?.readonly ?? false, reduceMotion: this.reduceMotion, overlays: [] };
     const prims: Prim[] = draw(root, ctx);
+    useOverlays.getState().set(s.id, W, H, ctx.overlays ?? []);
     if (strip) prims.push(...contextStrip(stack, W, ctx));
     if (ctx.readonly) prims.push(...readonlyBadge(s.ui?.ai ?? false, s.ui?.console?.manned_by, W, ctx));
     // the port node: the rectangle where the real text shows (never drawn over)

@@ -1,4 +1,5 @@
 import type { CmcpNode, CmcpStackEntry, CmcpTree } from './types';
+import type { Overlay } from './overlays';
 import { findTextport, type Placed, type Rect } from './layout';
 
 /** One graphics object of the scene protocol (docs/GFX.md) plus what a pointer event on it means. */
@@ -28,6 +29,8 @@ export interface Ctx {
   images: Map<string, { name: string; w: number; h: number; zones: Record<string, { x: number; y: number; w: number; h: number }> }>;
   readonly: boolean;
   reduceMotion: boolean;
+  /** DOM inputs the scene cannot draw (typed entry), collected while drawing */
+  overlays?: Overlay[];
 }
 
 const tok = (ctx: Ctx, k: string, d = '#888888'): string => {
@@ -387,27 +390,37 @@ const helmControls: Draw = (p, ctx, out) => {
   const step = num(pr.step_deg, 5) || 5;
   const warp = (pr.warp ?? {}) as Record<string, unknown>, wmax = Math.max(1, num(warp.max, 9)), wf = num(warp.factor, 0);
   const sel = pr.selected === undefined || pr.selected === null ? null : Number(pr.selected);
-  const rowH = 38, gap = 6, bw = 58;
+  const rowH = 38, gap = 6, lab = 74, fieldW = 64;
   let y = inner.y;
   const t = (k: string, x: number, yy: number, txt: string, size = 14, fill = tok(ctx, 'color.dim'), o: Record<string, unknown> = {}): void => { out.push(text(`${id}.${k}`, x, yy, txt, size, fill, { font: font(ctx), weight: '600', ...o })); };
   const ev = (event: string, value?: unknown): Target => ({ path: p.node.path, event, value });
-  // heading
+  /** n buttons share the width left of x0 */
+  const evenRow = (x0: number, yy: number, labels: string[], mk: (i: number) => { on: boolean; tg?: Target }, key: string): void => {
+    const w = (inner.x + inner.w - x0 - gap * (labels.length - 1)) / labels.length;
+    labels.forEach((l, i) => { const m = mk(i); out.push(btn(ctx, `${id}.${key}${i}`, { x: x0 + i * (w + gap), y: yy + 2, w, h: rowH - 4 }, l, m.on, m.tg)); });
+  };
+  // heading: label, typed field (or the number), step buttons
   t('h.l', inner.x + 4, y + rowH / 2, 'HEADING', 13);
-  t('h.v', inner.x + 100, y + rowH / 2, `${Math.round(az)}  mark ${Math.round(mk)}`, 20, tok(ctx, 'color.text'), { weight: '700' });
-  [[-step * 2, `-${step * 2}`], [-step, `-${step}`], [step, `+${step}`], [step * 2, `+${step * 2}`]].forEach(([d, l], i) => {
-    out.push(btn(ctx, `${id}.h${i}`, { x: inner.x + inner.w - (4 - i) * (bw + gap) + gap, y: y + 2, w: bw, h: rowH - 4 }, String(l), can, ev('heading', { az: (((az + Number(d)) % 360) + 360) % 360, mark: mk })));
-  });
+  if (can && ctx.overlays) ctx.overlays.push({ id: `${id}.in.h`, x: inner.x + lab, y: y + 4, w: fieldW, h: rowH - 8, label: 'Heading, degrees', value: String(Math.round(az)), kind: 'number', min: 0, max: 359.99, path: p.node.path, event: 'heading', build: (n) => ({ az: n, mark: mk }) });
+  else t('h.v', inner.x + lab, y + rowH / 2, `${Math.round(az)}`, 20, tok(ctx, 'color.text'), { weight: '700' });
+  const steps = [-step * 2, -step, step, step * 2];
+  evenRow(inner.x + lab + fieldW + gap, y, steps.map((d) => (d > 0 ? `+${d}` : String(d))), (i) => ({ on: can, tg: ev('heading', { az: (((az + steps[i]) % 360) + 360) % 360, mark: mk }) }), 'h');
+  t('h.m', inner.x + 4, y + rowH + 4, `MARK ${Math.round(mk)}   SPEED ${cell(num(pr.speed_mps))} M/S`, 11);
+  y += rowH + gap + 10;
+  // impulse: label, typed percent, preset buttons
+  t('s.l', inner.x + 4, y + rowH / 2, 'IMPULSE %', 13);
+  if (can && ctx.overlays) ctx.overlays.push({ id: `${id}.in.s`, x: inner.x + lab, y: y + 4, w: fieldW, h: rowH - 8, label: 'Impulse, percent', value: '', kind: 'int', min: 0, max: 100, path: p.node.path, event: 'speed', build: (n) => n });
+  const presets = [0, 25, 50, 75, 100];
+  evenRow(inner.x + lab + fieldW + gap, y, presets.map((v) => `${v}%`), (i) => ({ on: can, tg: ev('speed', presets[i]) }), 's');
   y += rowH + gap;
-  // speed (percent of impulse)
-  t('s.l', inner.x + 4, y + rowH / 2, 'IMPULSE', 13);
-  [0, 25, 50, 75, 100].forEach((v, i) => out.push(btn(ctx, `${id}.s${v}`, { x: inner.x + 100 + i * (bw + gap), y: y + 2, w: bw, h: rowH - 4 }, `${v}%`, can, ev('speed', v))));
-  t('s.v', inner.x + inner.w - 6, y + rowH / 2, `${cell(num(pr.speed_mps))} m/s`, 14, tok(ctx, 'color.text'), { align: 'right' });
-  y += rowH + gap;
-  // warp
+  // warp: label, typed factor, - value +
   t('w.l', inner.x + 4, y + rowH / 2, 'WARP', 13);
-  out.push(btn(ctx, `${id}.wm`, { x: inner.x + 100, y: y + 2, w: bw, h: rowH - 4 }, '-', can && wf > 0, ev('warp', Math.max(0, wf - 1))));
-  t('w.v', inner.x + 100 + bw + 14, y + rowH / 2, `${cell(wf)} / ${cell(wmax)}`, 20, tok(ctx, 'color.text'), { weight: '700' });
-  out.push(btn(ctx, `${id}.wp`, { x: inner.x + 100 + bw + 120, y: y + 2, w: bw, h: rowH - 4 }, '+', can && wf < wmax, ev('warp', Math.min(wmax, wf + 1))));
+  if (can && ctx.overlays) ctx.overlays.push({ id: `${id}.in.w`, x: inner.x + lab, y: y + 4, w: fieldW, h: rowH - 8, label: 'Warp factor', value: '', kind: 'number', min: 0, max: wmax, path: p.node.path, event: 'warp', build: (n) => n });
+  const wx = inner.x + lab + fieldW + gap;
+  const ww = (inner.x + inner.w - wx - gap * 2) / 4;
+  out.push(btn(ctx, `${id}.wm`, { x: wx, y: y + 2, w: ww, h: rowH - 4 }, '-', can && wf > 0, ev('warp', Math.max(0, wf - 1))));
+  t('w.v', wx + ww + gap + ww, y + rowH / 2, `${cell(wf)} / ${cell(wmax)}`, 18, tok(ctx, 'color.text'), { align: 'center', weight: '700' });
+  out.push(btn(ctx, `${id}.wp`, { x: wx + ww * 3 + gap * 2, y: y + 2, w: ww, h: rowH - 4 }, '+', can && wf < wmax, ev('warp', Math.min(wmax, wf + 1))));
   y += rowH + gap + 4;
   // actions
   const aw = Math.min(150, (inner.w - gap * 3) / 4), ah = rowH;

@@ -9,6 +9,7 @@ import type { GfxNode } from './scene';
 import { CmcpController } from '../cmcp/controller';
 import { CmcpAudio, WebAudioBackend } from '../cmcp/audio';
 import { collectPrompts } from '../cmcp/prompts';
+import { CmcpOverlays } from '../cmcp/OverlayLayer';
 
 /** The rectangle where the real game text sits while a scene has a text port (CSS px in the output area). Mutable on
  * purpose: an animated port (the console's LOG toggle) changes every frame and must not go through React renders. */
@@ -52,7 +53,7 @@ function placement(plan: Plan): React.CSSProperties {
 /** One scene's render surface. It owns its host <div> and a <canvas> it creates itself on every mount: a GL context that was
  * released (background session, a lost context) can never be revived on the same element, so no canvas is ever reused. The
  * pane keys this component by session AND scene, so two sessions never share an instance (and with it, styles, canvas, GL). */
-function SceneCanvas({ rt, id, store }: { rt: GfxRuntime; id: string; store: PortStore }) {
+function SceneCanvas({ rt, id, store, session }: { rt: GfxRuntime; id: string; store: PortStore; session: string }) {
   const wrap = useRef<HTMLDivElement>(null);
   const [err, setErr] = useState('');
   const [gen, setGen] = useState(0); // bumped when the GL context is lost: the effect runs again with a fresh canvas
@@ -133,6 +134,7 @@ function SceneCanvas({ rt, id, store }: { rt: GfxRuntime; id: string; store: Por
   }
   return (
     <div ref={wrap} className="gfx-scene" style={placement(kind === 'frame' ? { mode: 'frame', out: { x: 0, y: 0, w: 0, h: 0 }, input: null } : stripPlan)} data-scene={id}>
+      {id === 'cmcp' && <CmcpOverlays session={session} fit={cfg.fit} />}
       <button type="button" className="gfx-close" aria-label="Close graphics" onClick={() => rt.closeScene(id)}>
         &times;
       </button>
@@ -283,5 +285,5 @@ export function GfxPane({ sessionId }: { sessionId: string }) {
   if (!GfxRenderer.supported()) {
     return <div className="gfx-msg" role="alert">Graphics need WebGL2, which this window does not provide.</div>;
   }
-  return <>{open.map((s) => <SceneCanvas key={`${sessionId}/${s.scene.id}`} rt={g.rt} id={s.scene.id} store={store} />)}</>;
+  return <>{open.map((s) => <SceneCanvas key={`${sessionId}/${s.scene.id}`} rt={g.rt} id={s.scene.id} store={store} session={sessionId} />)}</>;
 }
