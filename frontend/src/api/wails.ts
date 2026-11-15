@@ -254,6 +254,9 @@ export class WailsEngine implements EngineAPI {
   setLayoutLua = (id: string, code: string) => call<void>('SetLayoutLua', id, code);
   listThemes = () => list(call<ThemeFile[] | null>('ListThemes'));
   themesDir = () => call<string>('ThemesDir');
+  requestAttention = (on: boolean) => call<void>('RequestAttention', on);
+  setBadge = (n: number) => call<void>('SetBadge', n);
+  notify = (title: string, body: string, session: string) => call<void>('Notify', title, body, session);
   saveTheme = (id: string, json: string) => call<void>('SaveTheme', id, json);
   deleteTheme = (id: string) => call<void>('DeleteTheme', id);
   setSessionWorld = (id: string, w: string) => call<void>('SetSessionWorld', id, w);

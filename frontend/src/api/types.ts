@@ -112,6 +112,8 @@ export interface WorldConfig {
   gameType?: string;
   /** Local echo for this world: '' follows the setting, 'on' or 'off'. */
   localEcho?: '' | 'on' | 'off';
+  /** The one CMCP version this world declares: empty = the default (2), '1' for an older game. */
+  cmcp?: '' | '1' | '2';
 }
 
 export interface SquatterConfig {
@@ -167,6 +169,10 @@ export interface Settings {
   minContrast: number;
   linkify: boolean;
   notifications: boolean;
+  /** Light the taskbar button (the Dock icon on a Mac) when new text arrives while the window is in the background. */
+  taskbarFlash: boolean;
+  /** Show the number of unread lines on the taskbar button (Windows) or the Dock icon (Mac). */
+  iconBadge: boolean;
   screenReader: boolean;
   pauseOnScroll: boolean;
   defaultEncoding: 'utf-8' | 'latin1';
@@ -184,8 +190,10 @@ export interface Settings {
   /** History entries kept per world. */
   historyMax: number;
   /** The user's scripts folder ('' = the app-data folder): a relative /load, /log, /save starts here. Applies at the next start. */
+  /** The folder user themes live in; empty = the default themes folder in the app-data folder. Applies at once. */
+  themesDir?: string;
   scriptsDir?: string;
-  /** Extra library folders /load and /require search after the shipped library. Applies at the next start. */
+  /** Extra library folders /load and /require search before the shipped library, so they override it. Applies at the next start. */
   libDirs?: string[];
   /** Editor mode: ask before sending a buffer with bracket problems. */
   warnUnbalanced: boolean;
@@ -193,7 +201,7 @@ export interface Settings {
   autoReconnectSquatters: boolean;
   /** TinyFugue squatters: show lines TinyFugue's /gag hid (they are marked, not removed). */
   showGagged: boolean;
-  /** Show what you type in the output (on by default). A world can override it; /localecho changes one session. */
+  /** Show what you type in the output (off by default). A world can override it; /localecho changes one session. */
   localEcho: boolean;
   /** Send TinyFugue (admin devices, squat_scripts on) a script that keeps SquatClient's own queries off its screen. */
   tfHideQueries: boolean;
@@ -359,6 +367,12 @@ export interface EngineEvents {
   'layouts-changed': Record<string, never>;
   /** The themes folder changed: reload the theme list. */
   'themes-changed': Record<string, never>;
+  /** The machine woke from sleep or the network changed: squatter links were retried. */
+  system: { reason: 'resume' | 'network' };
+  /** Linux: the desktop's settings portal says what colour scheme and contrast the user prefers (and when it changes). */
+  'system-look': { dark: boolean; highContrast: boolean; known: boolean };
+  /** A native notification was clicked: show that session. */
+  'notify-click': { session: string };
   /** Lua variables (squat.var) that were set (or, with null, deleted). */
   vars: { vars: Record<string, unknown> };
 }
@@ -709,7 +723,11 @@ export interface EngineAPI {
   /** A widget event of the current screen (path of the CmcpNode, event name, the widget's output). */
   cmcpEvent(session: string, path: string, event: string, value?: unknown): Promise<CmcpEventResult>;
   /** Sends a verb of the game's catalogue. */
-  cmcpCommand(session: string, name: string, args?: Record<string, unknown>): Promise<{ id: number; echo: string }>;
+  cmcpCommand(
+    session: string,
+    name: string,
+    args?: Record<string, unknown>,
+  ): Promise<{ id: number; echo: string }>;
   /** Extra packages an owner needs (reference counted); an empty list releases the owner. */
   cmcpAcquire(session: string, owner: string, subs: { pkg: string; rate_ms?: number }[]): Promise<void>;
   cmcpRelease(session: string, owner: string): Promise<void>;
@@ -855,6 +873,12 @@ export interface EngineAPI {
   /** The themes folder: `<id>.json` or `<id>/theme.json` per theme. */
   listThemes(): Promise<ThemeFile[]>;
   themesDir(): Promise<string>;
+  /** Light (on) or clear (off) the taskbar button / Dock icon: there is new activity and the window is in the background. */
+  requestAttention(on: boolean): Promise<void>;
+  /** The unread count on the app icon (taskbar overlay on Windows, Dock badge on a Mac); 0 clears it. */
+  setBadge(n: number): Promise<void>;
+  /** A native desktop notification; `session` is what a click on it should bring to the front. */
+  notify(title: string, body: string, session: string): Promise<void>;
   saveTheme(id: string, json: string): Promise<void>;
   deleteTheme(id: string): Promise<void>;
   /** Link a session to a saved world (after saving a quick connect as a world). */
@@ -990,7 +1014,7 @@ export interface DiagReport {
 export const DEFAULT_FONT = 'JetBrains Mono, SF Mono, Menlo, Consolas, monospace';
 
 export const DEFAULT_SETTINGS: Settings = {
-  theme: 'dark',
+  theme: 'system',
   fontFamily: DEFAULT_FONT,
   fontSize: 14,
   scrollbackLines: 20000,
@@ -999,6 +1023,8 @@ export const DEFAULT_SETTINGS: Settings = {
   minContrast: 0,
   linkify: true,
   notifications: true,
+  taskbarFlash: true,
+  iconBadge: true,
   screenReader: false,
   pauseOnScroll: true,
   defaultEncoding: 'utf-8',
@@ -1012,7 +1038,7 @@ export const DEFAULT_SETTINGS: Settings = {
   warnUnbalanced: true,
   autoReconnectSquatters: true,
   showGagged: false,
-  localEcho: true,
+  localEcho: false,
   tfHideQueries: true,
   cmcp: true,
   consoleTheme: 'tng',

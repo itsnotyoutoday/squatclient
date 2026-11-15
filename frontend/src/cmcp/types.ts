@@ -46,6 +46,10 @@ export interface CmcpCommandSpec { name: string; consoles: string[]; mutating: b
 
 export interface CmcpStackEntry { key: string; kind: string; id: string; name?: string; title?: string; screen: string; priority: number; active: boolean; readonly?: boolean; mannedBy?: string; expiresMs?: number }
 
+export interface CmcpScope { title?: string; owner?: { id: string; epoch: number; name?: string; theme?: string; class?: string; empire?: string; ai?: boolean } | null }
+/** The active context of a CMCP 2 session: where the player is, the layout in force and where it is presented. */
+export interface CmcpCtx { type: string; scope: string; key: string; id?: string; layout: string; surface: 'screen' | 'panel' | 'dock' | 'float' | string; ambient: boolean; data?: Record<string, unknown>; layouts?: string[] }
+
 export interface CmcpUI {
   session: string;
   rev: number;
@@ -57,6 +61,15 @@ export interface CmcpUI {
   ship?: { id: string; name?: string; class?: string; empire?: string; epoch: number; ai?: boolean; theme?: string };
   console?: { id: string; name: string; manned_by?: string } | null;
   consoleRev: number;
+  /** CMCP 2 (spec chapter 20): scopes with their owners and the active context; the ship / console fields above are empty then. */
+  v2?: boolean;
+  def?: { id: string; version: string; sha256: string; size?: number };
+  /** the definition was refused: no contexts are shown (the notice line says why) */
+  textClient?: boolean;
+  textReason?: string;
+  scopes?: Record<string, CmcpScope>;
+  ctx?: CmcpCtx;
+  ambience?: boolean;
   reason?: string;
   readonly: boolean;
   ai: boolean;

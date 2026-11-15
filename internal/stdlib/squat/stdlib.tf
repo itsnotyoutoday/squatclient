@@ -11,7 +11,7 @@
 ;;;; Parts of this file are adapted from TinyFugue's lib/tf/stdlib.tf (Copyright Ken Keys;
 ;;;; TinyFugue is GPL licensed, as is SquatClient).
 ;;;;
-;;;; Your own definitions belong in startup.tf; this file is rewritten when SquatClient starts.
+;;;; Your own definitions belong in startup.tf; this file is replaced when SquatClient is updated.
 
 /set squat_stdlib=1
 /set squat_config_dir=@CONFIGDIR@

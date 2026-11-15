@@ -102,9 +102,9 @@ When the game turns off echo (for a password prompt) the input becomes a masked 
 
 Each connection has a tab. Use Alt-1 to Alt-9 or Ctrl-Tab to switch. Unread lines in background tabs show as a badge, and with desktop notifications on you also get notified. The small **x** on a tab disconnects it, or dismisses it if it has already ended.
 
-## The Console
+## The Home tab
 
-The first tab is the **Console**, the client's own screen (like a Home tab). It is what you see before any world is open, and it is always one tab away. It shows the start-up output the way TinyFugue does: the banner, the lines for loading the standard library and your `startup.tf` (with any errors they report), and whatever your scripts print when no world is the target. You can type TinyFugue commands into it, for example `/help` or `/connect world`; they run with no current world, so a command that needs a world says so. Text that is not a command is not sent anywhere. When you connect to a world, that world becomes the active tab; click Console to come back.
+The first tab is **Home**, the client's own screen. It is what you see before any world is open, and it is always one tab away. It shows a welcome message with a link to the project's source code, the lines for loading the standard library and your `startup.tf` (with any errors they report), and whatever your scripts print when no world is the target. You can type any `/command` into it, for example `/help` or `/connect world`; they run with no current world, so a command that needs a world says so. Text that is not a command is not sent anywhere. When you connect to a world, that world becomes the active tab; click Home to come back.
 
 ## Themes
 

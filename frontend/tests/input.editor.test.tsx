@@ -529,6 +529,7 @@ describe('settings dialog', () => {
     await waitFor(() => expect(useSettings.getState().loaded).toBe(true));
     await screen.findByLabelText('Command input');
     act(() => useUi.getState().openDialog('settings'));
+    await userEvent.click(await screen.findByRole('tab', { name: 'History & scripts' }));
     const size = await screen.findByLabelText(/Command history size/);
     expect(size).toHaveValue(20000);
     expect(await screen.findByText(/2 stored/)).toBeInTheDocument();

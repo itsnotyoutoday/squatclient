@@ -68,7 +68,7 @@ func Open(dir string) (*Store, error) {
 	if err := s.load("worlds.json", &wf, &wf.Version); err != nil {
 		return nil, err
 	}
-	s.worlds = wf.Worlds
+	s.worlds = cloneWorlds(wf.Worlds)
 	var sq squattersFile
 	if err := s.load("squatters.json", &sq, &sq.Version); err != nil {
 		return nil, err
@@ -169,10 +169,16 @@ func (s *Store) Worlds() []World {
 	return cloneWorlds(s.worlds)
 }
 
+// DefaultGroup is the group a world belongs to when it has not been put in another one: every world always has a group.
+const DefaultGroup = "My Worlds"
+
 func cloneWorlds(in []World) []World {
 	out := make([]World, len(in))
 	for i, w := range in {
 		out[i] = w
+		if strings.TrimSpace(out[i].Group) == "" {
+			out[i].Group = DefaultGroup
+		}
 		if w.Login != nil {
 			l := *w.Login
 			out[i].Login = &l
@@ -218,6 +224,11 @@ func (w *World) Validate(defaultEncoding string) error {
 	default:
 		return fmt.Errorf("bad localEcho %q", w.LocalEcho)
 	}
+	switch w.Cmcp {
+	case "", "1", "2":
+	default:
+		return fmt.Errorf("bad cmcp version %q", w.Cmcp)
+	}
 	if w.GameType == "auto" {
 		w.GameType = ""
 	}
@@ -251,6 +262,10 @@ func (s *Store) SaveWorld(w World) (World, error) {
 	}
 	if w.ID == "" {
 		w.ID = NewID()
+	}
+	w.Group = strings.TrimSpace(w.Group)
+	if w.Group == "" {
+		w.Group = DefaultGroup
 	}
 	idx := -1
 	for i, old := range s.worlds {

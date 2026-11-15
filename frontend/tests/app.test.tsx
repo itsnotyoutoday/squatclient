@@ -49,7 +49,7 @@ describe('App smoke (mock mode)', () => {
     expect(screen.getByLabelText('Command input')).toBeInTheDocument();
   });
 
-  it('shows the Console when there are no sessions: the start-up output, and the Worlds buttons', async () => {
+  it('shows Home when there are no sessions: the start-up output, and the Worlds buttons', async () => {
     await boot('empty');
     expect(screen.getByTestId('console')).toBeInTheDocument();
     expect(await screen.findByText(/Loading commands from stdlib.tf/)).toBeInTheDocument();
@@ -58,7 +58,7 @@ describe('App smoke (mock mode)', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
-  it('the Console is the first tab: a world in front hides it, picking it brings it back, and a command typed there runs with no world', async () => {
+  it('Home is the first tab: a world in front hides it, picking it brings it back, and a command typed there runs with no world', async () => {
     const e = await boot();
     await userEvent.keyboard('{Escape}');
     expect(screen.queryByTestId('console')).toBeNull(); // a world is in front at start
@@ -66,7 +66,7 @@ describe('App smoke (mock mode)', () => {
     expect(await screen.findByTestId('console')).toBeInTheDocument();
     expect(await screen.findByText(/Loading commands from stdlib.tf/)).toBeInTheDocument();
     expect(screen.getByTestId('console-tab')).toHaveAttribute('aria-selected', 'true');
-    const input = screen.getByLabelText('Console command line');
+    const input = screen.getByLabelText('Home command line');
     await userEvent.type(input, '/version{Enter}');
     await waitFor(() => expect(e.consoleInputs).toEqual(['/version']));
     expect(await screen.findByText(/version: demo console/)).toBeInTheDocument(); // the engine's answer arrives as a console event
@@ -99,7 +99,7 @@ describe('App smoke (mock mode)', () => {
     await boot();
     await userEvent.keyboard('{Escape}');
     const tabs = screen.getAllByRole('tab');
-    expect(tabs).toHaveLength(5); // the Console, then the four worlds
+    expect(tabs).toHaveLength(5); // Home, then the four worlds
     expect(within(tabs[2]).getByLabelText(/\d+ unread/)).toBeInTheDocument();
     expect(within(tabs[3]).getByText('ended')).toBeInTheDocument();
     fireEvent.keyDown(window, { key: '2', code: 'Digit2', altKey: true });
@@ -306,7 +306,7 @@ describe('dialogs', () => {
     const id = useSessions.getState().order[0];
     const before = useSessions.getState().sessions[id];
     expect(before.worldId).toBeTruthy();
-    fireEvent.contextMenu(screen.getAllByRole('tab')[1]); // [0] is the Console
+    fireEvent.contextMenu(screen.getAllByRole('tab')[1]); // [0] is Home
     await userEvent.click(await screen.findByRole('menuitem', { name: 'Rename...' }));
     const d = await screen.findByRole('dialog', { name: 'Rename' });
     expect(within(d).getByText(/Renames the saved world and this connection/)).toBeInTheDocument();

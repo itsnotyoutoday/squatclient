@@ -41,17 +41,17 @@ export function TabBar() {
 
   return (
     <div className="tabbar" role="tablist" aria-label="Sessions">
-      <div className={`tab console${showingConsole ? ' active' : ''}`}>
+      <div className={`tab home${showingConsole ? ' active' : ''}`}>
         <button
           type="button"
           role="tab"
           aria-selected={showingConsole}
           className="tabmain"
-          title="Console: the client's own screen (start-up output, commands with no world)"
+          title="Home: the client's own screen (start-up output, commands with no world)"
           data-testid="console-tab"
           onClick={() => useUi.getState().showConsole(true)}
         >
-          <span className="tabname">Console</span>
+          <span className="tabname">Home</span>
         </button>
       </div>
       {order.map((id, i) => {

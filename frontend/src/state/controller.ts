@@ -1,4 +1,10 @@
-import { installDiagHooks, logEnvironment, logPageSnapshot, registerDiagProvider, setDiagEngine } from '../lib/diaglog';
+import {
+  installDiagHooks,
+  logEnvironment,
+  logPageSnapshot,
+  registerDiagProvider,
+  setDiagEngine,
+} from '../lib/diaglog';
 import { muteOf } from './soundMute';
 import type { EngineAPI, Line, SessionInfo } from '../api/types';
 import { CONSOLE_ID, getBuffer, dropBuffer, setBufferCap, useSessions, useSettings, useUi } from './stores';
@@ -7,11 +13,51 @@ import { closeActiveEditorTab, toggleEditorView } from '../lib/editor/view';
 import { runUndoRedo } from '../lib/editcommands';
 import { useLayoutData } from '../layout/store';
 import { setFolderThemes } from '../themes';
+import { lineText } from '../lib/runs';
 
 const nullToUndefined = (o: Record<string, unknown>): Record<string, unknown> =>
   Object.fromEntries(Object.entries(o).map(([k, v]) => [k, v ?? undefined]));
 
 /** Sessions that need attention when the UI attaches: unread output or ended. */
+/** One native notification per world per this long for ordinary text (a bell has its own, shorter limit). */
+const NOTIFY_QUIET_MS = 60_000;
+const lastNotified = new Map<string, number>();
+
+/** Show a native notification for a world, unless the setting is off or one was shown for it very recently. */
+function notifyDesktop(engine: EngineAPI, session: string, body: string, quietMs: number): void {
+  if (!useSettings.getState().settings.notifications) return;
+  const now = Date.now();
+  if (now - (lastNotified.get(session) ?? 0) < quietMs) return;
+  lastNotified.set(session, now);
+  const name = useSessions.getState().sessions[session]?.name ?? 'SquatClient';
+  void engine
+    .notify(name, body.length > 160 ? `${body.slice(0, 157)}...` : body, session)
+    .catch(() => undefined);
+}
+
+/** New text in a world that is not in front (another tab, or the window is in the background). */
+function notifyLine(engine: EngineAPI, l: Line): void {
+  const s = useSessions.getState();
+  if (l.session === s.fg && typeof document !== 'undefined' && document.hasFocus()) return;
+  const text = lineText(l.spans).trim();
+  if (text) notifyDesktop(engine, l.session, text, NOTIFY_QUIET_MS);
+}
+
+/** The taskbar button (Dock icon) is lit while the window is in the background and new text has arrived; coming back clears it. */
+let flashing = false;
+function flashTaskbar(engine: EngineAPI, kind: string): void {
+  if (flashing || kind === 'echo' || !useSettings.getState().settings.taskbarFlash) return;
+  if (typeof document === 'undefined' || document.hasFocus()) return;
+  flashing = true;
+  void engine.requestAttention(true).catch(() => undefined);
+}
+/** The window came back to the front: clear the light. */
+export function clearTaskbarFlash(engine: EngineAPI): void {
+  if (!flashing) return;
+  flashing = false;
+  void engine.requestAttention(false).catch(() => undefined);
+}
+
 export function awaySessions(list: readonly SessionInfo[]): SessionInfo[] {
   return list.filter((s) => s.unread > 0 || s.state === 'ended');
 }
@@ -97,10 +143,14 @@ export async function startController(
     useUi.setState({ diagAvailable: info.available });
     if (info.available) {
       offs.push(installDiagHooks());
-      offs.push(registerDiagProvider('tabs', () => {
-        const s = useSessions.getState();
-        return [`fg=${s.fg ?? '(none)'} tabs=[${s.order.map((id) => `${id}:${JSON.stringify(s.sessions[id]?.name ?? '')}:${s.sessions[id]?.state ?? '?'}:mute=${muteOf(id) || 'audible'}`).join(', ')}] globalMute=${useSettings.getState().settings.soundMuted} dialog=${useUi.getState().dialog ?? 'none'}`];
-      }));
+      offs.push(
+        registerDiagProvider('tabs', () => {
+          const s = useSessions.getState();
+          return [
+            `fg=${s.fg ?? '(none)'} tabs=[${s.order.map((id) => `${id}:${JSON.stringify(s.sessions[id]?.name ?? '')}:${s.sessions[id]?.state ?? '?'}:mute=${muteOf(id) || 'audible'}`).join(', ')}] globalMute=${useSettings.getState().settings.soundMuted} dialog=${useUi.getState().dialog ?? 'none'}`,
+          ];
+        }),
+      );
       offs.push(engine.on('diag-snapshot', ({ why }) => logPageSnapshot(why)));
       logEnvironment();
     }
@@ -109,6 +159,8 @@ export async function startController(
   }
   offs.push(
     engine.on('line', (l) => {
+      flashTaskbar(engine, l.kind);
+      if (l.kind === 'game') notifyLine(engine, l);
       const arr = pending.get(l.session);
       if (arr) arr.push(l);
       else pending.set(l.session, [l]);
@@ -183,14 +235,12 @@ export async function startController(
     engine.on('menu', ({ action }) => handleMenuAction(action, controller)),
     engine.on('bell', (b) => {
       const s = useSessions.getState();
-      if (!useSettings.getState().settings.notifications || b.session === s.fg) return;
-      try {
-        if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-          new Notification(s.sessions[b.session]?.name ?? 'SquatClient', { body: 'Bell' });
-        }
-      } catch {
-        /* notifications unavailable */
-      }
+      if (b.session === s.fg && document.hasFocus()) return;
+      notifyDesktop(engine, b.session, 'Bell', 5000);
+    }),
+    // clicking a native notification brings that world forward
+    engine.on('notify-click', ({ session }) => {
+      if (session && useSessions.getState().sessions[session]) controller.switchTo(session);
     }),
   );
 
@@ -269,16 +319,25 @@ export async function startController(
   };
   window.addEventListener('online', nudge);
   window.addEventListener('focus', nudge);
+  const unflash = (): void => clearTaskbarFlash(engine);
+  window.addEventListener('focus', unflash);
+  const unflashVisible = (): void => {
+    if (document.visibilityState === 'visible') unflash();
+  };
+  document.addEventListener('visibilitychange', unflashVisible);
   document.addEventListener('visibilitychange', onVisible);
   offs.push(() => {
     window.removeEventListener('online', nudge);
     window.removeEventListener('focus', nudge);
+    window.removeEventListener('focus', unflash);
+    document.removeEventListener('visibilitychange', unflashVisible);
     document.removeEventListener('visibilitychange', onVisible);
   });
 
   const controller: Controller = {
     dispose() {
       disposed = true;
+      lastNotified.clear();
       offs.forEach((o) => o());
       ackTimers.forEach((t) => clearTimeout(t));
     },

@@ -20,16 +20,25 @@ const blank = (): WorldConfig => ({
   login: { template: 'connect {name} {password}', charName: '', hasPassword: false },
 });
 
-export function groupWorlds(worlds: readonly WorldConfig[], filter: string): [string, WorldConfig[]][] {
+/** The group a world is in when it has not been put in another one (the engine applies the same default). */
+export const DEFAULT_GROUP = 'My Worlds';
+
+/** Worlds by group, the default group first. `extra` are empty groups made in this dialog (shown as drop targets, never filtered out). */
+export function groupWorlds(
+  worlds: readonly WorldConfig[],
+  filter: string,
+  extra: readonly string[] = [],
+): [string, WorldConfig[]][] {
   const f = filter.trim().toLowerCase();
   const groups = new Map<string, WorldConfig[]>();
+  if (!f) for (const g of [DEFAULT_GROUP, ...extra]) groups.set(g, []);
   for (const w of worlds) {
-    if (f && !`${w.name} ${w.host} ${w.group ?? ''}`.toLowerCase().includes(f)) continue;
-    const g = w.group || 'Ungrouped';
+    const g = w.group || DEFAULT_GROUP;
+    if (f && !`${w.name} ${w.host} ${g}`.toLowerCase().includes(f)) continue;
     groups.set(g, [...(groups.get(g) ?? []), w]);
   }
   return [...groups.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
+    .sort(([a], [b]) => (a === DEFAULT_GROUP ? -1 : b === DEFAULT_GROUP ? 1 : a.localeCompare(b)))
     .map(([g, ws]) => [g, ws.sort((x, y) => x.name.localeCompare(y.name))]);
 }
 
@@ -48,7 +57,11 @@ export function WorldManager() {
       .then(setUserLayouts)
       .catch(() => undefined);
   }, [engine]);
-  const groups = useMemo(() => groupWorlds(worlds, filter), [worlds, filter]);
+  const [extraGroups, setExtraGroups] = useState<string[]>([]);
+  const [newGroup, setNewGroup] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState<string | null>(null);
+  const groups = useMemo(() => groupWorlds(worlds, filter, extraGroups), [worlds, filter, extraGroups]);
+  const groupNames = useMemo(() => groups.map(([g]) => g), [groups]);
   const close = (): void => useUi.getState().openDialog(null);
   const editWorldId = useUi((s) => s.editWorldId);
   useEffect(() => {
@@ -73,6 +86,20 @@ export function WorldManager() {
       setPassword('');
       await refresh();
       setDraft(saved);
+      setErr('');
+    } catch (x) {
+      fail(x);
+    }
+  };
+
+  // drag a world onto a group's heading or list to move it there
+  const moveTo = async (id: string, group: string): Promise<void> => {
+    const w = worlds.find((x) => x.id === id);
+    if (!engine || !w || (w.group || DEFAULT_GROUP) === group) return;
+    try {
+      await engine.saveWorld({ ...w, group });
+      await refresh();
+      setDraft((d) => (d && d.id === id ? { ...d, group } : d));
       setErr('');
     } catch (x) {
       fail(x);
@@ -117,13 +144,36 @@ export function WorldManager() {
             data-autofocus
           />
           {groups.map(([g, ws]) => (
-            <section key={g} aria-label={g}>
+            <section
+              key={g}
+              aria-label={g}
+              className={dragOver === g ? 'dropping' : ''}
+              onDragOver={(e) => {
+                if (!e.dataTransfer.types.includes('text/x-squat-world')) return;
+                e.preventDefault();
+                setDragOver(g);
+              }}
+              onDragLeave={() => setDragOver((d) => (d === g ? null : d))}
+              onDrop={(e) => {
+                const id = e.dataTransfer.getData('text/x-squat-world');
+                setDragOver(null);
+                if (!id) return;
+                e.preventDefault();
+                void moveTo(id, g);
+              }}
+            >
               <h3>{g}</h3>
               <ul>
+                {ws.length === 0 && <li className="hint dropHint">Drag a world here</li>}
                 {ws.map((w) => (
                   <li key={w.id}>
                     <button
                       type="button"
+                      draggable
+                      onDragStart={(e) => {
+                        e.dataTransfer.setData('text/x-squat-world', w.id);
+                        e.dataTransfer.effectAllowed = 'move';
+                      }}
                       className={draft?.id === w.id ? 'sel' : ''}
                       onClick={() => {
                         setDraft(w);
@@ -142,10 +192,34 @@ export function WorldManager() {
             </section>
           ))}
           {groups.length === 0 && <p className="hint">No worlds{filter ? ' match' : ' yet'}.</p>}
+          {newGroup === null ? (
+            <button type="button" onClick={() => setNewGroup('')}>
+              + New group
+            </button>
+          ) : (
+            <form
+              className="newgroup"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const n = newGroup.trim();
+                if (n && !groupNames.includes(n)) setExtraGroups((g) => [...g, n]);
+                setNewGroup(null);
+              }}
+            >
+              <input
+                aria-label="New group name"
+                placeholder="Group name"
+                value={newGroup}
+                autoFocus
+                onChange={(e) => setNewGroup(e.target.value)}
+                onKeyDown={(e) => e.key === 'Escape' && (e.stopPropagation(), setNewGroup(null))}
+              />
+            </form>
+          )}
           <button
             type="button"
             onClick={() => {
-              setDraft(blank());
+              setDraft({ ...blank(), group: DEFAULT_GROUP });
               setPassword('');
             }}
           >
@@ -160,9 +234,16 @@ export function WorldManager() {
               </Field>
               <Field label="Group">
                 <input
+                  list="world-groups"
                   value={draft.group ?? ''}
+                  placeholder={DEFAULT_GROUP}
                   onChange={(e) => set('group', e.target.value || undefined)}
                 />
+                <datalist id="world-groups">
+                  {groupNames.map((g) => (
+                    <option key={g} value={g} />
+                  ))}
+                </datalist>
               </Field>
               <Field label="Host">
                 <input required value={draft.host} onChange={(e) => set('host', e.target.value)} />
@@ -204,8 +285,8 @@ export function WorldManager() {
               </Field>
               {!squatters.some((s) => s.kind === 'tf-squatterd') && (
                 <p className="hint wide">
-                  To route through TinyFugue or gtf, pair it first: Squatters (cloud button), Add a squatter, Type:
-                  TinyFugue or gtf (GoTinyFugue).
+                  To route through TinyFugue or gtf, pair it first: Squatters (cloud button), Add a squatter,
+                  Type: TinyFugue or gtf (GoTinyFugue).
                 </p>
               )}
               <Field
@@ -233,6 +314,20 @@ export function WorldManager() {
                   <option value="">Follow the setting</option>
                   <option value="on">On</option>
                   <option value="off">Off</option>
+                </select>
+              </Field>
+              <Field
+                label="CMCP version"
+                hint="Which version of the console protocol this world speaks (never both). Default is 2; choose 1 for a game that has not moved to 2 yet. Takes effect on the next connection."
+              >
+                <select
+                  aria-label="CMCP version"
+                  value={draft.cmcp ?? ''}
+                  onChange={(e) => set('cmcp', e.target.value as WorldConfig['cmcp'])}
+                >
+                  <option value="">Default (2)</option>
+                  <option value="2">CMCP 2</option>
+                  <option value="1">CMCP 1 (older games)</option>
                 </select>
               </Field>
               <Field label="Encoding">

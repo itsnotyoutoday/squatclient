@@ -60,6 +60,7 @@ func (a *App) startup(ctx context.Context) {
 		return
 	}
 	svc.Start()
+	startDesktop(svc.EmitUI) // Linux: the desktop's appearance and notification clicks over D-Bus
 }
 
 func (a *App) build(ctx context.Context) (*app.Service, *config.Store, error) {
@@ -83,7 +84,7 @@ func (a *App) build(ctx context.Context) (*app.Service, *config.Store, error) {
 		scripts = dir
 	}
 	// SquatClient's own TinyFugue library (docs/LIB.md) is written into <scripts>/lib/squat, the classic TinyFugue
-	// library into <scripts>/lib/tf, at every start. The first is loaded as the standard library;
+	// library into <scripts>/lib/tf, on the first start and after an update (not every start). The first is loaded as the standard library;
 	// SQUATCLIENT_TFLIB names a directory with another one (real tf's lib/tf, say) instead.
 	stdLib := os.Getenv("SQUATCLIENT_TFLIB")
 	// The user's scripts folder (Settings > Scripts): where a relative /load, /require, /log, /save and /lcd start.
@@ -100,20 +101,19 @@ func (a *App) build(ctx context.Context) (*app.Service, *config.Store, error) {
 		slog.Warn("could not enter the scripts folder", "dir", work, "err", err)
 	}
 	// /load and /require search a relative name in: the working folder, the shipped library, the classic library,
-	// the folders added in Settings. Absolute paths and ~ go anywhere.
-	libDirs := []string{work}
+	// the folders added in Settings (the first three come first, so they override the shipped ones). Absolute paths and ~ go anywhere.
+	libDirs := []string{work} // the user's own folders come first, so a script of theirs overrides a shipped one of the same name
+	for _, l := range cfg.Settings().LibDirs {
+		libDirs = append(libDirs, config.ExpandPath(l))
+	}
 	if lib, err := stdlib.Install(scripts); err != nil {
 		slog.Warn("standard library not installed", "err", err)
 	} else {
-		libDirs = []string{lib, filepath.Join(scripts, filepath.FromSlash(stdlib.TFDir))}
+		libDirs = append(libDirs, lib, filepath.Join(scripts, filepath.FromSlash(stdlib.TFDir)))
 		if stdLib == "" {
 			stdLib = lib
 		}
 	}
-	for _, l := range cfg.Settings().LibDirs {
-		libDirs = append(libDirs, config.ExpandPath(l))
-	}
-	libDirs = append(libDirs, work)
 	svc, err := app.New(app.Options{
 		Diag:    diagSetup(),
 		Config:  cfg,
@@ -205,6 +205,17 @@ func (a *App) emitMenu(action string) {
 	a.mu.RUnlock()
 	if ctx != nil {
 		wailsruntime.EventsEmit(ctx, "menu", map[string]string{"action": action})
+	}
+}
+
+// emitNotifyClick tells the UI a native notification was clicked (the window is brought forward by the platform code).
+func (a *App) emitNotifyClick(session string) {
+	a.mu.RLock()
+	ctx := a.ctx
+	a.mu.RUnlock()
+	if ctx != nil {
+		wailsruntime.WindowShow(ctx)
+		wailsruntime.EventsEmit(ctx, "notify-click", map[string]string{"session": session})
 	}
 }
 

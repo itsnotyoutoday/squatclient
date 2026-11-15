@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/itsnotyoutoday/squatclient/internal/config"
 	"github.com/itsnotyoutoday/squatclient/internal/layouts"
 	"github.com/itsnotyoutoday/squatclient/internal/themes"
 )
@@ -93,6 +94,9 @@ func (s *Service) watchLayouts() {
 // Themes: a folder of "<id>.json" files (or "<id>/theme.json"). The window validates them.
 
 func (s *Service) themeMgr() *themes.Manager {
+	if d := config.ExpandPath(s.cfg.Settings().ThemesDir); d != "" {
+		return themes.New(d)
+	}
 	return themes.New(filepath.Join(s.cfg.Dir(), "themes"))
 }
 

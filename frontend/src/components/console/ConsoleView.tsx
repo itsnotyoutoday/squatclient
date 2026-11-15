@@ -23,9 +23,9 @@ export function ConsoleView() {
   };
 
   return (
-    <main className="console" aria-label="Console" data-testid="console">
+    <main className="console" aria-label="Home" data-testid="console">
       <div className="console-bar">
-        <span className="console-title">Console</span>
+        <span className="console-title">Home</span>
         <span className="console-actions">
           <button type="button" className="primary" onClick={() => useUi.getState().openDialog('worlds')}>
             Worlds
@@ -50,8 +50,8 @@ export function ConsoleView() {
         </span>
         <input
           type="text"
-          aria-label="Console command line"
-          placeholder="A TinyFugue command, for example /help or /connect world"
+          aria-label="Home command line"
+          placeholder="Type a /command, for example /help or /connect <world>"
           value={text}
           autoComplete="off"
           spellCheck={false}

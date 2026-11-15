@@ -54,3 +54,16 @@ void squatFixEditMenu(void) {
         }
     });
 }
+
+// squatRequestAttention bounces the Dock icon (informational: once) or cancels it. Only while the app is not active.
+static NSInteger squatAttention = 0;
+void squatRequestAttention(int on) {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if (on) {
+            if (![NSApp isActive]) squatAttention = [NSApp requestUserAttention:NSInformationalRequest];
+        } else if (squatAttention != 0) {
+            [NSApp cancelUserAttentionRequest:squatAttention];
+            squatAttention = 0;
+        }
+    });
+}

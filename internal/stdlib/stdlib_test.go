@@ -339,3 +339,32 @@ func TestLoadFindsClassicLibraryAndExamples(t *testing.T) {
 		t.Fatalf("library not found through /load:\n%s", all)
 	}
 }
+
+// The library is written on the first start and after an update, not at every start: a second Install leaves the files alone
+// (a user's edit survives), and a different stamp (a new build of the app) writes them again.
+func TestInstallWritesOnlyOnFirstStartAndAfterAnUpdate(t *testing.T) {
+	cfg := t.TempDir()
+	dir, err := Install(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	f := filepath.Join(dir, "stdlib.tf")
+	if err := os.WriteFile(f, []byte("; mine\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Install(cfg); err != nil {
+		t.Fatal(err)
+	}
+	if b, _ := os.ReadFile(f); string(b) != "; mine\n" {
+		t.Fatalf("a second start rewrote the library: %q", b)
+	}
+	if err := os.WriteFile(filepath.Join(cfg, filepath.FromSlash(stampFile)), []byte("an older build"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Install(cfg); err != nil {
+		t.Fatal(err)
+	}
+	if b, _ := os.ReadFile(f); string(b) == "; mine\n" {
+		t.Fatal("after an update the library is written again")
+	}
+}

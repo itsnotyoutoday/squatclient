@@ -63,7 +63,7 @@ func (a *App) ReadTextFile(path string) app.FileResult {
 type ScriptFolders struct {
 	Scripts string `json:"scripts"` // the working / scripts folder in effect (restart to apply a change)
 	AppData string `json:"appData"`
-	Lib     string `json:"lib"`   // the shipped SquatClient library (managed: rewritten at every start)
+	Lib     string `json:"lib"`   // the shipped SquatClient library (part of the install: written on first start and after an update)
 	TFLib   string `json:"tfLib"` // the classic TinyFugue library (managed)
 	Home    string `json:"home"`  // what ~ means
 }

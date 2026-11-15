@@ -1,9 +1,11 @@
 // Package stdlib is SquatClient's own TinyFugue standard library: the scripts in squat/ (see docs/LIB.md),
-// embedded in the binary and installed into the client's configuration folder at start.
+// embedded in the binary and installed into the client's configuration folder on the first start and after an update.
 package stdlib
 
 import (
+	"crypto/sha256"
 	"embed"
+	"encoding/hex"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -25,10 +27,40 @@ const TFDir = "lib/tf"
 // Dir is the folder under the configuration folder that Install writes (lib/squat).
 const Dir = "lib/squat"
 
-// Install writes the library into <configDir>/lib/squat and returns that folder. The folder is managed: it is
-// rewritten at every start, so changes belong in startup.tf. @CONFIGDIR@ in the scripts becomes configDir.
+// stampFile records which build of the library is installed. Install only writes the libraries when it is missing or
+// differs: on the first start and after the app itself was updated, not at every start.
+const stampFile = "lib/.installed"
+
+// libStamp identifies the embedded libraries (a hash of every file name and content) and the folder they install into.
+func libStamp(configDir string) string {
+	h := sha256.New()
+	for _, fsys := range []embed.FS{files, tflib} {
+		_ = fs.WalkDir(fsys, ".", func(p string, d fs.DirEntry, err error) error {
+			if err == nil && !d.IsDir() {
+				b, _ := fsys.ReadFile(p)
+				h.Write([]byte(p))
+				h.Write([]byte{0})
+				h.Write(b)
+			}
+			return nil
+		})
+	}
+	h.Write([]byte(configDir)) // @CONFIGDIR@ is baked into the scripts
+	return hex.EncodeToString(h.Sum(nil))
+}
+
+// Install puts the library into <configDir>/lib/squat (and the classic one into lib/tf) and returns the squat folder.
+// The libraries are part of the install: they are written on the first start and again only when the app ships a
+// different library (a stamp file records which), never at every start. Your own versions of a script go in your
+// scripts folder or a library folder from Settings, which are searched first. @CONFIGDIR@ in the scripts becomes configDir.
 func Install(configDir string) (string, error) {
 	out := filepath.Join(configDir, filepath.FromSlash(Dir))
+	stamp := libStamp(configDir)
+	if b, err := os.ReadFile(filepath.Join(configDir, filepath.FromSlash(stampFile))); err == nil && string(b) == stamp {
+		if _, err := os.Stat(filepath.Join(out, "stdlib.tf")); err == nil {
+			return out, nil
+		}
+	}
 	err := fs.WalkDir(files, "squat", func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -59,10 +91,13 @@ func Install(configDir string) (string, error) {
 	if err := installTF(configDir); err != nil {
 		return out, err
 	}
+	if err := os.WriteFile(filepath.Join(configDir, filepath.FromSlash(stampFile)), []byte(stamp), 0o644); err != nil {
+		return out, err
+	}
 	return out, nil
 }
 
-// installTF writes the classic library into <configDir>/lib/tf (managed like lib/squat: rewritten when it differs).
+// installTF writes the classic library into <configDir>/lib/tf (managed like lib/squat: written on first start and after an update).
 func installTF(configDir string) error {
 	out := filepath.Join(configDir, filepath.FromSlash(TFDir))
 	return fs.WalkDir(tflib, "tflib/tf", func(p string, d fs.DirEntry, err error) error {

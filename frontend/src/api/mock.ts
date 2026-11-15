@@ -629,11 +629,19 @@ export class MockEngine implements EngineAPI {
     this.cmcpCall('cmcpEvent', session, path, event, value);
     return { tickets: [] };
   }
-  async cmcpCommand(session: string, name: string, args?: Record<string, unknown>): Promise<{ id: number; echo: string }> {
+  async cmcpCommand(
+    session: string,
+    name: string,
+    args?: Record<string, unknown>,
+  ): Promise<{ id: number; echo: string }> {
     this.cmcpCall('cmcpCommand', session, name, args);
     return { id: this.cmcpCalls.length, echo: name };
   }
-  async cmcpAcquire(session: string, owner: string, subs: { pkg: string; rate_ms?: number }[]): Promise<void> {
+  async cmcpAcquire(
+    session: string,
+    owner: string,
+    subs: { pkg: string; rate_ms?: number }[],
+  ): Promise<void> {
     this.cmcpCall('cmcpAcquire', session, owner, subs);
   }
   async cmcpRelease(session: string, owner: string): Promise<void> {
@@ -681,8 +689,20 @@ export class MockEngine implements EngineAPI {
   }
   /** the console (the client's own screen): what the tests and the demo see */
   consoleLog: Line[] = [
-    { session: '', seq: 1, ts: Date.now(), kind: 'system', spans: [{ s: 'SquatClient (demo): a graphical MU* client with TinyFugue-compatible scripting.' }] },
-    { session: '', seq: 2, ts: Date.now(), kind: 'system', spans: [{ s: '% Loading commands from stdlib.tf.' }] },
+    {
+      session: '',
+      seq: 1,
+      ts: Date.now(),
+      kind: 'system',
+      spans: [{ s: 'SquatClient (demo): a graphical MU* client with TinyFugue-compatible scripting.' }],
+    },
+    {
+      session: '',
+      seq: 2,
+      ts: Date.now(),
+      kind: 'system',
+      spans: [{ s: '% Loading commands from stdlib.tf.' }],
+    },
   ];
   async consoleLines(afterSeq: number): Promise<Line[]> {
     return this.consoleLog.filter((l) => l.seq > afterSeq);
@@ -691,20 +711,64 @@ export class MockEngine implements EngineAPI {
   async consoleInput(text: string): Promise<void> {
     this.consoleInputs.push(text);
     const add = (kind: Line['kind'], s: string): void => {
-      const line: Line = { session: '', seq: this.consoleLog.length + 1, ts: Date.now(), kind, spans: [{ s }] };
+      const line: Line = {
+        session: '',
+        seq: this.consoleLog.length + 1,
+        ts: Date.now(),
+        kind,
+        spans: [{ s }],
+      };
       this.consoleLog.push(line);
       this.emit('console', line);
     };
     add('echo', text);
-    add('system', text.startsWith('/') ? `% ${text.slice(1).split(' ')[0]}: demo console` : '% No world: connect with /connect <world>.');
+    add(
+      'system',
+      text.startsWith('/')
+        ? `% ${text.slice(1).split(' ')[0]}: demo console`
+        : '% No world: connect with /connect <world>.',
+    );
   }
-  diagState = { enabled: true, mode: 'always' as 'always' | 'optin' | 'off', lines: [] as string[], zips: [] as string[], opened: [] as string[], cleared: 0 };
+  diagState = {
+    enabled: true,
+    mode: 'always' as 'always' | 'optin' | 'off',
+    lines: [] as string[],
+    zips: [] as string[],
+    opened: [] as string[],
+    cleared: 0,
+  };
   async diagInfo(): Promise<DiagInfo> {
-    return { mode: this.diagState.mode, available: this.diagState.mode !== 'off', enabled: this.diagState.enabled, build: 'mock-build', version: '0.0.0', os: 'darwin', arch: 'arm64', repoSlug: 'owner/repo', contactName: 'Someone', contactHost: 'mud.example.org', contactPort: 1701, folder: '/tmp/diagnostics' };
+    return {
+      mode: this.diagState.mode,
+      available: this.diagState.mode !== 'off',
+      enabled: this.diagState.enabled,
+      build: 'mock-build',
+      version: '0.0.0',
+      os: 'darwin',
+      arch: 'arm64',
+      repoSlug: 'owner/repo',
+      contactName: 'Someone',
+      contactHost: 'mud.example.org',
+      contactPort: 1701,
+      folder: '/tmp/diagnostics',
+    };
   }
   async diagStatus(): Promise<DiagStatus> {
     const bytes = this.diagState.lines.join('\n').length;
-    return { info: await this.diagInfo(), log: { enabled: this.diagState.enabled, session: 's-now', sessions: [{ id: 's-now', current: true, bytes, segments: 1, redactions: 2 }, { id: 's-prev', current: false, bytes: 2048, segments: 2, redactions: 0 }], dropped: 0, budget: 100 << 20 }, redactions: 2 };
+    return {
+      info: await this.diagInfo(),
+      log: {
+        enabled: this.diagState.enabled,
+        session: 's-now',
+        sessions: [
+          { id: 's-now', current: true, bytes, segments: 1, redactions: 2 },
+          { id: 's-prev', current: false, bytes: 2048, segments: 2, redactions: 0 },
+        ],
+        dropped: 0,
+        budget: 100 << 20,
+      },
+      redactions: 2,
+    };
   }
   async diagSetEnabled(on: boolean): Promise<void> {
     this.diagState.enabled = on;
@@ -714,7 +778,9 @@ export class MockEngine implements EngineAPI {
     this.diagState.cleared++;
   }
   async diagView(n: number, filter: string): Promise<string[]> {
-    return this.diagState.lines.filter((l) => !filter || l.toLowerCase().includes(filter.toLowerCase())).slice(-n);
+    return this.diagState.lines
+      .filter((l) => !filter || l.toLowerCase().includes(filter.toLowerCase()))
+      .slice(-n);
   }
   async diagLog(layer: string, session: string, text: string): Promise<void> {
     if (this.diagState.enabled) this.diagState.lines.push(`[${layer}] ${session} ${text}`);
@@ -839,6 +905,20 @@ export class MockEngine implements EngineAPI {
       json,
       modified: 0,
     }));
+  }
+  /** what the window asked of the icon badge and the desktop notifications, for tests */
+  badge: number[] = [];
+  async setBadge(n: number): Promise<void> {
+    this.badge.push(n);
+  }
+  notified: { title: string; body: string; session: string }[] = [];
+  async notify(title: string, body: string, session: string): Promise<void> {
+    this.notified.push({ title, body, session });
+  }
+  /** what the window asked of the taskbar, for tests */
+  attention: boolean[] = [];
+  async requestAttention(on: boolean): Promise<void> {
+    this.attention.push(on);
   }
   async themesDir(): Promise<string> {
     return '~/.squatclient/themes';

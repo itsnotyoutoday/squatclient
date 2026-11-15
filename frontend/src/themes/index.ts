@@ -1,4 +1,4 @@
-import { BUILTIN_THEMES, dark } from './builtin';
+import { BUILTIN_THEMES, dark, highContrast, light } from './builtin';
 import type { Theme } from './schema';
 
 export * from './schema';
@@ -41,7 +41,55 @@ export function setFolderThemes(files: ThemeFile[]): ThemeProblem[] {
 }
 
 export const allThemes = (): Theme[] => [...BUILTIN_THEMES, ...custom];
-export const findTheme = (id: string): Theme => allThemes().find((t) => t.id === id) ?? dark;
+
+/** The theme id that means "do what the operating system does": light or dark by its colour scheme, high contrast when it asks for it. */
+export const SYSTEM_THEME = 'system';
+
+/** What the operating system asks for right now. */
+export interface SystemLook {
+  dark: boolean;
+  highContrast: boolean;
+}
+/** What the Linux desktop's settings portal said (it wins over the web view's own reading, which does not always follow it). */
+let portal: SystemLook | null = null;
+/** Linux: the desktop told us its colour scheme and contrast preference. */
+export function setPortalLook(l: { dark: boolean; highContrast: boolean }): void {
+  portal = { dark: l.dark, highContrast: l.highContrast };
+  useSystemLook.setState(portal);
+}
+const readSystem = (): SystemLook => {
+  if (portal) return portal;
+  const q = (s: string): boolean =>
+    typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia(s).matches;
+  return {
+    dark: q('(prefers-color-scheme: dark)') || !q('(prefers-color-scheme: light)'),
+    highContrast: q('(forced-colors: active)') || q('(prefers-contrast: more)'),
+  };
+};
+/** Bumped when the operating system's colour scheme or contrast preference changes. */
+export const useSystemLook = create<SystemLook>(() => readSystem());
+/** Follow the system live: call once at start; returns the unsubscribe. */
+export function watchSystemLook(): () => void {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return () => undefined;
+  const qs = [
+    '(prefers-color-scheme: dark)',
+    '(prefers-color-scheme: light)',
+    '(forced-colors: active)',
+    '(prefers-contrast: more)',
+  ].map((q) => window.matchMedia(q));
+  const on = (): void => useSystemLook.setState(readSystem());
+  qs.forEach((m) => m.addEventListener?.('change', on));
+  on();
+  return () => qs.forEach((m) => m.removeEventListener?.('change', on));
+}
+
+export const findTheme = (id: string): Theme => {
+  if (id === SYSTEM_THEME) {
+    const s = useSystemLook.getState();
+    return s.highContrast ? highContrast : s.dark ? dark : light;
+  }
+  return allThemes().find((t) => t.id === id) ?? dark;
+};
 
 /** Apply a theme through CSS variables on `el` (default: <html>). Instant, no re-render needed for chrome. */
 export function applyTheme(theme: Theme, el: HTMLElement = document.documentElement): void {

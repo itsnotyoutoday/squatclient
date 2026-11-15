@@ -166,6 +166,7 @@ func (s *Service) Start() {
 	s.startDiagSnapshots()
 	s.watchLayouts()
 	s.watchThemes()
+	s.watchSystem()
 	ch, unsub := s.eng.Subscribe()
 	s.unsub = unsub
 	go s.pump(ch)
@@ -266,6 +267,15 @@ func (s *Service) applyLocalEcho() {
 		}
 	}
 	s.eng.SetWorldLocalEcho(per)
+	protos := map[string]int{}
+	for _, w := range s.cfg.Worlds() {
+		if w.Cmcp == "1" {
+			protos[w.Name] = 1
+		} else if w.Cmcp == "2" {
+			protos[w.Name] = 2
+		}
+	}
+	s.eng.SetWorldCmcpProto(protos) // each world declares exactly one CMCP version
 	s.eng.SetLocalEchoDefault(s.cfg.Settings().LocalEcho)
 }
 

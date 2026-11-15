@@ -621,6 +621,18 @@ textarea {
 .worldlist h3 {
   margin: 6px 0 2px;
 }
+.worldlist section.dropping {
+  outline: 2px dashed var(--ui-accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.worldlist .dropHint {
+  padding: 4px 8px;
+  font-style: italic;
+}
+.worldlist .newgroup input {
+  width: 100%;
+}
 .rowline,
 .awayitem {
   display: flex;
@@ -1801,6 +1813,26 @@ h3.lay-panel-title {
   flex: 1;
   font-family: var(--mono, monospace);
 }
-.tab.console .tabname {
+.tab.home .tabname {
+  font-weight: 600;
+}
+
+/* Settings: sections as tabs */
+.settabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid var(--ui-border);
+}
+.settabs button {
+  background: none;
+  border-color: transparent;
+  border-radius: 4px 4px 0 0;
+}
+.settabs button.sel {
+  background: var(--ui-panel-alt);
+  border-color: var(--ui-border);
+  border-bottom-color: var(--ui-accent);
   font-weight: 600;
 }

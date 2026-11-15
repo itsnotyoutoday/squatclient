@@ -46,7 +46,7 @@ export function StatusBar() {
 
   return (
     <footer className="statusbar" role="status" aria-label="Status">
-      <span className="seg world">{cur ? cur.name : 'Console'}</span>
+      <span className="seg world">{cur ? cur.name : 'Home'}</span>
       {cur && <span className={`seg state ${cur.state}`}>{STATE_LABEL[cur.state]}</span>}
       {cur && cur.state !== 'ended' && <WorldMuteButton session={cur.id} />}
       {cur?.link && cur.link !== 'attached' && (

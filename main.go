@@ -84,8 +84,8 @@ func main() {
 		Frameless: false,
 		Linux:     &linux.Options{Icon: appIcon, ProgramName: "squatclient"},
 		Mac: &mac.Options{
-			TitleBar:             mac.TitleBarHiddenInset(),
-			Appearance:           mac.NSAppearanceNameDarkAqua,
+			TitleBar: mac.TitleBarHiddenInset(),
+			// no forced appearance: the window follows the system, and so does the page's prefers-color-scheme (the "Follow the system" theme)
 			WebviewIsTransparent: false,
 			WindowIsTranslucent:  false,
 			// no native About panel: the About item opens the page's own dialog (menu_darwin.m)

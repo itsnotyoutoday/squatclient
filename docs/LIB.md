@@ -5,8 +5,8 @@ written for a terminal: a status line drawn with escape codes, key bindings for 
 screen widths. A webview client has none of it, and the engine (gtfparser) already implements most of the library's
 commands natively. SquatClient now ships its own library, deliberately smaller:
 
-* `internal/stdlib/squat/` is embedded in the binary and written to `<scripts>/lib/squat/` at every start (so edit
-  `startup.tf`, not the library). It is loaded as the engine's `StdLib` and is on the `/load` search path.
+* `internal/stdlib/squat/` is embedded in the binary and written to `<scripts>/lib/squat/` on the first start and again only after an update (a stamp file, `lib/.installed`, records
+  which build is installed). To change a script, put your own copy in your scripts folder or a library folder: those are searched first. It is loaded as the engine's `StdLib` and is on the `/load` search path.
   `SQUATCLIENT_TFLIB=<dir>` still replaces it with another library (then `/gfx` needs `/load gfx.tf`).
 * Lua plugins live in `<scripts>/plugins/squat-gfx/`.
 * `@CONFIGDIR@` in the scripts becomes the configuration folder.
@@ -63,8 +63,8 @@ Teko (Klingon), Orbitron (TOS) and Cinzel (Ferengi) are from the Google Fonts re
 
 The installed app also carries the unmodified standard TinyFugue library (`internal/stdlib/tflib/`, notice in
 `TF-NOTICE.md`; the same files gtf ships): `tintin.tf`, `at.tf`, `kb-*.tf`, `spedwalk.tf`, `tf-help` and the rest. It is
-written to `<config>/lib/tf` at every start (managed, like `lib/squat`). `/load` and `/require` search, for a relative
-name: `lib/squat`, then `lib/tf`, then the scripts folder, so `/load tintin.tf` and `/load examples/hello.tf` work without
+written to `<config>/lib/tf` on the first start and after an update (managed, like `lib/squat`). `/load` and `/require` search, for a relative
+name: the scripts folder, your extra library folders, then `lib/squat`, then `lib/tf`, so `/load tintin.tf` and `/load examples/hello.tf` work without
 a path; an absolute path (or `~/...`) loads from anywhere. Only `lib/squat/stdlib.tf` runs at start; the classic
 `stdlib.tf` stays available as `lib/tf/stdlib.tf` (`SQUATCLIENT_TFLIB` can still point the start-up library elsewhere).
 
@@ -73,7 +73,7 @@ a path; an absolute path (or `~/...`) loads from anywhere. Only `lib/squat/stdli
 | Folder | Default | Setting |
 |---|---|---|
 | App-data (startup.tf, plugins/, logs/, settings; holds the managed libraries) | `~/Library/Application Support/SquatClient` (Mac), `%AppData%\SquatClient` (Windows), `~/.config/SquatClient` (Linux) | `SQUATCLIENT_CONFIG_DIR` |
-| Managed libraries `lib/squat` and `lib/tf` | inside the app-data folder; rewritten at every start, do not edit | none |
+| Managed libraries `lib/squat` and `lib/tf` | inside the app-data folder; written on first start and after an update (override a script from your scripts or library folders) | none |
 | Scripts folder: the working directory, so a relative `/load`, `/require`, `/log`, `/save`, `/lcd` start here | the app-data folder | Settings > Scripts folder (`scriptsDir`); applies at the next start |
 | Extra library folders | none | Settings > Extra library folders (`libDirs`) |
 

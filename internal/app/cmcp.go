@@ -3,6 +3,7 @@ package app
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/itsnotyoutoday/cmcp/go/msg"
@@ -20,13 +21,24 @@ func (s *Service) cmcpHello() cs.Config {
 	st := s.cfg.Settings()
 	return cs.Config{
 		Name: "SquatClient", Version: s.version(), Kind: "gui", MaxBody: 65536,
-		Render:  &msg.Render{Kind: "gpu", FPS: 60},
-		Widgets: map[string]int{"joystick": 1, "scope": 1, "lights": 1}, // only the optional ones; core widgets are never listed
+		Protos:  cmcpProtos(),
+		Render:  &msg.Render{Kind: "gpu", FPS: 60, Surfaces: []string{"screen"}}, // panel, dock and float are announced when they are drawn
+		Widgets: map[string]int{"joystick": 1, "scope": 1, "lights": 1},          // only the optional ones; core widgets are never listed
 		Themes:  config.CmcpThemes, Theme: st.ConsoleTheme,
 		Audio: &msg.Audio{Play: !st.SoundMuted && st.SoundVolume > 0, Formats: []string{"wav", "ogg", "mp3"}, Recipes: true, Voices: 16},
 		Input: &msg.Input{Mouse: true, Keyboard: true}, // gamepad/touch only when implemented
 		Packs: &msg.HelloPacks{Formats: []int{1}, Inline: true, HTTPS: true},
 	}
+}
+
+// cmcpProtos is the CMCP version a world declares when it has no choice of its own. A build after the CMCP 2 change speaks CMCP 2 (spec 20.2);
+// a world can be set to 1 in its settings (World > CMCP version) to talk to an older game. One world declares exactly one version, never both.
+// SQUATCLIENT_CMCP_PROTO=1 changes the default for worlds with no choice (a test aid).
+func cmcpProtos() []int {
+	if os.Getenv("SQUATCLIENT_CMCP_PROTO") == "1" {
+		return []int{1}
+	}
+	return []int{2}
 }
 
 func (s *Service) version() string { return "dev" }
@@ -40,7 +52,7 @@ func (s *Service) applyCmcpSettings() {
 	if s.snd != nil {
 		s.snd.configure(st.SoundFolder)
 	}
-	if line := fmt.Sprintf("settings: soundFolder=%q soundVolume=%d soundMuted=%v soundEra=%q cmcp=%v", st.SoundFolder, st.SoundVolume, st.SoundMuted, st.SoundEra, st.Cmcp); line != s.lastSoundCfg.Swap(line) {
+	if line := fmt.Sprintf("settings: soundFolder=%q soundVolume=%d soundMuted=%v soundEra=%q cmcp=%v cmcpProtos=%v", st.SoundFolder, st.SoundVolume, st.SoundMuted, st.SoundEra, st.Cmcp, cmcpProtos()); line != s.lastSoundCfg.Swap(line) {
 		s.ClientLog(line)
 	}
 	if st.Cmcp {

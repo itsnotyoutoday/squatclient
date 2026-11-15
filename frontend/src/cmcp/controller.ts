@@ -408,6 +408,9 @@ export class CmcpController {
   /** The skin of the tree's theme: a downloaded pack (loaded through the engine, once) drives rendering; the built-in table is the fallback
    * until it arrives and whenever there is no usable pack. */
   private skinOf(s: SessionState, t: CmcpTree): Skin | undefined {
+    // CMCP 2: the ship console frame (nav column, hull and core strip, alert pill) belongs to the ship scope. A context of another scope (the
+    // concourse, a shop, a character screen) is drawn plain: its title, its widgets and the game's text.
+    if (s.ui?.v2 && (s.ui.ctx?.scope ?? '') !== 'ship') return undefined;
     const builtin = skinFor(t.theme);
     if (t.themeSource !== 'pack') return builtin;
     const key = `${s.id}|${t.theme}@${t.themeVersion ?? ''}`;
@@ -442,7 +445,7 @@ export class CmcpController {
     this.noteViewscreen(s, root);
     useOverlays.getState().set(s.id, W, H, ctx.overlays ?? []);
     if (strip) prims.push(...contextStrip(stack, W, ctx));
-    if (ctx.readonly) prims.push(...readonlyBadge(s.ui?.ai ?? false, s.ui?.console?.manned_by, W, ctx));
+    if (ctx.readonly) prims.push(...readonlyBadge(s.ui?.ai ?? false, s.ui?.console?.manned_by ?? (s.ui?.stack ?? []).find((e) => e.active)?.mannedBy, W, ctx));
     // the port node: the rectangle where the real text shows (never drawn over)
     prims.unshift({ id: PORT_ID, type: 'rect', props: { x: tp.rect.x, y: tp.rect.y, w: tp.rect.w, h: tp.rect.h, fill: '#00000000' } });
     s.skinned = false;

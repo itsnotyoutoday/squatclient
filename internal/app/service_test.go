@@ -203,6 +203,11 @@ func TestAdHocConnectAndValidation(t *testing.T) {
 
 func TestEventsInputScrollbackSearchAck(t *testing.T) {
 	f := newFixture(t)
+	on := f.cfg.Settings() // local echo is off by default; this test looks at the echo line
+	on.LocalEcho = true
+	if err := f.svc.SaveSettings(on); err != nil {
+		t.Fatal(err)
+	}
 	srv := fakemush.New(t)
 	si, _ := f.svc.Connect(ConnectTarget{Host: srv.Host(), Port: srv.Port()})
 	f.waitConnected(si.ID)
@@ -318,7 +323,7 @@ func TestColoursByteExactThroughApp(t *testing.T) {
 func TestSettingsAndQuit(t *testing.T) {
 	f := newFixture(t)
 	st, _ := f.svc.GetSettings()
-	if st.Theme != "dark" || !st.Truecolor {
+	if st.Theme != "system" || !st.Truecolor {
 		t.Fatalf("%+v", st)
 	}
 	st.Theme = "light"

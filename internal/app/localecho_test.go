@@ -46,10 +46,17 @@ func TestLocalEchoSettingGlobalAndPerWorld(t *testing.T) {
 		time.Sleep(150 * time.Millisecond)
 		return f.echoesOf(si.ID, text)
 	}
-	if n := say("one"); n != 1 {
-		t.Fatalf("default: local echo on, %d echoes", n)
+	if n := say("one"); n != 0 {
+		t.Fatalf("default: local echo off, %d echoes", n)
 	}
 	cur := f.cfg.Settings()
+	cur.LocalEcho = true
+	if err := f.svc.SaveSettings(cur); err != nil {
+		t.Fatal(err)
+	}
+	if n := say("one again"); n != 1 {
+		t.Fatalf("global on applies to the open session: %d echoes", n)
+	}
 	cur.LocalEcho = false
 	if err := f.svc.SaveSettings(cur); err != nil {
 		t.Fatal(err)

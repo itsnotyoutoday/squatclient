@@ -14,7 +14,7 @@ func TestDefaultsAndRoundTrip(t *testing.T) {
 		t.Fatal(err)
 	}
 	st := s.Settings()
-	if st.Theme != "dark" || !st.Truecolor || st.DefaultEncoding != "utf-8" || st.ScrollbackLines != 20000 || !st.Linkify || !st.PauseOnScroll {
+	if st.Theme != "system" || !st.Truecolor || st.DefaultEncoding != "utf-8" || st.ScrollbackLines != 20000 || !st.Linkify || !st.PauseOnScroll {
 		t.Fatalf("bad defaults %+v", st)
 	}
 	w, err := s.SaveWorld(World{Name: " Trek ", Host: "startrekkin.net", Port: 1701, Login: &Login{Template: "connect {name} {password}", CharName: "kirk", HasPassword: true}})
@@ -192,8 +192,8 @@ func TestLocalEchoDefaultsAndWorldValue(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !s.Settings().LocalEcho {
-		t.Fatal("local echo is on by default")
+	if s.Settings().LocalEcho {
+		t.Fatal("local echo is off by default")
 	}
 	w, err := s.SaveWorld(World{Name: "A", Host: "h", Port: 1})
 	if err != nil || w.LocalEcho != "" {
@@ -207,5 +207,21 @@ func TestLocalEchoDefaultsAndWorldValue(t *testing.T) {
 	w.LocalEcho = "maybe"
 	if _, err := s.SaveWorld(w); err == nil {
 		t.Fatal("a bad value is refused")
+	}
+}
+
+// Every world has a group: one saved or loaded without it lands in the default group.
+func TestWorldsAlwaysHaveAGroup(t *testing.T) {
+	s, _ := Open(t.TempDir())
+	w, err := s.SaveWorld(World{Name: "A", Host: "a.example", Port: 4201})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if w.Group != DefaultGroup {
+		t.Fatalf("a world saved with no group gets %q, got %q", DefaultGroup, w.Group)
+	}
+	w2, _ := s.SaveWorld(World{Name: "B", Host: "b.example", Port: 4201, Group: "  Mine  "})
+	if w2.Group != "Mine" {
+		t.Fatalf("a group name is trimmed: %q", w2.Group)
 	}
 }

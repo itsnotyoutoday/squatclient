@@ -5,7 +5,7 @@ import type { Controller } from './state/controller';
 import { ControllerContext } from './state/controller-context';
 import { useSessions, useSettings, useUi } from './state/stores';
 import { useTheme } from './state/hooks';
-import { applyTheme } from './themes';
+import { applyTheme, setPortalLook, watchSystemLook } from './themes';
 import { LiveRegion } from './components/output/LiveRegion';
 import { getOutput } from './components/output/handle';
 import { ConsoleView } from './components/console/ConsoleView';
@@ -148,7 +148,16 @@ export function App({ engine }: { engine: EngineAPI }) {
     const offHelp = engine.on('help', (p) => openHelp(p.topic));
     const offInput = engine.on('input', (p) => insertIntoInput(p.text));
     const offDialog = engine.on('dialog', (p) => {
-      const ids = ['worlds', 'quick', 'settings', 'squatters', 'help', 'history', 'about', 'layouts'] as const;
+      const ids = [
+        'worlds',
+        'quick',
+        'settings',
+        'squatters',
+        'help',
+        'history',
+        'about',
+        'layouts',
+      ] as const;
       const id = ids.find((x) => x === p.name);
       if (id) useUi.getState().openDialog(id);
     });
@@ -174,55 +183,64 @@ export function App({ engine }: { engine: EngineAPI }) {
 
   useEffect(() => applyTheme(theme), [theme]);
   useEffect(() => {
+    const off = engine.on('system-look', (l) => l.known && setPortalLook(l));
+    return off;
+  }, [engine]);
+  useEffect(() => watchSystemLook(), []); // the "Follow the system" theme tracks the OS colour scheme and contrast preference live
+  useEffect(() => {
     document.title = unread > 0 ? `(${unread}) SquatClient` : 'SquatClient';
   }, [unread]);
+  const badgeOn = useSettings((s) => s.settings.iconBadge);
+  useEffect(() => {
+    void engine?.setBadge(badgeOn ? unread : 0).catch(() => undefined); // the unread count on the taskbar button / Dock icon
+  }, [engine, unread, badgeOn]);
   useGlobalKeys(controller, getOutput);
   const platform = useMemo(() => detectPlatform(), []);
 
   return (
     <ControllerContext.Provider value={controller}>
       <GfxProvider engine={engine}>
-      <div
-        className="app"
-        style={{ '--font': fontFamily, '--font-size': `${fontSize}px` } as React.CSSProperties}
-      >
-        <a
-          className="skip"
-          href="#main-input"
-          onClick={(e) => {
-            e.preventDefault();
-            document.querySelector<HTMLElement>('.inputline textarea, .inputline input')?.focus();
-          }}
+        <div
+          className="app"
+          style={{ '--font': fontFamily, '--font-size': `${fontSize}px` } as React.CSSProperties}
         >
-          Skip to input
-        </a>
-        <div className="titlestrip" aria-hidden="true" />
-        {platform !== 'mac' && <MenuBar platform={platform} />}
-        {view === 'terminal' && (
-          <header>
-            <TabBar />
-          </header>
-        )}
-        {error ? (
-          <p role="alert" className="err pad">
-            Failed to start: {error}
-          </p>
-        ) : view === 'editor' ? (
-          <Suspense fallback={<main className="empty" aria-busy="true" />}>
-            <EditorWorkspace />
-          </Suspense>
-        ) : (
-          <Workspace />
-        )}
-        <StatusBar />
-        <LiveRegion />
-        <Toasts />
-        <Dialogs />
-        <UploadHost />
-        <PackConsentHost />
-        <ScreenHelpHost />
-        <AlertAmbientOverlay />
-      </div>
+          <a
+            className="skip"
+            href="#main-input"
+            onClick={(e) => {
+              e.preventDefault();
+              document.querySelector<HTMLElement>('.inputline textarea, .inputline input')?.focus();
+            }}
+          >
+            Skip to input
+          </a>
+          <div className="titlestrip" aria-hidden="true" />
+          {platform !== 'mac' && <MenuBar platform={platform} />}
+          {view === 'terminal' && (
+            <header>
+              <TabBar />
+            </header>
+          )}
+          {error ? (
+            <p role="alert" className="err pad">
+              Failed to start: {error}
+            </p>
+          ) : view === 'editor' ? (
+            <Suspense fallback={<main className="empty" aria-busy="true" />}>
+              <EditorWorkspace />
+            </Suspense>
+          ) : (
+            <Workspace />
+          )}
+          <StatusBar />
+          <LiveRegion />
+          <Toasts />
+          <Dialogs />
+          <UploadHost />
+          <PackConsentHost />
+          <ScreenHelpHost />
+          <AlertAmbientOverlay />
+        </div>
       </GfxProvider>
     </ControllerContext.Provider>
   );
