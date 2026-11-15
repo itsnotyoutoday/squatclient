@@ -20,10 +20,10 @@ export function measureText(text: string, size: number, font = 'sans-serif', wei
 export function fitText(text: string, size: number, maxW: number, font?: string, weight?: string, floor = FIT_FLOOR): { text: string; size: number } {
   if (maxW <= 0 || measureText(text, size, font, weight) <= maxW) return { text, size };
   const s = Math.max(size * floor, (size * maxW) / measureText(text, size, font, weight));
-  if (measureText(text, s, font, weight) <= maxW) return { text, size: Math.round(s * 10) / 10 };
+  if (measureText(text, s, font, weight) <= maxW) return { text, size: Math.floor(s * 10) / 10 };
   let t = text;
   while (t.length > 1 && measureText(t + '\u2026', s, font, weight) > maxW) t = t.slice(0, -1);
-  return { text: t + '\u2026', size: Math.round(s * 10) / 10 };
+  return { text: t + '\u2026', size: Math.floor(s * 10) / 10 };
 }
 
 type R4 = [number, number, number, number];
