@@ -175,6 +175,7 @@ export function GfxProvider({ engine, children }: { engine: EngineAPI; children:
     const c = new CmcpController(engine, (id) => get(id).rt);
     c.onError = (text) => useUi.getState().toast('warn', text);
     c.onNotes = collectPrompts;
+    c.onHint = (text) => useUi.getState().toast('info', text);
     c.startCollapsed = () => useSettings.getState().settings.cmcpStartCollapsed;
     cmcp.current = c;
     const off = c.attach();
@@ -229,6 +230,31 @@ export function GfxProvider({ engine, children }: { engine: EngineAPI; children:
     }).catch(() => undefined);
     return () => { offs.forEach((o) => o()); all.forEach((g) => g.rt.stop()); all.clear(); };
   }, [engine, get, drop, all]);
+  // the screen menu has keyboard focus: Up/Down/Home/End/Enter/Escape belong to it (capture phase, before the input bar sees them); Alt+M moves
+  // focus into it from the input and Escape/Enter give it back
+  useEffect(() => {
+    let prevFocus: HTMLElement | null = null;
+    const restore = (): void => { const el = prevFocus; prevFocus = null; if (el && document.contains(el)) el.focus(); };
+    const onKey = (e: KeyboardEvent): void => {
+      const fg = useSessions.getState().fg;
+      const c = getActiveCmcp();
+      if (!fg || !c) return;
+      if (e.altKey && !e.ctrlKey && e.key.toLowerCase() === 'm' && usePane.getState().by[fg]?.has) {
+        if (!c.menuOpen(fg)) { prevFocus = document.activeElement as HTMLElement | null; (document.activeElement as HTMLElement | null)?.blur?.(); }
+        const open = c.toggleMenu(fg);
+        if (!open) restore();
+        e.preventDefault(); e.stopPropagation();
+        return;
+      }
+      if (!c.menuOpen(fg)) return;
+      if (c.menuKey(fg, e.key)) {
+        if (!c.menuOpen(fg)) restore(); // Escape or an opened screen: the keyboard goes back to the input
+        e.preventDefault(); e.stopPropagation();
+      }
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, []);
   // Escape hides the foreground session's graphics when nothing else wants it; Alt+key shortcuts of its objects click them
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {

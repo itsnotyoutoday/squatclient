@@ -50,14 +50,17 @@ export function frameShapes(shapes: Shape[], pal: Pal, vars: Record<string, stri
 /** the nav column: decoration only (the game decides the console); the current screen's item carries the marker */
 export function navShapes(skin: Skin, pal: Pal, current: number, idp: string, avail?: (screen: string) => { available: boolean; hint?: string }): Prim[] {
   const b = skin.nav.button, out: Prim[] = [];
-  skin.nav.items.forEach((it, i) => {
+  // only the screens this console can show are listed; the nav slots close up (the full list is behind the menu's "more")
+  const shown = skin.nav.items.map((it, i) => ({ it, i })).filter(({ it }) => avail?.(`std.${it.screens[0]}`).available !== false);
+  const curShown = shown.findIndex(({ i }) => i === current);
+  shown.forEach(({ it, i: orig }, i) => {
     out.push({
       id: `${idp}nav${i}`, type: 'button', events: ['click'], target: { path: '', event: '', special: 'nav', screen: `std.${it.screens[0]}` },
       props: { x: b.x + i * (b.dx ?? 0), y: b.y + i * (b.dy ?? 0), w: b.w, h: b.h, r: b.r ?? b.h / 2, fill: col(it.role, pal), text: it.label, color: col(b.color, pal), size: b.size * (skin.font.tscale ?? 1), weight: skin.font.weight,
-        align: b.align ?? 'center', padX: b.padX ?? 16, font: skin.font.family, glow: 0.04, key: `alt+${i + 1}`, skewX: b.skewX ?? 0, stroke: b.stroke ? col(b.stroke, pal) : undefined, strokeWidth: b.sw, opacity: i === current ? 1 : avail?.(`std.${it.screens[0]}`).available === false ? 0.35 : 0.85 },
+        align: b.align ?? 'center', padX: b.padX ?? 16, font: skin.font.family, glow: 0.04, key: `alt+${i + 1}`, skewX: b.skewX ?? 0, stroke: b.stroke ? col(b.stroke, pal) : undefined, strokeWidth: b.sw, opacity: orig === current ? 1 : 0.85 },
     });
   });
   const m = skin.nav.marker;
-  if (m && current >= 0) out.push({ id: `${idp}marker`, type: 'rect', props: { x: m.x, y: m.y + current * (b.dy ?? 0), w: m.w, h: m.h, fill: col(m.fill, pal), glow: m.glow } });
+  if (m && curShown >= 0) out.push({ id: `${idp}marker`, type: 'rect', props: { x: m.x, y: m.y + curShown * (b.dy ?? 0), w: m.w, h: m.h, fill: col(m.fill, pal), glow: m.glow } });
   return out;
 }

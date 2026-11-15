@@ -6,7 +6,7 @@ import { skinFor } from './skins';
 import { layoutSkinned } from './skinlayout';
 import type { Skin } from './skins/types';
 import { col, frameShapes, navShapes, templateVars } from './skinframe';
-import { setActiveCmcp, usePane } from './pane';
+import { setActiveCmcp, usePane, useScreenHelp } from './pane';
 import { useSettings } from '../state/stores';
 import { diffOps, PORT_ID, SCENE, sceneOp, type Ease } from './ops';
 import { drawSprite, type SpriteView } from './sprite';
@@ -56,6 +56,8 @@ interface SessionState {
   layoutMode: string;
   /** effect objects alive (removed after their duration; cleared on reset) */
   fx: Set<string>;
+  /** the keyboard-focused screen menu: open + highlighted row (an index into the console's screen menu) */
+  menu: { open: boolean; idx: number };
   lastW?: number;
   skinned: boolean;
   viewState: 'compact' | 'balanced' | 'large' | 'expanded' | 'off' | 'default';
@@ -99,6 +101,57 @@ export class CmcpController {
   toggleLog(session: string): void { this.viewEvent(session, 'log_toggle'); }
   /** Alt+] / Alt+[ : the next or previous screen of the console */
   cycleScreen(session: string, dir: number): void { void this.engine.cmcpCycleScreen(session, dir).catch((err: unknown) => this.onError?.(String(err).replace(/^Error: /, ''))); }
+  /** The menu: only the screens this console can show, then a "more..." entry that opens the list of every screen (never a non-screen entry). */
+  private menuList(s: SessionState): { id: string; title: string; available: boolean; active: boolean; hintCmd?: string; reason?: string }[] {
+    const own = (s.ui?.screens ?? []).filter((o) => o.available && o.state !== 'locked');
+    return [...own, { id: '#more', title: 'More screens...', available: true, active: false }];
+  }
+  /** every screen with the console that provides it (the popover behind "more...") */
+  allScreens(s: SessionState): { id: string; title: string; available: boolean; console: string }[] {
+    return (s.ui?.screens ?? []).map((o) => ({ id: o.id, title: o.title || o.id, available: o.available, console: o.available ? 'this console' : (o.hint ?? '').replace(/^man\s+/, '').replace(/\s+to use$/, '') || (o.hintCmd ?? '').replace(/^man\s+/, '') || (o.reason ?? '') }));
+  }
+
+  /** Called with a short message the first time the menu opens (once per install). */
+  onHint?: (text: string) => void;
+
+  menuOpen(session: string): boolean { return this.sess.get(session)?.menu.open ?? false; }
+
+  /** Alt+M: moves keyboard focus into the screen menu (and back out if it is already there). The caller blurs/restores the input. */
+  toggleMenu(session: string): boolean {
+    const s = this.sess.get(session);
+    if (!s?.tree || !s.skinned) return false;
+    s.menu.open = !s.menu.open;
+    if (s.menu.open) {
+      const i = this.menuList(s).findIndex((o) => o.active);
+      s.menu.idx = Math.max(0, i);
+      try {
+        if (!localStorage.getItem('cmcp-menu-hint')) { localStorage.setItem('cmcp-menu-hint', '1'); this.onHint?.('Screen menu: Up/Down to choose, Enter to open, Esc to leave. Alt+M opens it again; Alt+1..5 and Alt+[ / Alt+] switch directly.'); }
+      } catch { /* no storage: no hint memory */ }
+    }
+    this.render(s);
+    return s.menu.open;
+  }
+
+  /** A key while the menu has focus. Returns true when handled (the caller stops the event). */
+  menuKey(session: string, key: string): boolean {
+    const s = this.sess.get(session);
+    if (!s?.menu.open) return false;
+    const menu = this.menuList(s);
+    const n = Math.max(1, menu.length);
+    if (key === 'ArrowDown') s.menu.idx = (s.menu.idx + 1) % n;
+    else if (key === 'ArrowUp') s.menu.idx = (s.menu.idx + n - 1) % n;
+    else if (key === 'Home') s.menu.idx = 0;
+    else if (key === 'End') s.menu.idx = n - 1;
+    else if (key === 'Escape') s.menu.open = false;
+    else if (key === 'Enter') {
+      const o = menu[s.menu.idx];
+      if (o?.id === '#more') { s.menu.open = false; useScreenHelp.getState().show(this.allScreens(s)); }
+      else if (o) { s.menu.open = false; void this.engine.cmcpShowScreen(session, o.id).catch((e: unknown) => this.onError?.(String(e).replace(/^Error: /, ''))); }
+    } else return false;
+    this.render(s);
+    return true;
+  }
+
   /** green -> yellow -> red -> green through the verb alert.set; a console that may not set it gets the hint instead */
   cycleAlert(session: string): void {
     const s = this.sess.get(session);
@@ -133,7 +186,7 @@ export class CmcpController {
   state(session: string): SessionState {
     let s = this.sess.get(session);
     if (!s) {
-      s = { id: session, ui: null, tree: null, prev: new Map(), targets: new Map(), local: new Map(), history: new Map(), images: new Map(), spriteDocs: new Map(), spriteWanted: new Set(), spriteDrawn: new Map(), spriteN: 0, viewImages: new Map(), viewDocs: new Map(), viewWanted: new Set(), fxN: 0, vsRect: null, vsItems: {}, aspect: 9 / 16, open: false, dismissed: '', key: '', fonts: new Set(), lastRev: -1, log: false, off: false, offSeen: false, lastPal: '', layoutMode: 'stack', fx: new Set(), skinned: false, viewState: 'default' };
+      s = { id: session, ui: null, tree: null, prev: new Map(), targets: new Map(), local: new Map(), history: new Map(), images: new Map(), spriteDocs: new Map(), spriteWanted: new Set(), spriteDrawn: new Map(), spriteN: 0, viewImages: new Map(), viewDocs: new Map(), viewWanted: new Set(), fxN: 0, vsRect: null, vsItems: {}, aspect: 9 / 16, open: false, dismissed: '', key: '', fonts: new Set(), lastRev: -1, log: false, off: false, offSeen: false, lastPal: '', layoutMode: 'stack', fx: new Set(), menu: { open: false, idx: 0 }, skinned: false, viewState: 'default' };
       this.sess.set(session, s);
       const rt = this.rtFor(session);
       const prev = rt.onResize;
@@ -411,6 +464,16 @@ export class CmcpController {
     const ab = skin.alert ?? { ...skin.off.button, y: skin.off.button.y + 56, role: 'x' as const };
     const can = (s.ui?.commands ?? []).includes('alert.set') && !(s.ui?.readonly ?? false);
     prims.push({ id: 'alertbtn', type: 'button', events: ['click'], target: { path: '', event: '', special: 'alert' }, props: { x: ab.x, y: ab.y, w: ab.w, h: ab.h, r: ab.r ?? ab.h / 2, fill: col(alert ? 'r' : ab.role, pal), text: `ALERT ${vars.alert}`, color: col(ab.color ?? '#000000', pal), size: ab.size * (skin.font.tscale ?? 1), weight: skin.font.weight, align: ab.align ?? 'center', font: skin.font.family, key: 'alt+a', glow: can ? 0.1 : 0, opacity: can ? 1 : 0.5 } });
+    if (s.menu.open) { // the focused screen menu over the nav column: every screen, the highlighted one ringed and inverted, locked ones dim
+      const items = this.menuList(s);
+      const nb = skin.nav.button, rowH = 30, x = nb.x, y = nb.y, w = Math.max(nb.w, 190);
+      prims.push({ id: 'menubg', type: 'rect', props: { x: x - 6, y: y - 8, w: w + 12, h: Math.min(items.length, 15) * rowH + 16, fill: col('bg', pal), stroke: col('x', pal), strokeWidth: 2, r: skin.sharp ? 0 : 10, opacity: 0.96 } });
+      items.slice(0, 15).forEach((o, i) => {
+        const foc = i === s.menu.idx;
+        if (foc) prims.push({ id: `menuring${i}`, type: 'rect', props: { x, y: y + i * rowH, w, h: rowH - 2, fill: col('x', pal), stroke: col('s', pal), strokeWidth: 3, r: skin.sharp ? 0 : 8 } });
+        prims.push({ id: `menutxt${i}`, type: 'text', props: { x: x + 10, y: y + i * rowH + rowH / 2 - 1, text: `${o.active ? '> ' : ''}${(o.title || o.id).toUpperCase()}`, size: 20, fill: foc ? col('bg', pal) : col(o.id === '#more' ? 'x' : 'k', pal), baseline: 'middle', weight: '700', font: skin.font.family } });
+      });
+    }
     const ob = skin.off.button;
     prims.push({ id: 'offbtn', type: 'button', events: ['click'], target: { path: '', event: '', special: 'off' }, props: { x: ob.x, y: ob.y, w: ob.w, h: ob.h, r: ob.r ?? ob.h / 2, fill: col(ob.role, pal), text: skin.off.label, color: col(ob.color, pal), size: ob.size * (skin.font.tscale ?? 1), weight: skin.font.weight, align: ob.align ?? 'center', font: skin.font.family, key: 'alt+s', glow: 0.04 } });
     prims.forEach((p, i) => { p.props = { ...p.props, z: i }; });

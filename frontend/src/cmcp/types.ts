@@ -63,7 +63,7 @@ export interface CmcpUI {
   stack?: CmcpStackEntry[];
   catalogueComplete?: boolean;
   /** The screen menu: the screens this console can show, with why a screen is dimmed and how to get it. */
-  screens?: { id: string; title: string; available: boolean; reason?: string; hintCmd?: string; active: boolean }[];
+  screens?: { id: string; title: string; available: boolean; reason?: string; hintCmd?: string; active: boolean; state?: string; hint?: string }[];
   localScreen?: string;
   pinned?: boolean;
   catalogue?: Record<string, CmcpCommandSpec>;

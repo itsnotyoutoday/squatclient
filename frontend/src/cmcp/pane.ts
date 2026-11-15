@@ -15,3 +15,7 @@ export const usePane = create<PaneState>((set) => ({
 let active: CmcpController | null = null;
 export const setActiveCmcp = (c: CmcpController | null): void => { active = c; };
 export const getActiveCmcp = (): CmcpController | null => active;
+
+/** The popover behind the menu's "more...": every screen and which console provides it. */
+interface HelpState { rows: { id: string; title: string; available: boolean; console: string }[] | null; show(rows: NonNullable<HelpState['rows']>): void; close(): void }
+export const useScreenHelp = create<HelpState>((set) => ({ rows: null, show: (rows) => set({ rows }), close: () => set({ rows: null }) }));
