@@ -26,6 +26,15 @@ func (a *App) CmcpEvent(session, path, event, valueJSON string) (engine.CmcpEven
 	return s.CmcpEvent(session, path, event, valueJSON)
 }
 
+// CmcpPaneEvent performs a widget event of an off-screen pane (panel, dock, float); pane is the pane's context key.
+func (a *App) CmcpPaneEvent(session, pane, path, event, valueJSON string) (engine.CmcpEventResult, error) {
+	s, err := a.service()
+	if err != nil {
+		return engine.CmcpEventResult{}, err
+	}
+	return s.CmcpPaneEvent(session, pane, path, event, valueJSON)
+}
+
 // CmcpCommand sends a verb of the game's catalogue; argsJSON is an object or "".
 func (a *App) CmcpCommand(session, name, argsJSON string) (engine.CmcpTicket, error) {
 	s, err := a.service()

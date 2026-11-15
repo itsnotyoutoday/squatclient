@@ -99,6 +99,16 @@ export interface CmcpUI {
   alert?: string;
   pending: number;
   tree: CmcpTree | null;
+  /** CMCP 2: contexts presented on a panel, dock or float, in addition to the main screen */
+  panes?: CmcpPane[];
+}
+
+/** A context the game wants on a panel, dock or float, shown in addition to the main screen (CMCP 2, spec 20.14). dock, size and resizable are hints. */
+export interface CmcpPane {
+  surface: 'panel' | 'dock' | 'float' | string; key: string; ctx: number; type: string; scope: string; id?: string; name?: string; title?: string; layout: string;
+  dock?: 'left' | 'right' | 'top' | 'bottom' | string; resizable?: boolean; size?: Record<string, number>; readonly?: boolean; commands?: string[];
+  /** null: its layout is not available yet (the pack is still coming) */
+  tree: CmcpTree | null;
 }
 
 export interface CmcpEventResult { tickets: { id: number; cmd: string; mutating: boolean; echo: string }[]; errors?: string[]; show?: string }

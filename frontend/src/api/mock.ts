@@ -629,6 +629,10 @@ export class MockEngine implements EngineAPI {
     this.cmcpCall('cmcpEvent', session, path, event, value);
     return { tickets: [] };
   }
+  async cmcpPaneEvent(session: string, pane: string, path: string, event: string, value?: unknown): Promise<CmcpEventResult> {
+    this.cmcpCall('cmcpPaneEvent', session, pane, path, event, value);
+    return { tickets: [] };
+  }
   async cmcpCommand(
     session: string,
     name: string,

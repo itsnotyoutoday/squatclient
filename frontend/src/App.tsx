@@ -5,6 +5,7 @@ import type { Controller } from './state/controller';
 import { ControllerContext } from './state/controller-context';
 import { useSessions, useSettings, useUi } from './state/stores';
 import { useTheme } from './state/hooks';
+import { PaneHosts } from './cmcp/PaneHost';
 import { applyTheme, setPortalLook, watchSystemLook } from './themes';
 import { LiveRegion } from './components/output/LiveRegion';
 import { getOutput } from './components/output/handle';
@@ -118,7 +119,11 @@ function Workspace() {
 
   // the Console is the screen while no world is open, and whenever its tab is picked
   if (consoleOpen || !fg || !session) return <ConsoleView />;
-  return <LayoutHost session={session} />;
+  return (
+    <PaneHosts>
+      <LayoutHost session={session} />
+    </PaneHosts>
+  );
 }
 
 export function App({ engine }: { engine: EngineAPI }) {

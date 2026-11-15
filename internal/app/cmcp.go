@@ -22,7 +22,7 @@ func (s *Service) cmcpHello() cs.Config {
 	return cs.Config{
 		Name: "SquatClient", Version: s.version(), Kind: "gui", MaxBody: 65536,
 		Protos:  cmcpProtos(),
-		Render:  &msg.Render{Kind: "gpu", FPS: 60, Surfaces: []string{"screen"}}, // panel, dock and float are announced when they are drawn
+		Render:  &msg.Render{Kind: "gpu", FPS: 60, Surfaces: []string{"screen", "panel", "dock", "float"}}, // all four are drawn (frontend/src/cmcp/PaneHost.tsx)
 		Widgets: map[string]int{"joystick": 1, "scope": 1, "lights": 1},          // only the optional ones; core widgets are never listed
 		Themes:  config.CmcpThemes, Theme: st.ConsoleTheme,
 		Audio: &msg.Audio{Play: !st.SoundMuted && st.SoundVolume > 0, Formats: []string{"wav", "ogg", "mp3"}, Recipes: true, Voices: 16},
@@ -80,6 +80,17 @@ func (s *Service) CmcpEvent(session, path, event, valueJSON string) (engine.Cmcp
 		}
 	}
 	return s.eng.CmcpEvent(session, path, event, v)
+}
+
+// CmcpPaneEvent is CmcpEvent for a widget of an off-screen pane (panel, dock, float); pane is the pane's context key.
+func (s *Service) CmcpPaneEvent(session, pane, path, event, valueJSON string) (engine.CmcpEventResult, error) {
+	var v any
+	if valueJSON != "" {
+		if err := json.Unmarshal([]byte(valueJSON), &v); err != nil {
+			return engine.CmcpEventResult{}, fmt.Errorf("the widget value is not valid JSON: %w", err)
+		}
+	}
+	return s.eng.CmcpPaneEvent(session, pane, path, event, v)
 }
 
 // CmcpCommand sends a verb of the game's catalogue directly (argsJSON is an object).

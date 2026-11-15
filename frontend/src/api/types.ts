@@ -722,6 +722,8 @@ export interface EngineAPI {
   cmcpState(session: string): Promise<CmcpUI | null>;
   /** A widget event of the current screen (path of the CmcpNode, event name, the widget's output). */
   cmcpEvent(session: string, path: string, event: string, value?: unknown): Promise<CmcpEventResult>;
+  /** a widget event of an off-screen pane (panel, dock, float); pane is the context key */
+  cmcpPaneEvent(session: string, pane: string, path: string, event: string, value?: unknown): Promise<CmcpEventResult>;
   /** Sends a verb of the game's catalogue. */
   cmcpCommand(
     session: string,

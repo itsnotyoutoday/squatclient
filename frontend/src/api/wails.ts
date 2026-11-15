@@ -190,6 +190,8 @@ export class WailsEngine implements EngineAPI {
   cmcpState = (session: string) => call<CmcpUI | null>('CmcpState', session);
   cmcpEvent = (session: string, path: string, event: string, value?: unknown) =>
     call<CmcpEventResult>('CmcpEvent', session, path, event, value === undefined ? '' : JSON.stringify(value)).then((r) => ({ ...r, tickets: r.tickets ?? [] }));
+  cmcpPaneEvent = (session: string, pane: string, path: string, event: string, value?: unknown) =>
+    call<CmcpEventResult>('CmcpPaneEvent', session, pane, path, event, value === undefined ? '' : JSON.stringify(value)).then((r) => ({ ...r, tickets: r.tickets ?? [] }));
   cmcpCommand = (session: string, name: string, args?: Record<string, unknown>) =>
     call<{ id: number; echo: string }>('CmcpCommand', session, name, args ? JSON.stringify(args) : '');
   cmcpAcquire = (session: string, owner: string, subs: { pkg: string; rate_ms?: number }[]) =>
