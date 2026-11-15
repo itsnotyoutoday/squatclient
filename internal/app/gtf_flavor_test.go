@@ -1,7 +1,11 @@
 package app
 
 import (
+	"errors"
+	"net"
+	"os"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
@@ -56,5 +60,30 @@ func TestGTFPairingHintsNameGtfCommands(t *testing.T) {
 	_, err := f.svc.PairSquatter("127.0.0.1", 1, "x", "AAAA-BBBB", config.FlavorGTF)
 	if err == nil || !strings.Contains(err.Error(), "squatter=on") {
 		t.Fatalf("unreachable hint: %v", err)
+	}
+}
+
+// A refused connection to a gtf on another machine says why: gtf's squatter listens on 127.0.0.1 only by default. Loopback hosts and other errors keep
+// the generic hint.
+func TestGTFRefusedRemoteHintNamesSquatterBind(t *testing.T) {
+	refused := &net.OpError{Op: "dial", Net: "tcp", Err: &os.SyscallError{Syscall: "connect", Err: syscall.ECONNREFUSED}}
+	err := squatterUnreachable("100.101.102.103", 4400, config.FlavorGTF, config.KindSquatterd, refused)
+	for _, want := range []string{"gtf listens only on 127.0.0.1 by default", "/squatter bind 100.101.102.103", "/squatter to check the address it bound", "ssh tunnel"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Fatalf("missing %q in: %v", want, err)
+		}
+	}
+	for name, e := range map[string]error{
+		"loopback refused":  squatterUnreachable("127.0.0.1", 4400, config.FlavorGTF, config.KindSquatterd, refused),
+		"localhost refused": squatterUnreachable("localhost", 4400, config.FlavorGTF, config.KindSquatterd, refused),
+		"remote timeout":    squatterUnreachable("100.101.102.103", 4400, config.FlavorGTF, config.KindSquatterd, errors.New("i/o timeout")),
+		"remote squatterd":  squatterUnreachable("100.101.102.103", 4400, "", config.KindSquatterd, refused),
+	} {
+		if strings.Contains(e.Error(), "listens only on 127.0.0.1") {
+			t.Fatalf("%s must keep the generic hint: %v", name, e)
+		}
+		if !strings.Contains(e.Error(), "port open?") {
+			t.Fatalf("%s lost the generic hint: %v", name, e)
+		}
 	}
 }

@@ -6,9 +6,11 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"net"
 	"os"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/itsnotyoutoday/squatClientDaemon/pkg/auth"
@@ -140,13 +142,7 @@ func (s *Service) PairSquatter(host string, port int, name, pairCode, kind strin
 	defer cancel()
 	fp, err := engine.ProbeSquatter(ctx, host, port)
 	if err != nil {
-		running := "squatterd"
-		if flavor == config.FlavorGTF {
-			running = "gtf with squatter=on (/set squatter=on, then /squatter)"
-		} else if kind == config.KindTFSquatterd {
-			running = "the TinyFugue bridge (/squat on)"
-		}
-		return PairResult{}, fmt.Errorf("cannot reach a squatter at %s:%d (is %s running and the port open?): %w", host, port, running, err)
+		return PairResult{}, squatterUnreachable(host, port, flavor, kind, err)
 	}
 	id := "sq" + config.NewID()
 	s.pair.mu.Lock()
@@ -290,4 +286,31 @@ func (s *Service) ensureSquatter(id string) error {
 	ctx, cancel := context.WithTimeout(s.ctx, 20*time.Second)
 	defer cancel()
 	return s.eng.ConnectSquatter(ctx, id)
+}
+
+// isLoopbackHost reports whether a squatter address is this machine itself.
+func isLoopbackHost(host string) bool {
+	h := strings.Trim(strings.ToLower(strings.TrimSpace(host)), "[]")
+	if h == "localhost" {
+		return true
+	}
+	ip := net.ParseIP(h)
+	return ip != nil && ip.IsLoopback()
+}
+
+// squatterUnreachable is the error for a squatter that could not be reached. A REFUSED connection to a gtf on another machine has one usual cause that
+// the generic hint sends the user away from: gtf's squatter listens on 127.0.0.1 only unless it is told otherwise (squatter_bind), so a remote address (a
+// LAN or Tailscale one) is refused even with squatter=on. The text says so.
+func squatterUnreachable(host string, port int, flavor string, kind string, err error) error {
+	refused := errors.Is(err, syscall.ECONNREFUSED) || strings.Contains(strings.ToLower(err.Error()), "connection refused")
+	if flavor == config.FlavorGTF && refused && !isLoopbackHost(host) {
+		return fmt.Errorf("cannot reach a squatter at %s:%d: connection refused. gtf listens only on 127.0.0.1 by default. On that machine run /squatter bind %s (and /squatter to check the address it bound), or use an ssh tunnel: %w", host, port, host, err)
+	}
+	running := "squatterd"
+	if flavor == config.FlavorGTF {
+		running = "gtf with squatter=on (/set squatter=on, then /squatter)"
+	} else if kind == config.KindTFSquatterd {
+		running = "the TinyFugue bridge (/squat on)"
+	}
+	return fmt.Errorf("cannot reach a squatter at %s:%d (is %s running and the port open?): %w", host, port, running, err)
 }
