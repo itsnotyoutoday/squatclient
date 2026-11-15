@@ -7,6 +7,7 @@ import { layoutSkinned } from './skinlayout';
 import type { Skin } from './skins/types';
 import { col, frameShapes, navShapes, templateVars } from './skinframe';
 import { setActiveCmcp, usePane } from './pane';
+import { useSettings } from '../state/stores';
 import { diffOps, PORT_ID, SCENE, sceneOp, type Ease } from './ops';
 import { drawSprite, type SpriteView } from './sprite';
 import type { CmcpNode, CmcpNote, CmcpTree, CmcpUI } from './types';
@@ -55,6 +56,7 @@ interface SessionState {
   layoutMode: string;
   /** effect objects alive (removed after their duration; cleared on reset) */
   fx: Set<string>;
+  lastW?: number;
   skinned: boolean;
   viewState: 'compact' | 'balanced' | 'large' | 'expanded' | 'off' | 'default';
 }
@@ -139,7 +141,7 @@ export class CmcpController {
         prev?.(id, w, h);
         if (id !== SCENE || w <= 0 || h <= 0) return;
         const a = h / w;
-        if (Math.abs(a - s!.aspect) > 0.01) { s!.aspect = a; this.render(s!); }
+        if (Math.abs(a - s!.aspect) > 0.01 || Math.abs(w - (s!.lastW ?? 0)) > 24) { s!.aspect = a; s!.lastW = w; this.render(s!); }
       };
     }
     return s;
@@ -377,7 +379,12 @@ export class CmcpController {
     const cur = skin.nav.items.findIndex((i) => i.screens.includes(screenName));
     const label = cur >= 0 ? skin.nav.items[cur].label : (t.title || screenName);
     const vars = templateVars(s.ui!, label);
-    const L = layoutSkinned(t.root, skin, screenName, s.log, t.view?.portDefault ?? 'balanced');
+    // port.max_cols (default 80): the side layout's text is at most 80 monospace columns wide; the box size and font give the scene units
+    const lg = this.rtFor(s.id).slot(SCENE).logical;
+    const k = lg && lg.w > 0 ? Math.min(lg.w / 1600, lg.h / 900) : 0;
+    const fontPx = useSettings.getState().settings.fontSize || 14;
+    const maxPortW = k > 0 ? (80 * 0.6 * fontPx + 28) / k : Infinity;
+    const L = layoutSkinned(t.root, skin, screenName, s.log, t.view?.portDefault ?? 'balanced', maxPortW);
     if (!L) return;
     const { root, port } = L;
     s.layoutMode = L.mode;

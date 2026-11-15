@@ -283,10 +283,13 @@ const button: Draw = (p, ctx, out) => {
     const roles = ctx.skin.widgets.button.roles, idx = Number(id.split('.').pop()) || 0;
     col = ctx.pal![pr.tone === 'alert' ? 'r' : roles[idx % roles.length]];
   }
+  // mode tabs (pack convention: node id `tab_<mode>` with `$ui.scan_mode`): the selected one is filled, the others outlined
+  const tabId = /^tab_(\w+)$/.exec(p.node.id ?? '');
+  const tab = tabId && ctx.tree.ui ? { active: String(ctx.tree.ui.scan_mode ?? 'srs') === tabId[1] } : null;
   const r: Rect = { x: p.rect.x + 2, y: p.rect.y + 2, w: p.rect.w - 4, h: Math.min(p.rect.h - 4, ctx.skin ? ctx.skin.widgets.button.h * 0.75 : 52) };
   out.push({
     id: `${id}.b`, type: 'button',
-    props: { x: r.x, y: r.y, w: r.w, h: r.h, key: mnemonic(pr.key), text: str(pr.text).toUpperCase() + (pr.key ? `  [${str(pr.key).toUpperCase()}]` : ''), fill: on ? col : tok(ctx, 'color.panel'), color: on ? tok(ctx, 'color.bg') : tok(ctx, 'color.dim'), size: ctx.skin ? 15 : 18, weight: '700', font: font(ctx, true), r: ctx.skin ? (ctx.skin.sharp ? 0 : r.h / 2) : radius(ctx) * 1.5, glow: on ? 0.12 : 0, opacity: on ? 1 : 0.7, align: 'center' },
+    props: { x: r.x, y: r.y, w: r.w, h: r.h, key: mnemonic(pr.key), ...(tab && !tab.active && on ? { stroke: col, strokeWidth: 2 } : {}), text: str(pr.text).toUpperCase() + (pr.key ? `  [${str(pr.key).toUpperCase()}]` : ''), fill: tab && !tab.active && on ? tok(ctx, 'color.panel') : on ? col : tok(ctx, 'color.panel'), color: tab && !tab.active && on ? col : on ? tok(ctx, 'color.bg') : tok(ctx, 'color.dim'), size: ctx.skin ? 15 : 18, weight: '700', font: font(ctx, true), r: ctx.skin ? (ctx.skin.sharp ? 0 : r.h / 2) : radius(ctx) * 1.5, glow: on ? 0.12 : 0, opacity: on ? 1 : 0.7, align: 'center' },
     events: on ? ['click'] : [], target: on ? { path: p.node.path, event: 'click' } : undefined,
   });
 };

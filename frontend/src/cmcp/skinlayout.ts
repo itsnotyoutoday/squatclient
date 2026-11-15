@@ -23,7 +23,7 @@ export interface SkinLayout { root: Placed; port: Rect4; mode: Mode; tree: CmcpN
  * layout. Rectangles of the result are in base units (x 4/3 = scene units). */
 export type PortDefault = 'compact' | 'balanced' | 'large';
 
-export function layoutSkinned(tree: CmcpNode, skin: Skin, screenName: string, logExpanded: boolean, portDefault: PortDefault = 'balanced'): SkinLayout | null {
+export function layoutSkinned(tree: CmcpNode, skin: Skin, screenName: string, logExpanded: boolean, portDefault: PortDefault = 'balanced', maxPortW = Infinity): SkinLayout | null {
   const find = (n: CmcpNode): string | null => { if (n.widget === 'textport') return n.path; for (const c of n.children ?? []) { const f = find(c); if (f) return f; } return null; };
   const tp = find(tree);
   if (!tp) return null;
@@ -37,8 +37,13 @@ export function layoutSkinned(tree: CmcpNode, skin: Skin, screenName: string, lo
   const dense = !arranged && intrinsic(withoutPort(tree, tp), 'h') > c[3] * K * 0.8; // some headroom: the estimate is a minimum
   const mode: Mode = dense ? 'side' : 'stack';
   const root = dense ? reflow(tree) : tree;
-  const port = logExpanded ? skin.port.expanded : dense ? skin.side.port : stacked;
-  const band = dense ? skin.side.content : c;
+  // side layout: the text is at most `port.max_cols` columns wide (maxPortW, scene units) and the width it does not need goes to the widget column
+  const sp = skin.side.port, sc = skin.side.content;
+  const sideW = Math.min(sp[2], Math.max(300, maxPortW));
+  const sidePort: Rect4 = [sp[0], sp[1], sideW, sp[3]];
+  const sideContent: Rect4 = [sp[0] + sideW + 16, sc[1], Math.max(sc[2], sc[0] + sc[2] - (sp[0] + sideW + 16)), sc[3]];
+  const port = logExpanded ? skin.port.expanded : dense ? sidePort : stacked;
+  const band = dense ? sideContent : c;
   // a screen that still needs more height than the band has is drawn smaller as a whole (never below 55%) rather than overlapping
   const need = dense ? intrinsic(withoutPort(root, tp), 'h') : 0;
   const scale = dense ? Math.max(0.55, Math.min(1, (band[3] * K) / Math.max(1, need))) : 1;
