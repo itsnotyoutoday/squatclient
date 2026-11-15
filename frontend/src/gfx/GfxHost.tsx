@@ -7,7 +7,7 @@ import { GfxRuntime } from './runtime';
 import { holeClip, planScene, portNodeOf, stripBasis, type Plan, type Rect } from './port';
 import type { GfxNode } from './scene';
 import { CmcpController } from '../cmcp/controller';
-import { CmcpAudio, WebAudioBackend } from '../cmcp/audio';
+import { CmcpAudio, setAudioEngine, WebAudioBackend } from '../cmcp/audio';
 import { collectPrompts } from '../cmcp/prompts';
 import { CmcpOverlays } from '../cmcp/OverlayLayer';
 import { getActiveCmcp, usePane } from '../cmcp/pane';
@@ -184,6 +184,11 @@ export function GfxProvider({ engine, children }: { engine: EngineAPI; children:
     const off = c.attach();
     // sound: the Go side resolved what to play; this plays it, for the session in front only
     const audio = new CmcpAudio(new WebAudioBackend());
+    setAudioEngine(audio);
+    // a WebKit view starts the audio context suspended: the first click or key unlocks it
+    const unlock = (): void => audio.unlock();
+    window.addEventListener('pointerdown', unlock, true);
+    window.addEventListener('keydown', unlock, true);
     const applySettings = (): void => {
       const st = useSettings.getState().settings;
       audio.setSettings({ volume: st.soundVolume, muted: st.soundMuted, categories: st.soundCategoryVolumes ?? {} });
@@ -194,7 +199,7 @@ export function GfxProvider({ engine, children }: { engine: EngineAPI; children:
     const offSet = useSettings.subscribe(applySettings);
     const offFg = useSessions.subscribe((st, prev) => { if (st.fg !== prev.fg) audio.setForeground(st.fg ?? ''); });
     void engine.listSessions().then((ss) => ss.forEach((x) => void c.sync(x.id))).catch(() => undefined);
-    return () => { off(); offAudio(); offSet(); offFg(); audio.stopAll(50); cmcp.current = null; };
+    return () => { off(); offAudio(); offSet(); offFg(); audio.stopAll(50); setAudioEngine(null); window.removeEventListener('pointerdown', unlock, true); window.removeEventListener('keydown', unlock, true); cmcp.current = null; };
   }, [engine, get]);
   const peek = useCallback((session: string) => all.get(session), [all]);
   const drop = useCallback((session: string): void => {

@@ -11,7 +11,7 @@ const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
 await page.goto(base);
 const res = await page.evaluate(async () => {
-  const { WebAudioBackend, CmcpAudio } = await import('/src/cmcp/audio.ts');
+  const { WebAudioBackend, CmcpAudio, useAudioStats } = await import('/src/cmcp/audio.ts');
   const wavUrl = (secs) => {
     const rate = 8000, n = rate * secs, buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
     const w = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
@@ -33,10 +33,11 @@ const res = await page.evaluate(async () => {
   audio.handle({ session: 's', op: 'play', event: 'red_alert', key: 'bed', category: 'alert', loop: true, volume: 1, priority: 5, res: { kind: 'url', url: wavUrl(3), loop: true, crossfadeMs: 500, gain: 1 } });
   audio.handle({ session: 's', op: 'play', event: 'comm_beep', category: 'ui', volume: 1, priority: 5, res: { kind: 'bell' } });
   await new Promise((r) => setTimeout(r, 3500));
-  const els = document.querySelectorAll('audio').length;
+  const els = 0; // files are decoded into buffer sources now (no <audio> elements)
+  const stats = useAudioStats.getState();
   const active = audio.active;
   audio.stopAll(50);
-  return { active, els, state: new AudioContext().state };
+  return { active, played: stats.played, failed: stats.failed, last: stats.last, lastError: stats.lastError, ctx: be.state(), state: new AudioContext().state };
 });
 console.log(JSON.stringify(res), errors.length ? 'ERRORS ' + errors.join('|') : 'no errors');
 await browser.close();

@@ -7,6 +7,7 @@ import { DEFAULT_FONT } from '../../api/types';
 import { allThemes, parseThemeJson, useThemeVersion } from '../../themes';
 import { Dialog, Field } from './Dialog';
 import { useThemeInUse } from '../../cmcp/pane';
+import { getAudioEngine, useAudioStats } from '../../cmcp/audio';
 
 /** Which console theme is drawn now and where it came from: built in, downloaded from the game, or plain. */
 function ThemeInUse() {
@@ -14,6 +15,22 @@ function ThemeInUse() {
   if (!t.theme) return null;
   const from = t.source === 'pack' ? `downloaded from the game${t.version ? `, version ${t.version}` : ''}` : t.source === 'builtin' ? 'built in' : 'plain (no theme available)';
   return <p className="hint">Theme in use: {t.theme} ({from})</p>;
+}
+
+/** "Sound: N played, last: event [source: file]", the audio context and the last problem, with a Test sound button. */
+function SoundDiagnostics() {
+  const st = useAudioStats();
+  const [res, setRes] = useState('');
+  return (
+    <div className="hint" aria-label="Sound diagnostics">
+      <button type="button" onClick={() => setRes(getAudioEngine()?.test() ?? 'no sound engine (open a console first)')}>Test sound</button>
+      {res && <span> {res === 'running' ? 'audio is running: you should hear a two-tone chirp' : `audio: ${res}`}</span>}
+      <p>
+        Sound: {st.played} played{st.last ? `, last: ${st.last}` : ''} (audio {st.ctx}){st.failed ? `; ${st.failed} failed, last: ${st.lastError}` : ''}
+        {st.dropped ? `; ${st.dropped} not played, last: ${st.lastDrop}` : ''}
+      </p>
+    </div>
+  );
 }
 
 export function SettingsDialog() {
@@ -292,6 +309,7 @@ export function SettingsDialog() {
           </select>
         </Field>
         <ThemeInUse />
+        <SoundDiagnostics />
         <Field label="Sound era" hint="Which set of sounds to use for your own recordings. Empty = what the game or the ship's theme suggests.">
           <select aria-label="Sound era" value={settings.soundEra} onChange={(e) => update({ soundEra: e.target.value })}>
             {['', 'tos', 'tng', 'ds9', 'voy', 'klingon', 'romulan', 'ferengi', 'any'].map((t) => (

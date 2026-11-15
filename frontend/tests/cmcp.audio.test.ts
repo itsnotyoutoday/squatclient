@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CmcpAudio, MAX_VOICES, type Backend, type Clock, type Handle, type Instr, type SoundMsg } from '../src/cmcp/audio';
+import { CmcpAudio, MAX_VOICES, useAudioStats, type Backend, type Clock, type Handle, type Instr, type SoundMsg } from '../src/cmcp/audio';
 
 /** A backend that records what it was asked to play, and a clock the test drives. */
 function rig() {
@@ -136,5 +136,46 @@ describe('CMCP audio', () => {
     r.audio.handle({ session: 's1', op: 'stopall', volume: 0, priority: 0, fadeMs: 300 });
     expect(r.audio.active).toBe(0);
     expect(r.played.every((p) => p.stopped === 300)).toBe(true);
+  });
+});
+
+describe('sound diagnostics and the recipe fallback', () => {
+  const recipe = { duration: 1, gain: 1, pan: 0, detuneCents: 0, voices: [] };
+  it('plays the pack recipe when the file cannot be loaded, and says what happened', () => {
+    const calls: string[] = [];
+    const be: Backend = {
+      playUrl(_u, o) { calls.push('url'); o.onFail?.('HTTP 404'); return { setGain: () => undefined, stop: () => undefined, fadeIn: () => undefined }; },
+      playRecipe() { calls.push('recipe'); return { setGain: () => undefined, stop: () => undefined, fadeIn: () => undefined }; },
+      bell: () => undefined,
+      state: () => 'running',
+    };
+    const audio = new CmcpAudio(be);
+    audio.setForeground('s1');
+    useAudioStats.getState().set({ played: 0, failed: 0, dropped: 0, last: '', lastError: '', lastDrop: '' });
+    const alt: Instr = { kind: 'recipe', recipe };
+    audio.handle({ session: 's1', op: 'play', event: 'red_alert', category: 'alert', volume: 1, priority: 5, res: { kind: 'url', url: '/cmcp-audio/sample/s1/red_alert.ogg', alt } });
+    expect(calls).toEqual(['url', 'recipe']);
+    const st = useAudioStats.getState();
+    expect(st.played).toBe(1);
+    expect(st.failed).toBe(1);
+    expect(st.lastError).toMatch(/red_alert: HTTP 404/);
+    expect(st.last).toBe('red_alert [pack: red_alert.ogg]');
+  });
+  it('names the local file and the stages in the diagnostic line', () => {
+    const { audio } = rig();
+    useAudioStats.getState().set({ played: 0 });
+    audio.handle({ session: 's1', op: 'play', event: 'red_alert', category: 'alert', volume: 1, priority: 5, res: { kind: 'staged', stages: [{ kind: 'url', url: '/cmcp-audio/local/redalertandklaxons/tng_red_alert3.mp3', loop: true }, { kind: 'recipe', recipe }] } });
+    expect(useAudioStats.getState().last).toBe('red_alert [staged: local: redalertandklaxons/tng_red_alert3.mp3 > recipe]');
+  });
+  it('reports why a sound was not played (muted)', () => {
+    const { audio } = rig();
+    audio.setSettings({ volume: 0, muted: false, categories: {} });
+    audio.handle({ session: 's1', op: 'play', event: 'phaser_fire', category: 'weapon', volume: 1, priority: 5, res: { kind: 'recipe', recipe } });
+    expect(useAudioStats.getState().lastDrop).toMatch(/phaser_fire: sound is muted/);
+  });
+  it('the Test sound chirp plays through the backend without a game', () => {
+    const { audio, played } = rig();
+    expect(audio.test()).toBeTruthy();
+    expect(played.some((p) => p.recipe)).toBe(true);
   });
 });

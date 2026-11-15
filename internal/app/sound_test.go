@@ -98,3 +98,53 @@ func TestResolveRecipeEvaluatesParameters(t *testing.T) {
 		t.Fatal("an out-of-range recipe must be rejected whole")
 	}
 }
+
+// The owner's private library (~/mush/trek_sounds, never copied or committed): with the folder set, the library's own era maps drive every
+// event for every ship theme: local file first (staged for the alerts, with the on_stop sound), every named file exists. Skipped
+// when the library is not on this machine.
+func TestPrivateLibraryDrivesEveryEra(t *testing.T) {
+	home, _ := os.UserHomeDir()
+	lib := filepath.Join(home, "mush", "trek_sounds")
+	if _, err := os.Stat(filepath.Join(lib, "era-maps", "tng.json")); err != nil {
+		t.Skip("no private library on this machine")
+	}
+	ss := newSoundSvc(&Service{})
+	ss.configure(lib)
+	events := []string{"red_alert", "yellow_alert", "alert_off", "shield_hit", "explosion", "ship_destroyed", "phaser_fire", "torpedo_launch", "torpedo_hit", "transporter_energize",
+		"docking_door", "comm_beep", "hail_incoming", "hull_hit", "lock_acquired", "console_click", "warp_engage"}
+	themes := map[string]string{"tng": "tng", "tos": "tos", "klingon": "klingon", "romulan": "romulan", "ferengi": "ferengi"}
+	for theme, wantEra := range themes {
+		era := audio.SelectEra("", "ship", theme, "tng", ss.idx)
+		if era != wantEra {
+			t.Fatalf("ship theme %s: era %q, want %q", theme, era, wantEra)
+		}
+		em := ss.eraMap(era)
+		if em == nil {
+			t.Fatalf("era %s: no map", era)
+		}
+		for _, ev := range events {
+			r := audio.Resolve(ev, nil, em, ss.files, nil, audio.Caps{Play: true, Formats: []string{"wav", "ogg", "mp3"}, Recipes: true})
+			if r.Kind != audio.Local && r.Kind != audio.Staged {
+				// an event the library does not map falls back to the pack, a recipe or the bell: allowed, but never for the alerts
+				if ev == "red_alert" || ev == "alert_off" {
+					t.Errorf("%s/%s resolved to %v, want a local file", era, ev, r.Kind)
+				}
+				continue
+			}
+			if r.Kind == audio.Staged {
+				if len(r.Stages) < 1 {
+					t.Errorf("%s/%s staged without stages", era, ev)
+				}
+				for _, st := range r.Stages {
+					if st.Kind != audio.Local {
+						t.Errorf("%s/%s stage resolved to %v", era, ev, st.Kind)
+					}
+				}
+				if ev == "red_alert" && (r.Option == nil || r.Option.OnStop == nil) {
+					t.Errorf("%s/red_alert has no on_stop sound", era)
+				}
+			}
+		}
+	}
+	t.Logf("library %s: red_alert, alert_off and %d more events resolve locally for tng, tos, klingon, romulan, ferengi", lib, len(events))
+}

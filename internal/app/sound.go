@@ -140,6 +140,9 @@ type Instr struct {
 	Recipe      *ResolvedRecipe `json:"recipe,omitempty"`
 	Stages      []Instr         `json:"stages,omitempty"`
 	OnStop      *Instr          `json:"onStop,omitempty"`
+	// Alt is what to play when the first choice cannot be loaded (a pack sample whose host is unreachable, a missing local file): the pack's
+	// own recipe for the event, so the default works without any sound folder and without the sample host.
+	Alt *Instr `json:"alt,omitempty"`
 }
 
 // SoundMsg is the "cmcp-audio" window event.
@@ -251,6 +254,9 @@ func (ss *soundSvc) instr(sid string, r audio.Resolution, p *msg.SoundPlay) *Ins
 		}
 	default:
 		return nil
+	}
+	if in.Kind == "url" {
+		in.Alt = ss.recipeAlt(sid, p)
 	}
 	opt(r.Option, in)
 	if in.Kind == "staged" { // the staged option's own loop/volume are per stage
@@ -395,4 +401,31 @@ func (s *Service) serveLocal(w http.ResponseWriter, r *http.Request, rel string)
 	}
 	w.Header().Set("Cache-Control", "private, max-age=3600")
 	http.ServeContent(w, r, clean, st.ModTime(), f) // Range requests: long beds stream
+}
+
+// recipeAlt is the pack's synthesis recipe for the event, when it has one: the fallback for a file that cannot be loaded.
+func (ss *soundSvc) recipeAlt(sid string, p *msg.SoundPlay) *Instr {
+	sp := ss.s.eng.CmcpSoundPack(sid)
+	if sp == nil {
+		return nil
+	}
+	ev := p.Event
+	if ev == "" {
+		ev = p.Sound
+	}
+	for _, o := range sp.Events[ev] {
+		if o.Recipe == "" || sp.Recipes[o.Recipe] == nil {
+			continue
+		}
+		rr, err := resolveRecipe(sp.Recipes[o.Recipe], p.Params, ev)
+		if err != nil {
+			return nil
+		}
+		in := &Instr{Kind: "recipe", Recipe: rr, Gain: 1, Loop: o.Loop}
+		if o.Volume != nil {
+			in.Volume = *o.Volume
+		}
+		return in
+	}
+	return nil
 }

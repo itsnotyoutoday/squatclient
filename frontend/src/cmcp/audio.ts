@@ -1,3 +1,5 @@
+import { create } from 'zustand';
+
 /** The audio engine of the CMCP consoles (cmcp spec 9). The Go side has already decided WHAT to play (local file named by the era
  * map, pack sample, recipe, bell: spec 9.8) and hands over plain instructions; this plays them: files stream through an audio
  * element into the Web Audio graph (long beds are not downloaded whole), recipes are synthesised, looped beds crossfade, staged
@@ -17,6 +19,8 @@ export interface Instr {
   kind: 'url' | 'recipe' | 'bell' | 'silence' | 'staged';
   url?: string; gain?: number; loop?: boolean; volume?: number; atS?: number; crossfadeMs?: number;
   recipe?: ResolvedRecipe; stages?: Instr[]; onStop?: Instr;
+  /** what to play when the first choice cannot be loaded (the pack's recipe for the event) */
+  alt?: Instr;
 }
 export interface SoundMsg {
   session: string; op: 'play' | 'stop' | 'stopall'; key?: string; event?: string; category?: string;
@@ -27,13 +31,22 @@ export interface AudioSettings { volume: number; muted: boolean; categories: Rec
 /** One playing source. gain is the final linear gain; stop fades out and releases it. */
 export interface Handle { setGain(g: number): void; stop(fadeMs: number): void; fadeIn(ms: number, to: number): void }
 export interface Backend {
-  playUrl(url: string, o: { gain: number; loop: boolean; crossfadeMs: number; pan: number; onEnd: () => void }): Handle;
+  playUrl(url: string, o: { gain: number; loop: boolean; crossfadeMs: number; pan: number; onEnd: () => void; onFail?: (why: string) => void }): Handle;
+  /** start/resume the audio context (browsers and WebKit views only allow it from a user gesture) */
+  unlock?(): void;
+  /** the audio context's state: running | suspended | closed | none (not created yet) */
+  state?(): string;
   playRecipe(r: ResolvedRecipe, o: { gain: number; pan: number; onEnd: () => void }): Handle;
   bell(): void;
 }
 export interface Clock { setTimeout(f: () => void, ms: number): unknown; clearTimeout(h: unknown): void; now(): number }
 
 export const MAX_VOICES = 16;
+
+/** What the sound engine has done, for the Settings line "Sound: N played, last: event" (and for tests). */
+export interface AudioStats { played: number; dropped: number; failed: number; last: string; lastDrop: string; lastError: string; ctx: string }
+interface StatsStore extends AudioStats { set(p: Partial<AudioStats>): void }
+export const useAudioStats = create<StatsStore>((set) => ({ played: 0, dropped: 0, failed: 0, last: '', lastDrop: '', lastError: '', ctx: 'none', set: (p) => set(p) }));
 const realClock: Clock = { setTimeout: (f, ms) => setTimeout(f, ms), clearTimeout: (h) => clearTimeout(h as number), now: () => Date.now() };
 
 interface Voice {
@@ -78,11 +91,11 @@ export class CmcpAudio {
   play(m: SoundMsg): void {
     const res = m.res;
     if (!res || res.kind === 'silence') return;
-    if (m.session !== this.fg && this.fg !== '') { this.log.push(`drop ${m.event}: not the foreground session`); return; }
-    if (this.settings.muted || this.settings.volume <= 0) return;
+    if (m.session !== this.fg && this.fg !== '') { this.drop2(m, 'not the foreground session'); return; }
+    if (this.settings.muted || this.settings.volume <= 0) { this.drop2(m, 'sound is muted or the volume is 0'); return; }
     const cat = m.category || 'system';
-    if (this.catVol(cat) <= 0) { this.log.push(`drop ${m.event}: category ${cat} is off`); return; }
-    if (res.kind === 'bell') { this.be.bell(); return; }
+    if (this.catVol(cat) <= 0) { this.drop2(m, `category ${cat} is off`); return; }
+    if (res.kind === 'bell') { this.be.bell(); this.played(m, 'bell'); return; }
     const key = m.key ?? '';
     // the same key (or the same looped event) replaces what plays
     for (const v of [...this.voices.values()]) {
@@ -90,13 +103,63 @@ export class CmcpAudio {
     }
     if (this.voices.size >= MAX_VOICES) {
       const worst = [...this.voices.values()].sort((a, b) => a.priority - b.priority || a.started - b.started)[0];
-      if (m.priority < worst.priority) { this.log.push(`drop ${m.event}: below every playing voice`); return; }
+      if (m.priority < worst.priority) { this.drop2(m, 'below every playing voice'); return; }
       this.end(worst, 30, false);
     }
     const v: Voice = { id: ++this.seq, session: m.session, key, event: m.event ?? '', category: cat, priority: m.priority, started: this.clock.now(), base: 1, handle: null, timers: [], onStop: res.onStop, stopping: false, msg: m };
     this.voices.set(v.id, v);
+    this.played(m, res.kind);
     if (res.kind === 'staged') this.startStaged(v, res);
     else this.start(v, res, m.fadeMs ?? 0, m);
+  }
+
+  /** where the sound comes from: local (your folder, with the file), pack (the game's sample), recipe, bell */
+  private describe(r: Instr | undefined): string {
+    if (!r) return '?';
+    if (r.kind === 'staged') return `staged: ${(r.stages ?? []).map((x) => this.describe(x)).join(' > ')}`;
+    if (r.kind === 'url' && r.url) {
+      const local = r.url.includes('/cmcp-audio/local/');
+      const f = decodeURIComponent(r.url.split('/').slice(local ? 3 : 4).join('/'));
+      return `${local ? 'local' : 'pack'}: ${f}`;
+    }
+    return r.kind;
+  }
+  private played(m: SoundMsg, _kind: string): void {
+    const st = useAudioStats.getState();
+    st.set({ played: st.played + 1, last: `${m.event ?? '?'} [${this.describe(m.res)}]`, ctx: this.be.state?.() ?? st.ctx });
+  }
+  private drop2(m: SoundMsg, why: string): void {
+    this.log.push(`drop ${m.event}: ${why}`);
+    const st = useAudioStats.getState();
+    st.set({ dropped: st.dropped + 1, lastDrop: `${m.event ?? '?'}: ${why}` });
+  }
+  /** a file could not be loaded: say so, and play the pack's recipe for the event instead when there is one */
+  private failedUrl(v: Voice, i: Instr, m: SoundMsg, why: string): void {
+    const st = useAudioStats.getState();
+    st.set({ failed: st.failed + 1, lastError: `${m.event ?? '?'}: ${why}` });
+    this.log.push(`fail ${m.event}: ${why}${i.alt ? ' (playing the recipe)' : ''}`);
+    if (i.alt && this.voices.has(v.id)) v.handle = this.start(v, i.alt, 0, { ...m, res: i.alt });
+  }
+
+  /** the first user gesture unlocks the audio context (a WebKit view starts it suspended) */
+  unlock(): void {
+    this.be.unlock?.();
+    useAudioStats.getState().set({ ctx: this.be.state?.() ?? 'none' });
+  }
+
+  /** "Test sound": a short two-tone chirp straight through the engine (independent of any game); returns the audio context's state */
+  test(): string {
+    this.unlock();
+    const chirp: ResolvedRecipe = { duration: 0.5, gain: 1, pan: 0, detuneCents: 0, voices: [
+      { type: 'osc', wave: 'sine', freq: { start: 660 }, amp: { Peak: 0.5, A: 0.01, D: 0.05, S: 0.8, R: 0.1 }, detuneCents: 0, delay: 0, pan: 0, gain: 1 },
+      { type: 'osc', wave: 'sine', freq: { start: 880 }, amp: { Peak: 0.5, A: 0.01, D: 0.05, S: 0.8, R: 0.1 }, detuneCents: 0, delay: 0.25, pan: 0, gain: 1 },
+    ] };
+    const vol = this.settings.muted ? 0 : this.settings.volume / 100;
+    const st = useAudioStats.getState();
+    if (vol <= 0) { st.set({ lastDrop: 'test: sound is muted or the volume is 0' }); return 'muted'; }
+    this.be.playRecipe(chirp, { gain: vol, pan: 0, onEnd: () => undefined });
+    st.set({ played: st.played + 1, last: 'test chirp (recipe)', ctx: this.be.state?.() ?? 'none' });
+    return this.be.state?.() ?? 'none';
   }
 
   private instrBase(m: SoundMsg, i: Instr): number { return (m.volume || 1) * (i.volume || 1) * (i.gain || 1); }
@@ -106,7 +169,7 @@ export class CmcpAudio {
     const g = this.gain(v);
     const onEnd = (): void => { if (!i.loop && !m.loop) this.drop(v); };
     let h: Handle | null = null;
-    if (i.kind === 'url' && i.url) h = this.be.playUrl(i.url, { gain: fadeMs > 0 ? 0 : g, loop: !!(i.loop || m.loop), crossfadeMs: i.crossfadeMs ?? 0, pan: m.pan ?? 0, onEnd });
+    if (i.kind === 'url' && i.url) h = this.be.playUrl(i.url, { gain: fadeMs > 0 ? 0 : g, loop: !!(i.loop || m.loop), crossfadeMs: i.crossfadeMs ?? 0, pan: m.pan ?? 0, onEnd, onFail: (why) => this.failedUrl(v, i, m, why) });
     else if (i.kind === 'recipe' && i.recipe) h = this.be.playRecipe(i.recipe, { gain: fadeMs > 0 ? 0 : g, pan: m.pan ?? 0, onEnd });
     if (h && fadeMs > 0) h.fadeIn(fadeMs, g);
     v.handle = h;
@@ -194,6 +257,10 @@ function noiseBuffer(ctx: BaseAudioContext, color: string, seconds = 2): AudioBu
 export class WebAudioBackend implements Backend {
   private ctx: AudioContext | null = null;
   private out: GainNode | null = null;
+  unlock(): void {
+    try { void this.c; } catch { /* no audio in this view */ }
+  }
+  state(): string { return this.ctx ? this.ctx.state : 'none'; }
   private get c(): AudioContext {
     if (!this.ctx) {
       this.ctx = new AudioContext();
@@ -204,64 +271,66 @@ export class WebAudioBackend implements Backend {
     return this.ctx;
   }
 
-  playUrl(url: string, o: { gain: number; loop: boolean; crossfadeMs: number; pan: number; onEnd: () => void }): Handle {
+  /** Files are fetched from the app's own audio handler and decoded into buffers: a buffer source needs only a running AudioContext (a user
+   * gesture unlocks it), where an <audio> element needs its own autoplay permission in a WebKit view. A load or decode failure reports
+   * through onFail so the caller can fall back to the pack's recipe. */
+  private buffers = new Map<string, Promise<AudioBuffer>>();
+  playUrl(url: string, o: { gain: number; loop: boolean; crossfadeMs: number; pan: number; onEnd: () => void; onFail?: (why: string) => void }): Handle {
     const c = this.c;
     const gain = c.createGain();
     gain.gain.value = o.gain;
     const pan = c.createStereoPanner();
     pan.pan.value = Math.max(-1, Math.min(1, o.pan));
     gain.connect(pan).connect(this.out!);
-    let cur: HTMLAudioElement | null = null;
-    let timer: number | undefined;
-    let ended = false;
-    const mk = (): { el: HTMLAudioElement; g: GainNode } => {
-      const el = new Audio(url);
-      el.preload = 'auto';
-      const src = c.createMediaElementSource(el);
+    let stopped = false;
+    const timers: number[] = [];
+    const live = new Set<AudioBufferSourceNode>();
+    let load = this.buffers.get(url);
+    if (!load) {
+      load = fetch(url).then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.arrayBuffer(); }).then((b) => c.decodeAudioData(b));
+      this.buffers.set(url, load);
+      load.catch(() => this.buffers.delete(url));
+    }
+    const begin = (buf: AudioBuffer, when: number, fadeInS: number, lastOne: boolean): AudioBufferSourceNode => {
+      const src = c.createBufferSource();
+      src.buffer = buf;
       const g = c.createGain();
       src.connect(g).connect(gain);
-      return { el, g };
+      if (fadeInS > 0) { g.gain.setValueAtTime(0, when); g.gain.linearRampToValueAtTime(1, when + fadeInS); }
+      live.add(src);
+      src.onended = (): void => { live.delete(src); try { g.disconnect(); } catch { /* gone */ } if (lastOne && !stopped && live.size === 0) o.onEnd(); };
+      src.start(when);
+      return src;
     };
-    const first = mk();
-    cur = first.el;
-    const xf = o.crossfadeMs;
-    if (o.loop && xf > 0) {
-      // crossfaded loop: before the end of the bed, the next copy fades in while this one fades out
-      let a = first;
-      const watch = (): void => {
-        const d = a.el.duration;
-        if (!Number.isFinite(d) || d <= 0) { timer = window.setTimeout(watch, 250); return; }
-        const left = (d - a.el.currentTime) * 1000;
-        if (left <= xf + 50 && d * 1000 > xf * 2.5) {
-          const b = mk();
-          cur = b.el;
-          b.g.gain.setValueAtTime(0, c.currentTime);
-          b.g.gain.linearRampToValueAtTime(1, c.currentTime + xf / 1000);
-          a.g.gain.setValueAtTime(1, c.currentTime);
-          a.g.gain.linearRampToValueAtTime(0, c.currentTime + xf / 1000);
-          const old = a;
-          window.setTimeout(() => { old.el.pause(); old.el.src = ''; }, xf + 100);
-          void b.el.play().catch(() => undefined);
-          a = b;
-          timer = window.setTimeout(watch, 500);
-        } else timer = window.setTimeout(watch, Math.max(60, Math.min(left - xf - 20, 1000)));
-      };
-      void first.el.play().then(() => watch()).catch(() => o.onEnd());
-    } else {
-      first.el.loop = o.loop;
-      first.el.onended = (): void => { if (!ended) o.onEnd(); };
-      void first.el.play().catch(() => o.onEnd());
-    }
+    void load.then((buf) => {
+      if (stopped) return;
+      const xf = o.crossfadeMs / 1000, d = buf.duration;
+      if (o.loop && xf > 0 && d > xf * 2.5) {
+        // a crossfaded loop: the next copy starts xf before this one ends and fades in while this one fades out
+        let when = c.currentTime + 0.02;
+        const next = (first: boolean): void => {
+          if (stopped) return;
+          begin(buf, when, first ? 0 : xf, false);
+          when = when + d - xf;
+          timers.push(window.setTimeout(() => next(false), Math.max(20, (when - c.currentTime - 0.4) * 1000)));
+        };
+        next(true);
+      } else if (o.loop) {
+        begin(buf, c.currentTime + 0.02, 0, false).loop = true;
+      } else {
+        begin(buf, c.currentTime + 0.02, 0, true);
+      }
+    }).catch((e: unknown) => { if (!stopped) { o.onFail?.(String(e)); o.onEnd(); } });
     return {
       setGain: (g) => { gain.gain.setTargetAtTime(g, c.currentTime, 0.02); },
       fadeIn: (ms, to) => { gain.gain.cancelScheduledValues(c.currentTime); gain.gain.setValueAtTime(0, c.currentTime); gain.gain.linearRampToValueAtTime(to, c.currentTime + ms / 1000); },
       stop: (ms) => {
-        ended = true;
-        window.clearTimeout(timer);
+        stopped = true;
+        timers.forEach((t) => window.clearTimeout(t));
         gain.gain.cancelScheduledValues(c.currentTime);
         gain.gain.setValueAtTime(gain.gain.value, c.currentTime);
         gain.gain.linearRampToValueAtTime(0, c.currentTime + Math.max(0.005, ms / 1000));
-        window.setTimeout(() => { cur?.pause(); gain.disconnect(); }, ms + 60);
+        window.setTimeout(() => { for (const n of live) { try { n.stop(); } catch { /* already stopped */ } } gain.disconnect(); }, ms + 60);
       },
     };
   }
@@ -374,3 +443,8 @@ export class WebAudioBackend implements Backend {
     o.stop(t + 0.3);
   }
 }
+
+let current: CmcpAudio | null = null;
+/** the running sound engine (the Settings "Test sound" button uses it) */
+export const setAudioEngine = (a: CmcpAudio | null): void => { current = a; };
+export const getAudioEngine = (): CmcpAudio | null => current;
