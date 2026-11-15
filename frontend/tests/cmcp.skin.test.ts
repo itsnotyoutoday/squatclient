@@ -29,9 +29,9 @@ const hit = (a: number[], b: number[]): boolean => a[0] < b[0] + b[2] && a[0] + 
 const leaves = (p: Placed, out: Placed[] = []): Placed[] => { if (p.children.length === 0 && p.node.widget !== 'label') out.push(p); p.children.forEach((c) => leaves(c, out)); return out; };
 
 describe.each(Object.entries(SKINS))('skin %s: the game text is the largest element and nothing overlaps', (_name, skin) => {
-  it('gives the text at least 45% of the height and 60% of the width by default, about 80% of the height when expanded', () => {
+  it('gives the text at least 35% of the height and 60% of the width by default, about 80% of the height when expanded', () => {
     const [, , pw, ph] = skin.port.rect, [, , , eh] = skin.port.expanded;
-    expect(ph / H).toBeGreaterThanOrEqual(0.45);
+    expect(ph / H).toBeGreaterThanOrEqual(0.35);
     expect(pw / W).toBeGreaterThanOrEqual(0.6);
     expect(skin.side.port[2] / W).toBeGreaterThanOrEqual(0.6); // the side layout of dense screens keeps 60% of the width
     expect(eh / H).toBeGreaterThanOrEqual(0.76);
@@ -55,20 +55,26 @@ describe.each(Object.entries(SKINS))('skin %s: the game text is the largest elem
   });
   it.each(SCREENS)('lays out %s: widgets inside the band, none over the port or each other', (screen) => {
     const ui = fx(screen);
-    for (const expanded of [false, true]) {
-      const L = layoutSkinned(ui.tree!.root, skin, screen, expanded)!;
+    for (const [expanded, pd] of [[false, 'balanced'], [true, 'balanced'], [false, 'large'], [false, 'compact']] as const) {
+      const L = layoutSkinned(ui.tree!.root, skin, screen, expanded, pd)!;
+      if (L.mode === 'stack' && !expanded) {
+        const frac = L.port[3] / H;
+        expect(frac).toBeGreaterThanOrEqual(pd === 'large' ? 0.5 : pd === 'balanced' ? 0.35 : 0.2 - 1e-9); // compact is the theme's own small text
+      }
       expect(L).toBeTruthy();
       const port = [L.port[0] * K / L.scale, L.port[1] * K / L.scale, L.port[2] * K / L.scale, L.port[3] * K / L.scale];
       const portFrame = [port[0] - 8 * K / L.scale, port[1] - 8 * K / L.scale, port[2] + 16 * K / L.scale, port[3] + 16 * K / L.scale];
       const items = leaves(L.root).filter((p) => p.node.widget !== 'textport');
-      const bc = L.mode === 'side' ? skin.side.content : skin.content;
+      const bc = L.mode === 'side' ? skin.side.content : [skin.content[0], skin.content[1], skin.content[2], L.port[1] - 8 - skin.content[1]];
       const band = [bc[0] * K / L.scale, bc[1] * K / L.scale, bc[2] * K / L.scale, bc[3] * K / L.scale];
       items.forEach((p) => {
         const r = [p.rect.x, p.rect.y, p.rect.w, p.rect.h];
         if (!expanded) {
           expect(hit(r, portFrame), `${screen}: ${p.node.widget} ${p.node.path} is over the text port`).toBe(false);
-          expect(r[0]).toBeGreaterThanOrEqual(band[0] - 1); expect(r[1]).toBeGreaterThanOrEqual(band[1] - 1);
-          expect(r[0] + r[2]).toBeLessThanOrEqual(band[0] + band[2] + 1); expect(r[1] + r[3]).toBeLessThanOrEqual(band[1] + band[3] + 1);
+          if (pd === 'balanced') { // (the other sizes shrink the band; only the port clearance above applies)
+            expect(r[0]).toBeGreaterThanOrEqual(band[0] - 1); expect(r[1]).toBeGreaterThanOrEqual(band[1] - 1);
+            expect(r[0] + r[2]).toBeLessThanOrEqual(band[0] + band[2] + 1); expect(r[1] + r[3]).toBeLessThanOrEqual(band[1] + band[3] + 1);
+          }
         }
       });
       if (!expanded) {

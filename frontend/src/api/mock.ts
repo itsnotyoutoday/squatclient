@@ -638,6 +638,10 @@ export class MockEngine implements EngineAPI {
   async cmcpSetUi(session: string, key: string, value: unknown): Promise<void> {
     this.cmcpCall('cmcpSetUi', session, key, value);
   }
+  async cmcpViewEvent(session: string, ev: 'log_toggle' | 'screen_toggle'): Promise<string> {
+    this.cmcpCall('cmcpViewEvent', session, ev);
+    return 'default';
+  }
   async cmcpPackConsent(session: string, packId: string, allow: boolean): Promise<void> {
     this.cmcpCall('cmcpPackConsent', session, packId, allow);
   }

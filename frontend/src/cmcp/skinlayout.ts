@@ -21,21 +21,28 @@ export interface SkinLayout { root: Placed; port: Rect4; mode: Mode; tree: CmcpN
 /** Lays a screen out in a skin: the tree's textport is pinned to the skin's big port, every other widget flows in the band around it
  * (or sits where the skin's arrangement for that screen puts it). A screen too dense for the band (stacked) switches to the side
  * layout. Rectangles of the result are in base units (x 4/3 = scene units). */
-export function layoutSkinned(tree: CmcpNode, skin: Skin, screenName: string, logExpanded: boolean): SkinLayout | null {
+export type PortDefault = 'compact' | 'balanced' | 'large';
+
+export function layoutSkinned(tree: CmcpNode, skin: Skin, screenName: string, logExpanded: boolean, portDefault: PortDefault = 'balanced'): SkinLayout | null {
   const find = (n: CmcpNode): string | null => { if (n.widget === 'textport') return n.path; for (const c of n.children ?? []) { const f = find(c); if (f) return f; } return null; };
   const tp = find(tree);
   if (!tp) return null;
-  const arranged = skin.arrange[screenName] !== undefined;
-  const c = skin.content;
-  const dense = !arranged && intrinsic(withoutPort(tree, tp), 'h') > c[3] * K * 1.02;
+  // the player's size choice for the default state (stacked): compact = the themes' own small text (182 of 900), balanced = 35%, large = 50% of the height
+  const base = skin.port.rect;
+  const stackedH = portDefault === 'compact' ? 182 : portDefault === 'large' ? 450 : 315; // owner decision: compact ~20%, balanced ~35%, large ~50% of the height
+  const stacked: Rect4 = [base[0], base[1] + base[3] - stackedH, base[2], stackedH];
+  const c0 = skin.content;
+  const c: Rect4 = [c0[0], c0[1], c0[2], Math.max(96, stacked[1] - 8 - c0[1])];
+  const arranged = skin.arrange[screenName] !== undefined && portDefault === 'balanced'; // the arrangements are written for the balanced band
+  const dense = !arranged && intrinsic(withoutPort(tree, tp), 'h') > c[3] * K * 0.8; // some headroom: the estimate is a minimum
   const mode: Mode = dense ? 'side' : 'stack';
   const root = dense ? reflow(tree) : tree;
-  const port = logExpanded ? skin.port.expanded : dense ? skin.side.port : skin.port.rect;
+  const port = logExpanded ? skin.port.expanded : dense ? skin.side.port : stacked;
   const band = dense ? skin.side.content : c;
   // a screen that still needs more height than the band has is drawn smaller as a whole (never below 55%) rather than overlapping
   const need = dense ? intrinsic(withoutPort(root, tp), 'h') : 0;
   const scale = dense ? Math.max(0.55, Math.min(1, (band[3] * K) / Math.max(1, need))) : 1;
-  const ov = dense ? new Map<string, { x: number; y: number; w: number; h: number }>() : resolveArrange(root, skin.arrange[screenName], K);
+  const ov = dense ? new Map<string, { x: number; y: number; w: number; h: number }>() : resolveArrange(root, arranged ? skin.arrange[screenName] : undefined, K);
   ov.set(tp, { x: (port[0] * K) / scale, y: (port[1] * K) / scale, w: (port[2] * K) / scale, h: (port[3] * K) / scale });
   return { root: place(root, { x: (band[0] * K) / scale, y: (band[1] * K) / scale, w: (band[2] * K) / scale, h: (band[3] * K) / scale }, ov), port, mode, tree: root, scale };
 }

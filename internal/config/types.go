@@ -120,14 +120,17 @@ type Settings struct {
 	TFHideQueries bool `json:"tfHideQueries"`
 
 	// CMCP (the Cobra console protocol, cmcp/spec): consoles drawn from the game's data, and sound.
-	Cmcp           bool           `json:"cmcp"`         // advertise CMCP to games (Core.Supports.Set "Cobra 1"); off = text only
-	ConsoleTheme   string         `json:"consoleTheme"` // tng soft klingon romulan tos ferengi ops
-	UseShipTheme   bool           `json:"useShipTheme"` // follow the theme and era the ship/console suggest (6.6, 9.8)
-	SoundEra       string         `json:"soundEra"`     // "" = the game's era; tos tng ds9 voy klingon romulan ferengi
-	SoundFolder    string         `json:"soundFolder"`  // the player's local sound folder (never uploaded); "" = none
-	SoundVolume    int            `json:"soundVolume"`  // 0..100 master
-	SoundMuted     bool           `json:"soundMuted"`
-	SoundCategoryV map[string]int `json:"soundCategoryVolumes,omitempty"` // 0..100 per category (alert, weapons, hits, ui, comms, ...)
+	Cmcp               bool           `json:"cmcp"`         // advertise CMCP to games (Core.Supports.Set "Cobra 1"); off = text only
+	ConsoleTheme       string         `json:"consoleTheme"` // tng soft klingon romulan tos ferengi ops
+	UseShipTheme       bool           `json:"useShipTheme"` // follow the theme and era the ship/console suggest (6.6, 9.8)
+	SoundEra           string         `json:"soundEra"`     // "" = the game's era; tos tng ds9 voy klingon romulan ferengi
+	SoundFolder        string         `json:"soundFolder"`  // the player's local sound folder (never uploaded); "" = none
+	SoundVolume        int            `json:"soundVolume"`  // 0..100 master
+	SoundMuted         bool           `json:"soundMuted"`
+	CmcpPortDefault    string         `json:"cmcpPortDefault"`                // text view size: compact | balanced (default, 45%) | large (60%)
+	CmcpCalm           bool           `json:"cmcpCalm"`                       // eased motion 2.5x slower
+	CmcpStartCollapsed bool           `json:"cmcpStartCollapsed"`             // a console screen starts switched off
+	SoundCategoryV     map[string]int `json:"soundCategoryVolumes,omitempty"` // 0..100 per category (alert, weapons, hits, ui, comms, ...)
 }
 
 // CmcpThemes are the console themes of the WebGL consoles.
@@ -160,6 +163,9 @@ func (s *Settings) clampCommandWindow() {
 	s.SendLineDelayMs = clampInt(s.SendLineDelayMs, 0, MaxSendLineDelayMs)
 	s.HistoryMax = clampInt(s.HistoryMax, MinHistoryMax, MaxHistoryMax) // 0 is not allowed: it clamps to the minimum
 	s.SoundVolume = clampInt(s.SoundVolume, 0, 100)
+	if s.CmcpPortDefault != "compact" && s.CmcpPortDefault != "large" {
+		s.CmcpPortDefault = "balanced"
+	}
 	ok := false
 	for _, t := range CmcpThemes {
 		ok = ok || t == s.ConsoleTheme
@@ -179,7 +185,7 @@ func DefaultSettings() Settings {
 		ScrollbackLines: 20000, Notifications: true, Linkify: true, PauseOnScroll: true,
 		DefaultEncoding: "utf-8", Truecolor: true,
 		EditorHeight: DefaultEditorH, SoftcodeJoin: true, StripBlankLines: true, HistoryMax: DefaultHistoryMax, WarnUnbalanced: true, AutoReconnectSquatters: true, TFHideQueries: true,
-		Cmcp: true, ConsoleTheme: "tng", SoundVolume: 70,
+		Cmcp: true, ConsoleTheme: "tng", SoundVolume: 70, CmcpPortDefault: "balanced",
 	}
 }
 

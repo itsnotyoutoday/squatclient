@@ -25,6 +25,9 @@ export interface CmcpTree {
   title: string;
   console?: string;
   theme: string;
+  themeSource?: 'pack' | 'builtin' | 'plain';
+  /** The text view's state from the shared core (LOG / screen-off) and the player's size choice. */
+  view?: { state: 'default' | 'expanded' | 'off'; portDefault: 'compact' | 'balanced' | 'large'; fraction: number; calm: boolean };
   tokens: Record<string, string | number>;
   packKey: string;
   exhausted?: boolean;

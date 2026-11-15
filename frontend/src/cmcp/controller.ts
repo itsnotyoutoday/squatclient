@@ -53,6 +53,7 @@ interface SessionState {
   offSeen: boolean;
   lastPal: string;
   layoutMode: string;
+  viewState: 'default' | 'expanded' | 'off';
 }
 
 /** Draws the Go engine's bound CMCP screen trees into each session's graphics runtime and sends widget events back.
@@ -77,20 +78,30 @@ export class CmcpController {
     return () => { offs.forEach((o) => o()); setActiveCmcp(null); };
   }
 
-  /** Hides or shows the whole CMCP screen (the data keeps streaming); the text view gets the full area back. */
-  setOff(session: string, off: boolean): void {
+  /** The text view's state comes from the shared core through the engine (LOG and screen-off are its state machine); these ask it to toggle. */
+  private viewEvent(session: string, ev: 'log_toggle' | 'screen_toggle'): void {
     const s = this.sess.get(session);
     if (!s) return;
-    s.off = off;
-    s.offSeen = true;
-    if (off) this.close(s, true);
-    else { s.dismissed = ''; s.key = ''; if (s.ui) this.onUi(s.ui); }
-    usePane.getState().set(session, !!s.tree, s.off);
+    void this.engine.cmcpViewEvent(session, ev).then((st) => {
+      s.viewState = st as 'default' | 'expanded' | 'off'; // do not wait for the next model event
+      this.applyView(s);
+    }).catch((e: unknown) => this.onError?.(String(e)));
   }
-  toggleOff(session: string): void { const s = this.sess.get(session); if (s) this.setOff(session, !s.off); }
-  /** LOG: the text grows to about 80% of the height and the other panels fold into a summary strip, and back. */
-  toggleLog(session: string): void { const s = this.sess.get(session); if (!s) return; s.log = !s.log; this.render(s); }
-  logState(session: string): boolean { return this.sess.get(session)?.log ?? false; }
+  toggleOff(session: string): void { this.viewEvent(session, 'screen_toggle'); }
+  /** brings the screen back when it is off (the pane's Console button) */
+  setOff(session: string, off: boolean): void { const s = this.sess.get(session); if (s && (s.viewState === 'off') !== off) this.viewEvent(session, 'screen_toggle'); }
+  /** LOG: the text grows to about 80% of the height and the other panels fold into a summary strip, and back (animated). */
+  toggleLog(session: string): void { this.viewEvent(session, 'log_toggle'); }
+  logState(session: string): boolean { return this.sess.get(session)?.viewState === 'expanded'; }
+
+  private applyView(s: SessionState): void {
+    s.log = s.viewState === 'expanded';
+    const off = s.viewState === 'off';
+    usePane.getState().set(s.id, !!s.tree, off);
+    if (off) this.close(s, true);
+    else if (s.tree) { if (s.off) { s.key = ''; s.dismissed = ''; } s.off = false; this.render(s); }
+    s.off = off;
+  }
 
   /** For a window that mounts late: fetch the model of a session once. */
   async sync(session: string): Promise<void> {
@@ -101,7 +112,7 @@ export class CmcpController {
   state(session: string): SessionState {
     let s = this.sess.get(session);
     if (!s) {
-      s = { id: session, ui: null, tree: null, prev: new Map(), targets: new Map(), local: new Map(), history: new Map(), images: new Map(), spriteDocs: new Map(), spriteWanted: new Set(), spriteDrawn: new Map(), spriteN: 0, viewImages: new Map(), viewDocs: new Map(), viewWanted: new Set(), fxN: 0, vsRect: null, vsItems: {}, aspect: 9 / 16, open: false, dismissed: '', key: '', fonts: new Set(), lastRev: -1, log: false, off: false, offSeen: false, lastPal: '', layoutMode: 'stack' };
+      s = { id: session, ui: null, tree: null, prev: new Map(), targets: new Map(), local: new Map(), history: new Map(), images: new Map(), spriteDocs: new Map(), spriteWanted: new Set(), spriteDrawn: new Map(), spriteN: 0, viewImages: new Map(), viewDocs: new Map(), viewWanted: new Set(), fxN: 0, vsRect: null, vsItems: {}, aspect: 9 / 16, open: false, dismissed: '', key: '', fonts: new Set(), lastRev: -1, log: false, off: false, offSeen: false, lastPal: '', layoutMode: 'stack', viewState: 'default' };
       this.sess.set(session, s);
       const rt = this.rtFor(session);
       const prev = rt.onResize;
@@ -134,8 +145,11 @@ export class CmcpController {
     s.ui = ui;
     const t = ui.tree;
     if (!t) { this.close(s); s.tree = null; usePane.getState().set(s.id, false, s.off); return; }
-    if (!s.offSeen) { s.offSeen = true; s.off = this.startCollapsed(); }
-    usePane.getState().set(s.id, true, s.off);
+    s.viewState = t.view?.state ?? 'default';
+    s.log = s.viewState === 'expanded';
+    usePane.getState().set(s.id, true, s.viewState === 'off');
+    if (s.viewState === 'off') { s.tree = t; s.off = true; this.close(s, true); return; }
+    s.off = false;
     const key = `${t.screen}|${t.packKey}|${t.generation}`;
     if (key !== s.key) { // another screen, pack, theme or ship: start from a clean scene
       this.reset(s);
@@ -337,7 +351,7 @@ export class CmcpController {
     const cur = skin.nav.items.findIndex((i) => i.screens.includes(screenName));
     const label = cur >= 0 ? skin.nav.items[cur].label : (t.title || screenName);
     const vars = templateVars(s.ui!, label);
-    const L = layoutSkinned(t.root, skin, screenName, s.log);
+    const L = layoutSkinned(t.root, skin, screenName, s.log, t.view?.portDefault ?? 'balanced');
     if (!L) return;
     const { root, port } = L;
     s.layoutMode = L.mode;
@@ -365,8 +379,9 @@ export class CmcpController {
     const slow = this.reduceMotion ? 0 : 1;
     const ease: Ease = (id, prop) => {
       if (!slow) return 0;
-      if ((id === PORT_ID || id === 'portframe' || id === 'cw') && /^(x|y|w|h|opacity)$/.test(prop)) return 0.55;
-      if (palChanged && /^(fill|stroke|color)$/.test(prop)) return 0.9;
+      const calm = t.view?.calm ? 2.5 : 1; // calm mode: 2.5 times slower
+      if ((id === PORT_ID || id === 'portframe' || id === 'cw' || id === 'logsum') && /^(x|y|w|h|opacity)$/.test(prop)) return 0.35 * calm; // the animated LOG toggle (the Lua themes' portNode tween)
+      if (palChanged && /^(fill|stroke|color)$/.test(prop)) return 0.9 * calm;
       return 0;
     };
     const { ops, map } = diffOps(s.prev, prims, ease);

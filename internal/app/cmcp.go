@@ -41,7 +41,7 @@ func (s *Service) applyCmcpSettings() {
 	} else {
 		s.eng.SetCmcp(nil)
 	}
-	s.eng.SetCmcpRender(engine.CmcpRender{Theme: st.ConsoleTheme, UseShipTheme: st.UseShipTheme, Tokens: CmcpThemeTokens})
+	s.eng.SetCmcpRender(engine.CmcpRender{PortDefault: st.CmcpPortDefault, Calm: st.CmcpCalm, StartCollapsed: st.CmcpStartCollapsed, Theme: st.ConsoleTheme, UseShipTheme: st.UseShipTheme, Tokens: CmcpThemeTokens})
 }
 
 type cmcpNotesPayload struct {
@@ -108,4 +108,9 @@ func (s *Service) CmcpSetUI(session, key, valueJSON string) error {
 // CmcpPackConsent answers the first-use question about a game's interface pack (spec 8.8).
 func (s *Service) CmcpPackConsent(session, packID string, allow bool) error {
 	return s.eng.CmcpPackConsent(session, packID, allow)
+}
+
+// CmcpViewEvent toggles the text view: "log_toggle" (compact <-> expanded) or "screen_toggle" (the console screen off/on); it returns the state.
+func (s *Service) CmcpViewEvent(session, ev string) (string, error) {
+	return s.eng.CmcpViewEvent(session, ev)
 }
