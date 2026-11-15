@@ -164,3 +164,25 @@ func TestOldSettingsFileGetsCommandWindowDefaults(t *testing.T) {
 		t.Fatalf("%+v", st)
 	}
 }
+
+func TestSeedWorldsOnlyOnAFirstRun(t *testing.T) {
+	dir := t.TempDir()
+	s, _ := Open(dir)
+	defs := []World{{Name: "A", Host: "a.example.org", Port: 1}, {Name: "B", Host: "b.example.org", Port: 2, GameType: "pennmush"}}
+	if ok, err := s.SeedWorlds(defs); err != nil || !ok {
+		t.Fatalf("first run: %v %v", ok, err)
+	}
+	if got := s.Worlds(); len(got) != 2 || got[0].ID == "" || got[1].GameType != "pennmush" {
+		t.Fatalf("%+v", got)
+	}
+	// the user deletes them all: a restart must not bring them back
+	for _, w := range s.Worlds() {
+		if err := s.DeleteWorld(w.ID); err != nil {
+			t.Fatal(err)
+		}
+	}
+	s2, _ := Open(dir)
+	if ok, _ := s2.SeedWorlds(defs); ok || len(s2.Worlds()) != 0 {
+		t.Fatalf("seeded again over a worlds.json: %+v", s2.Worlds())
+	}
+}

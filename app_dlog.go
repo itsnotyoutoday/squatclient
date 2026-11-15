@@ -12,6 +12,7 @@ import (
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"github.com/itsnotyoutoday/squatclient/internal/app"
+	"github.com/itsnotyoutoday/squatclient/internal/config"
 	"github.com/itsnotyoutoday/squatclient/internal/dlog"
 )
 
@@ -178,4 +179,16 @@ func (a *App) DiagLogOpenURL(url string) error {
 		s.DiagLogLine("ui", "", "opened the GitHub issue form in the browser")
 	}
 	return nil
+}
+
+// alphaWorlds are the worlds a first run starts with in the alpha: the CMCP test game first, so every tester knows where to connect.
+func alphaWorlds() []config.World {
+	mk := func(name, host string, port int, gameType, notes string) config.World {
+		return config.World{Name: name, Host: host, Port: port, TLSVerify: "strict", Encoding: "utf-8", Via: "direct", GameType: gameType, Notes: notes}
+	}
+	return []config.World{
+		mk("CMCPTest", "nexus.plexuslabs.dev", 12026, "evennia", "The alpha test game: connect here to try the CMCP consoles and sound. Create a throwaway account."),
+		mk("Typhon Accords", "startrekkin.net", 1701, "cobramush", "A CobraMUSH game."),
+		mk("M*U*S*H", "pennmush.org", 4201, "pennmush", "A PennMUSH game."),
+	}
 }

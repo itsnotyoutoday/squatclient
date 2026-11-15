@@ -75,6 +75,9 @@ func (a *App) build(ctx context.Context) (*app.Service, *config.Store, error) {
 	if err != nil {
 		return nil, nil, err
 	}
+	if _, err := cfg.SeedWorlds(alphaWorlds()); err != nil { // a first run starts with the alpha test worlds
+		slog.Warn("could not add the alpha worlds", "err", err)
+	}
 	scripts := os.Getenv("SQUATCLIENT_SCRIPTS_DIR") // startup.tf, plugins/, logs/ and the managed library live here
 	if scripts == "" {
 		scripts = dir

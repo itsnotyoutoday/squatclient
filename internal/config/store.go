@@ -273,6 +273,26 @@ func (s *Store) SaveWorld(w World) (World, error) {
 	return cloneWorlds([]World{w})[0], nil
 }
 
+// SeedWorlds saves the given worlds only on a first run (no worlds.json yet). A user who deleted every world has a worlds.json and gets nothing back.
+// It reports whether it seeded.
+func (s *Store) SeedWorlds(defs []World) (bool, error) {
+	if _, err := os.Stat(filepath.Join(s.dir, "worlds.json")); err == nil {
+		return false, nil
+	}
+	s.mu.Lock()
+	has := len(s.worlds) > 0
+	s.mu.Unlock()
+	if has {
+		return false, nil
+	}
+	for _, w := range defs {
+		if _, err := s.SaveWorld(w); err != nil {
+			return false, err
+		}
+	}
+	return len(defs) > 0, nil
+}
+
 // DeleteWorld removes a world.
 func (s *Store) DeleteWorld(id string) error {
 	s.mu.Lock()
