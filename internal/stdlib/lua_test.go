@@ -149,7 +149,7 @@ func startLua(t *testing.T, code ...string) *luaFixture {
 	f := &luaFixture{hub: hub}
 	hub.Emit = func(ops []gfx.Op) { f.ops = append(f.ops, ops...) }
 	h := &luaHost{now: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC), dir: cfg, hub: hub}
-	rt := lua.New(h, lua.Options{})
+	rt := lua.New(h, lua.Options{Timeout: 10 * time.Second})
 	t.Cleanup(rt.Close)
 	h.rt = rt
 	f.h, f.rt = h, rt
@@ -871,7 +871,7 @@ func TestLcarsIsPerSession(t *testing.T) {
 		t.Fatal(err)
 	}
 	h := &luaHost{now: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC), dir: cfg, hubs: map[string]*gfx.Hub{}}
-	rt := lua.New(h, lua.Options{})
+	rt := lua.New(h, lua.Options{Timeout: 10 * time.Second})
 	t.Cleanup(rt.Close)
 	h.rt = rt
 	ops := map[string]*[]gfx.Op{}
