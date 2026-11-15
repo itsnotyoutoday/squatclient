@@ -61,3 +61,12 @@ func (a *App) CmcpSprite(session, sprite string) (string, error) {
 	}
 	return s.CmcpSprite(session, sprite)
 }
+
+// CmcpSetUI writes a key of the screen's $ui state for a widget (valueJSON "" or null deletes it).
+func (a *App) CmcpSetUI(session, key, valueJSON string) error {
+	s, err := a.service()
+	if err != nil {
+		return err
+	}
+	return s.CmcpSetUI(session, key, valueJSON)
+}

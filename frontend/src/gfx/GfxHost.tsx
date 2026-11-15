@@ -6,6 +6,7 @@ import { GfxRenderer } from './renderer';
 import { GfxRuntime } from './runtime';
 import { holeClip, planScene, portNodeOf, stripBasis, type Plan, type Rect } from './port';
 import type { GfxNode } from './scene';
+import { CmcpController } from '../cmcp/controller';
 
 /** The rectangle where the real game text sits while a scene has a text port (CSS px in the output area). Mutable on
  * purpose: an animated port (the console's LOG toggle) changes every frame and must not go through React renders. */
@@ -147,11 +148,15 @@ function parseKey(spec: string): { key: string; alt: boolean; ctrl: boolean; shi
 export function GfxProvider({ engine, children }: { engine: EngineAPI; children: ReactNode }) {
   const [all] = useState(() => new Map<string, SessionGfx>());
   const [ver, force] = useState(0); // scenes opened/closed/moved: consumers of the context must redraw
+  const cmcp = useRef<CmcpController | null>(null);
   const mk = useCallback((session: string): SessionGfx => {
     const rt = new GfxRuntime();
     rt.paused = true; // until its pane is on screen
     rt.onLayout = () => force((n) => n + 1);
-    rt.onEvent = (e) => void engine.gfxEvent(`${session}/${e.scene}`, e.id, e.event, e.x, e.y).catch(() => undefined);
+    rt.onEvent = (e) => {
+      if (cmcp.current?.handleGfxEvent(session, e)) return; // the CMCP console is drawn by the front end; its events go to cmcp*
+      void engine.gfxEvent(`${session}/${e.scene}`, e.id, e.event, e.x, e.y).catch(() => undefined);
+    };
     rt.onMessage = (lvl, text) => {
       (lvl === 'error' ? console.error : console.warn)(text);
       useUi.getState().toast(lvl === 'error' ? 'error' : 'warn', text);
@@ -161,6 +166,14 @@ export function GfxProvider({ engine, children }: { engine: EngineAPI; children:
     return g;
   }, [engine, all]);
   const get = useCallback((session: string): SessionGfx => all.get(session) ?? mk(session), [mk, all]);
+  useEffect(() => {
+    const c = new CmcpController(engine, (id) => get(id).rt);
+    c.onError = (text) => useUi.getState().toast('warn', text);
+    cmcp.current = c;
+    const off = c.attach();
+    void engine.listSessions().then((ss) => ss.forEach((x) => void c.sync(x.id))).catch(() => undefined);
+    return () => { off(); cmcp.current = null; };
+  }, [engine, get]);
   const peek = useCallback((session: string) => all.get(session), [all]);
   const drop = useCallback((session: string): void => {
     const g = all.get(session);

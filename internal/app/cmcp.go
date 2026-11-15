@@ -88,3 +88,14 @@ func (s *Service) CmcpSprite(session, sprite string) (string, error) {
 	b, err := s.eng.CmcpSprite(session, sprite)
 	return string(b), err
 }
+
+// CmcpSetUI writes a key of the screen's $ui state for a widget (valueJSON null or "" deletes).
+func (s *Service) CmcpSetUI(session, key, valueJSON string) error {
+	var v any
+	if valueJSON != "" {
+		if err := json.Unmarshal([]byte(valueJSON), &v); err != nil {
+			return fmt.Errorf("the value is not valid JSON: %w", err)
+		}
+	}
+	return s.eng.CmcpSetUI(session, key, v)
+}

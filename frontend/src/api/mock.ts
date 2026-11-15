@@ -1,3 +1,4 @@
+import type { CmcpEventResult, CmcpNote, CmcpUI } from '../cmcp/types';
 import { DEFAULT_SETTINGS } from './types';
 import { GAME_TYPES } from '../lib/modules';
 import type {
@@ -601,6 +602,49 @@ export class MockEngine implements EngineAPI {
   }
   async deleteTFScript(squatterId: string, name: string): Promise<void> {
     if (!this.tfScripts.get(squatterId)?.delete(name)) throw new Error('no such script');
+  }
+  // ---- CMCP: the mock holds whatever model a test or the dev page pushes (fixtures of the real Go engine, public/cmcp/*.json)
+  /** CMCP calls the UI made, in order (tests assert on them). */
+  readonly cmcpCalls: { fn: string; session: string; args: unknown[] }[] = [];
+  private cmcpModels = new Map<string, CmcpUI>();
+  /** Publishes a CMCP model for a session, as the Go engine would (state, console, screen tree). */
+  pushCmcp(ui: CmcpUI): void {
+    this.cmcpModels.set(ui.session, ui);
+    this.emit('cmcp', ui);
+  }
+  pushCmcpNotes(session: string, notes: CmcpNote[]): void {
+    this.emit('cmcp-notes', { session, notes });
+  }
+  private cmcpCall(fn: string, session: string, ...args: unknown[]): void {
+    this.cmcpCalls.push({ fn, session, args });
+  }
+  async cmcpState(session: string): Promise<CmcpUI | null> {
+    return this.cmcpModels.get(session) ?? null;
+  }
+  async cmcpEvent(session: string, path: string, event: string, value?: unknown): Promise<CmcpEventResult> {
+    this.cmcpCall('cmcpEvent', session, path, event, value);
+    return { tickets: [] };
+  }
+  async cmcpCommand(session: string, name: string, args?: Record<string, unknown>): Promise<{ id: number; echo: string }> {
+    this.cmcpCall('cmcpCommand', session, name, args);
+    return { id: this.cmcpCalls.length, echo: name };
+  }
+  async cmcpAcquire(session: string, owner: string, subs: { pkg: string; rate_ms?: number }[]): Promise<void> {
+    this.cmcpCall('cmcpAcquire', session, owner, subs);
+  }
+  async cmcpRelease(session: string, owner: string): Promise<void> {
+    this.cmcpCall('cmcpRelease', session, owner);
+  }
+  async cmcpSetUi(session: string, key: string, value: unknown): Promise<void> {
+    this.cmcpCall('cmcpSetUi', session, key, value);
+  }
+  /** Sprite JSON by id, set by tests / the dev page (the real engine resolves it from the pack). */
+  readonly cmcpSprites = new Map<string, string>();
+  async cmcpSprite(session: string, sprite: string): Promise<string> {
+    this.cmcpCall('cmcpSprite', session, sprite);
+    const s = this.cmcpSprites.get(sprite);
+    if (!s) throw new Error(`no sprite ${sprite}`);
+    return s;
   }
   async gfxSnapshot(): Promise<GfxOp[]> {
     return [];

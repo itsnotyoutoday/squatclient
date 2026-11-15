@@ -48,6 +48,8 @@ export class GfxRuntime {
   onEvent?: (e: GfxEventOut) => void;
   /** a scene opened, closed or changed its placement: the host re-renders its canvases */
   onLayout?: () => void;
+  /** A scene's box changed size (CSS px); the CMCP screens follow the aspect ratio. */
+  onResize?: (scene: string, cssW: number, cssH: number) => void;
   onMessage?: (level: 'warn' | 'error', text: string) => void;
   private shaders = new Map<string, { glsl: string; uniforms: Record<string, string> }>();
   private fonts = new Set<string>();
@@ -217,6 +219,7 @@ export class GfxRuntime {
     const px = cssW * cssH * k * k;
     if (px > 8e6) k *= Math.sqrt(8e6 / px);
     s.logical = { w: cssW, h: cssH };
+    this.onResize?.(id, cssW, cssH);
     s.renderer.resize(Math.round(cssW * k), Math.round(cssH * k));
     s.scene.dirty = true;
     this.start();

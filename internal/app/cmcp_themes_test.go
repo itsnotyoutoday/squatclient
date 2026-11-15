@@ -1,6 +1,9 @@
 package app
 
 import (
+	"encoding/json"
+	"os"
+	"path/filepath"
 	"regexp"
 	"testing"
 
@@ -22,5 +25,21 @@ func TestCmcpThemeTokens(t *testing.T) {
 	}
 	if CmcpThemeTokens("nope") != nil {
 		t.Fatal("unknown theme must fall back to the client defaults")
+	}
+}
+
+// With CMCP_FIXTURES=<dir> the theme tokens are written as themes.json for the front end's screenshot script and tests.
+func TestCmcpThemeFixtures(t *testing.T) {
+	dir := os.Getenv("CMCP_FIXTURES")
+	if dir == "" {
+		t.Skip("CMCP_FIXTURES not set")
+	}
+	all := map[string]map[string]any{}
+	for _, th := range config.CmcpThemes {
+		all[th] = CmcpThemeTokens(th)
+	}
+	b, _ := json.MarshalIndent(all, "", " ")
+	if err := os.WriteFile(filepath.Join(dir, "themes.json"), b, 0o644); err != nil {
+		t.Fatal(err)
 	}
 }

@@ -1,3 +1,4 @@
+import type { CmcpEventResult, CmcpUI } from '../cmcp/types';
 import type {
   ConnectTarget,
   LayoutBundle,
@@ -181,6 +182,17 @@ export class WailsEngine implements EngineAPI {
     call<TFScriptResult>('PutTFScript', id, name, content, load).then((r) => ({ ...r, out: r.out ?? [] }));
   listTFScripts = (id: string) => list(call<TFScript[] | null>('ListTFScripts', id));
   deleteTFScript = (id: string, name: string) => call<void>('DeleteTFScript', id, name);
+  cmcpState = (session: string) => call<CmcpUI | null>('CmcpState', session);
+  cmcpEvent = (session: string, path: string, event: string, value?: unknown) =>
+    call<CmcpEventResult>('CmcpEvent', session, path, event, value === undefined ? '' : JSON.stringify(value)).then((r) => ({ ...r, tickets: r.tickets ?? [] }));
+  cmcpCommand = (session: string, name: string, args?: Record<string, unknown>) =>
+    call<{ id: number; echo: string }>('CmcpCommand', session, name, args ? JSON.stringify(args) : '');
+  cmcpAcquire = (session: string, owner: string, subs: { pkg: string; rate_ms?: number }[]) =>
+    call<void>('CmcpAcquire', session, owner, JSON.stringify(subs));
+  cmcpRelease = (session: string, owner: string) => call<void>('CmcpRelease', session, owner);
+  cmcpSetUi = (session: string, key: string, value: unknown) =>
+    call<void>('CmcpSetUI', session, key, value === undefined || value === null ? '' : JSON.stringify(value));
+  cmcpSprite = (session: string, sprite: string) => call<string>('CmcpSprite', session, sprite);
   gfxSnapshot = () => list(call<GfxOp[] | null>('GfxSnapshot'));
   gfxEvent = (scene: string, id: string, event: string, x: number, y: number) =>
     call<void>('GfxEvent', scene, id, event, x, y);

@@ -191,6 +191,19 @@ export interface Settings {
   showGagged: boolean;
   /** Send TinyFugue (admin devices, squat_scripts on) a script that keeps SquatClient's own queries off its screen. */
   tfHideQueries: boolean;
+  /** CMCP: advertise it to games (off = text only). */
+  cmcp: boolean;
+  /** Console theme: tng soft klingon romulan tos ferengi ops. */
+  consoleTheme: string;
+  /** Follow the theme and sound era the ship or console suggests. */
+  useShipTheme: boolean;
+  /** Sound era override ("" = the game's). */
+  soundEra: string;
+  /** The player's local sound folder (never uploaded). */
+  soundFolder: string;
+  soundVolume: number;
+  soundMuted: boolean;
+  soundCategoryVolumes?: Record<string, number>;
 }
 
 /** Result of `readTextFile` (the /upload command). Failures are reported inside the result. */
@@ -261,7 +274,13 @@ export interface StatusField {
   attrs?: string;
 }
 
+import type { CmcpEventResult, CmcpNote, CmcpUI } from '../cmcp/types';
+
 export interface EngineEvents {
+  /** The CMCP model of a session changed (throttled); `tree` is the bound console screen, null when none is up. */
+  cmcp: CmcpUI;
+  /** CMCP sounds, events and replies of a session (never coalesced). */
+  'cmcp-notes': { session: string; notes: CmcpNote[] };
   line: Line;
   session: SessionInfo;
   status: { session: string; fields: StatusField[] };
@@ -613,6 +632,20 @@ export interface EditExamineResult extends EditResult {
 export type GfxOp = { op: string; scene?: string } & Record<string, unknown>;
 
 export interface EngineAPI {
+  // ---- CMCP (docs/CMCP.md): the game's consoles, drawn from protocol data evaluated by the shared Go core
+  /** The CMCP model of a session with its bound screen, or null when the game does not speak CMCP. */
+  cmcpState(session: string): Promise<CmcpUI | null>;
+  /** A widget event of the current screen (path of the CmcpNode, event name, the widget's output). */
+  cmcpEvent(session: string, path: string, event: string, value?: unknown): Promise<CmcpEventResult>;
+  /** Sends a verb of the game's catalogue. */
+  cmcpCommand(session: string, name: string, args?: Record<string, unknown>): Promise<{ id: number; echo: string }>;
+  /** Extra packages an owner needs (reference counted); an empty list releases the owner. */
+  cmcpAcquire(session: string, owner: string, subs: { pkg: string; rate_ms?: number }[]): Promise<void>;
+  cmcpRelease(session: string, owner: string): Promise<void>;
+  /** A widget wrote a screen UI key ($ui.team). */
+  cmcpSetUi(session: string, key: string, value: unknown): Promise<void>;
+  /** A sprite of the current pack with the theme's tokens resolved (JSON text). */
+  cmcpSprite(session: string, sprite: string): Promise<string>;
   /** Every open graphics scene as operations (for a window that mounts after a script ran). */
   gfxSnapshot(): Promise<GfxOp[]>;
   /** A pointer event on a graphics object; the script's handler runs. */
@@ -855,4 +888,11 @@ export const DEFAULT_SETTINGS: Settings = {
   autoReconnectSquatters: true,
   showGagged: false,
   tfHideQueries: true,
+  cmcp: true,
+  consoleTheme: 'tng',
+  useShipTheme: false,
+  soundEra: '',
+  soundFolder: '',
+  soundVolume: 70,
+  soundMuted: false,
 };

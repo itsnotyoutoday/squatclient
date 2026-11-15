@@ -1,0 +1,1082 @@
+{
+ "session": "s1",
+ "rev": 16,
+ "generation": 1,
+ "state": "ready",
+ "proto": 1,
+ "server": {
+  "proto": [
+   1
+  ],
+  "server": "test",
+  "max": 16384
+ },
+ "welcome": {
+  "proto": 1,
+  "session": "s-1",
+  "packages": [
+   "Space.Power",
+   "Space.Contacts",
+   "Space.Ship.Status",
+   "Space.Damage.Teams",
+   "Space.Damage.Stat"
+  ],
+  "commands": [
+   {
+    "name": "dmg.assign",
+    "consoles": [
+     "operations"
+    ],
+    "mutating": true,
+    "text": "dmg assign {team}={system}",
+    "args": {
+     "system": {
+      "type": "string"
+     },
+     "team": {
+      "type": "int"
+     }
+    }
+   }
+  ]
+ },
+ "ship": {
+  "id": "ss-booty-king",
+  "name": "SS Booty King",
+  "class": "Marauder",
+  "epoch": 1
+ },
+ "console": {
+  "id": "science",
+  "name": "science"
+ },
+ "consoleRev": 1,
+ "reason": "manned",
+ "readonly": false,
+ "ai": false,
+ "screen": {
+  "id": "std.sensors",
+  "resolved": "std.sensors",
+  "fallback": false
+ },
+ "commands": [
+  "dmg.assign",
+  "power.set",
+  "eng.main",
+  "eng.aux",
+  "hatch.toggle",
+  "dock.doors",
+  "tractor.lock",
+  "tractor.dest",
+  "tractor.engage",
+  "tractor.reset",
+  "scan.srs",
+  "scan.lrs",
+  "scan.passive",
+  "scan.internal",
+  "scan.dock",
+  "target.lock",
+  "weapon.fire",
+  "weapon.torpedo",
+  "weapon.arm",
+  "weapon.mode",
+  "torpedo.load",
+  "torpedo.unload",
+  "shield.raise",
+  "shield.drop",
+  "shield.set",
+  "target.exploit",
+  "helm.stick",
+  "helm.heading",
+  "helm.speed",
+  "helm.warp",
+  "helm.stop",
+  "helm.dock",
+  "helm.undock",
+  "nav.waypoint_add",
+  "nav.waypoint_remove",
+  "nav.plot",
+  "nav.plot_to",
+  "nav.engage",
+  "nav.cancel",
+  "power.reroute",
+  "power.preset",
+  "repair.priority",
+  "science.analyze"
+ ],
+ "catalogue": {
+  "dmg.assign": {
+   "name": "dmg.assign",
+   "consoles": [
+    "operations"
+   ],
+   "mutating": true,
+   "text": "dmg assign {team}={system}",
+   "args": {
+    "system": {
+     "type": "string"
+    },
+    "team": {
+     "type": "int"
+    }
+   }
+  }
+ },
+ "subs": [
+  {
+   "pkg": "Space.Power",
+   "source": "console",
+   "ok": true
+  },
+  {
+   "pkg": "Space.Power.Group",
+   "source": "console",
+   "ok": true
+  },
+  {
+   "pkg": "Space.Damage.Stat",
+   "source": "console",
+   "ok": true
+  },
+  {
+   "pkg": "Space.Damage.Teams",
+   "source": "console",
+   "ok": true
+  },
+  {
+   "pkg": "Space.Contacts",
+   "source": "console",
+   "ok": true
+  },
+  {
+   "pkg": "Space.Nav",
+   "source": "console",
+   "ok": true
+  },
+  {
+   "pkg": "Space.Weapons",
+   "source": "console",
+   "ok": true
+  },
+  {
+   "pkg": "Space.Shields",
+   "source": "console",
+   "ok": true
+  },
+  {
+   "pkg": "Space.Ops.Stat",
+   "source": "console",
+   "ok": true
+  },
+  {
+   "pkg": "Space.Tractor",
+   "source": "console",
+   "ok": true
+  },
+  {
+   "pkg": "Space.Ship.Status",
+   "source": "console",
+   "ok": true
+  }
+ ],
+ "docs": {
+  "Space.Contacts": {
+   "contacts": {
+    "11": {
+     "bearing": {
+      "az": 258,
+      "mark": -89
+     },
+     "cid": 11,
+     "distance_m": 797.8,
+     "distance_text": "797.8m",
+     "facing": "AF:AS",
+     "name": "AST5716",
+     "rel": {
+      "az": 0,
+      "mark": 60
+     }
+    },
+    "15": {
+     "bearing": {
+      "az": 337,
+      "mark": 26
+     },
+     "cid": 15,
+     "distance_m": 775968000,
+     "distance_text": "775968km",
+     "facing": "lP:LA",
+     "name": "UFPTRukh",
+     "rel": {
+      "az": 265,
+      "mark": -28
+     }
+    },
+    "17": {
+     "bearing": {
+      "az": 108,
+      "mark": 22
+     },
+     "cid": 17,
+     "class": "Marauder",
+     "distance_m": 163061679063,
+     "distance_text": "1.09AU",
+     "empire": "federation",
+     "facing": "-a:hP",
+     "faction": "United Federation",
+     "heading": {
+      "az": 20,
+      "mark": 0,
+      "roll": 0
+     },
+     "iff": "friend",
+     "integrity": {
+      "hull": 0.9,
+      "port_nacelle": 1,
+      "starboard_nacelle": 0.8
+     },
+     "name": "UFP40EA1",
+     "rel": {
+      "az": 152,
+      "mark": 3
+     },
+     "size_m": 120,
+     "type": "Ship"
+    },
+    "3": {
+     "bearing": {
+      "az": 333,
+      "mark": 22
+     },
+     "cid": 3,
+     "class": "M",
+     "distance_m": 394044000,
+     "distance_text": "394044km",
+     "empire": "vulcan",
+     "facing": "lP:la",
+     "faction": "Vulcan",
+     "name": "Vulcan",
+     "rel": {
+      "az": 271,
+      "mark": -27
+     },
+     "type": "Planet"
+    },
+    "5": {
+     "bearing": {
+      "az": 94,
+      "mark": 33
+     },
+     "cid": 5,
+     "distance_m": 130150147509,
+     "distance_text": "0.87AU",
+     "facing": "-A:LP",
+     "name": "40 Eridani A",
+     "rel": {
+      "az": 166,
+      "mark": -4
+     }
+    }
+   }
+  },
+  "Space.Damage.Stat": {
+   "hull": {
+    "cur": 806.16,
+    "max": 875
+   },
+   "systems": {
+    "Port_Nacelle": {
+     "cur": 86.4,
+     "max": 100
+    },
+    "Starboard_Nacelle": {
+     "cur": 86.4,
+     "max": 100
+    }
+   }
+  },
+  "Space.Damage.Teams": {
+   "assignable": [
+    "Hull",
+    "Port_Nacelle",
+    "Starboard_Nacelle"
+   ],
+   "teams": {
+    "1": {
+     "assign": "Hull",
+     "crew": 10
+    },
+    "2": {
+     "assign": "Hull",
+     "crew": 10
+    },
+    "3": {
+     "assign": "Hull",
+     "crew": 10
+    },
+    "4": {
+     "assign": "Hull",
+     "crew": 10
+    },
+    "5": {
+     "assign": "Hull",
+     "crew": 10
+    }
+   }
+  },
+  "Space.Nav": {
+   "bearing": {
+    "az": 258.52,
+    "mark": -30
+   },
+   "heading": {
+    "az": 0,
+    "mark": 0,
+    "roll": 1.7
+   },
+   "position": {
+    "quadrant": "Beta+",
+    "sector": [
+     1300,
+     0,
+     2
+    ],
+    "system": [
+     1187,
+     482,
+     1500
+    ]
+   },
+   "speed_mps": 0,
+   "warp": {
+    "factor": 0,
+    "max": 9
+   }
+  },
+  "Space.Ops.Stat": {
+   "can_land": true,
+   "can_launch": true,
+   "docking_doors": "not_present",
+   "hatch": "closed",
+   "transponder": {
+    "code": "FCGR7043",
+    "on": true
+   },
+   "vessel": {
+    "class": "Marauder",
+    "mass": {
+     "unit": "gt",
+     "value": 0.02
+    },
+    "name": "SS Booty King",
+    "visibility_m": 6404092.62
+   }
+  },
+  "Space.Power": {
+   "battery_charge": {
+    "pct": 0,
+    "w": 150
+   },
+   "components": {
+    "pct": 60,
+    "w": 3855000000
+   },
+   "generators": {
+    "Battery": {
+     "kind": "emergency",
+     "setting_pct": 100,
+     "status": "standing by"
+    },
+    "Impulse_Engine": {
+     "kind": "aux",
+     "max_w": 1000000000,
+     "output_w": 1000000000,
+     "setting_pct": 100,
+     "status": "running"
+    },
+    "Warp_Core": {
+     "kind": "main",
+     "max_w": 5400000000,
+     "output_w": 5400000000,
+     "setting_pct": 100,
+     "status": "running"
+    }
+   },
+   "groups": {
+    "1": {
+     "name": "Arrays",
+     "pct": 5,
+     "w": 350000000
+    },
+    "2": {
+     "name": "Cloak",
+     "pct": 0,
+     "w": 0
+    },
+    "3": {
+     "name": "Fuel",
+     "pct": 0,
+     "w": 0
+    },
+    "4": {
+     "name": "Operations",
+     "pct": 0,
+     "w": 4500000
+    },
+    "5": {
+     "name": "Shields",
+     "pct": 0,
+     "w": 0
+    },
+    "6": {
+     "name": "Warp",
+     "pct": 55,
+     "w": 3500000000
+    },
+    "7": {
+     "name": "Weapons",
+     "pct": 0,
+     "w": 0
+    }
+   },
+   "pools": {
+    "aux_w": 1000000000,
+    "battery_w": 4000000,
+    "main_w": 5400000000,
+    "total_w": 6400000000
+   },
+   "repair": {
+    "pct": 0,
+    "w": 0
+   }
+  },
+  "Space.Power.Group": {
+   "groups": {
+    "1": {
+     "components": {
+      "Long_Range_Sensor": {
+       "consumption_pct": 13,
+       "powered_pct": 100,
+       "priority": "Normal",
+       "requested_w": 45000,
+       "share_pct": 30,
+       "unit_w": 45000
+      },
+      "Short_Range_Sensor": {
+       "consumption_pct": 1,
+       "powered_pct": 100,
+       "priority": "Normal",
+       "requested_w": 5000,
+       "share_pct": 3,
+       "unit_w": 5000
+      },
+      "Subspace_Array": {
+       "consumption_pct": 86,
+       "powered_pct": 100,
+       "priority": "Normal",
+       "requested_w": 300000,
+       "share_pct": 67,
+       "unit_w": 300000
+      }
+     },
+     "name": "Arrays",
+     "pct": 5,
+     "w": 350000000
+    }
+   }
+  },
+  "Space.Shields": {
+   "facings": {
+    "aft": {
+     "pct": 100,
+     "strength": 1
+    },
+    "fore": {
+     "pct": 100,
+     "strength": 1
+    },
+    "port": {
+     "pct": 80,
+     "strength": 0.8
+    },
+    "starboard": {
+     "pct": 100,
+     "strength": 1
+    }
+   },
+   "frequency": 1.5,
+   "up": true
+  },
+  "Space.Ship.Status": {
+   "alert": "green",
+   "class": "Marauder",
+   "core_pct": 60,
+   "hull": {
+    "cur": 806.16,
+    "max": 875
+   },
+   "name": "SS Booty King",
+   "power_pct": 100,
+   "shields_pct": 0
+  },
+  "Space.Tractor": {
+   "engaged": false,
+   "integrity_pct": 100,
+   "power_pct": 100
+  },
+  "Space.Weapons": {
+   "mounts": {
+    "Aft_Phaser_1": {
+     "arc": "aft",
+     "charge_pct": 42,
+     "range_m": 500000,
+     "state": "charging",
+     "type": "phaser"
+    },
+    "Fore_Phaser_1": {
+     "arc": "fore",
+     "charge_pct": 100,
+     "range_m": 500000,
+     "state": "ready",
+     "type": "phaser"
+    }
+   },
+   "stock": {
+    "Photon": 12
+   },
+   "tubes": {
+    "1": {
+     "loaded": "Photon",
+     "state": "loaded"
+    },
+    "2": {
+     "state": "empty"
+    }
+   }
+  }
+ },
+ "seqs": {
+  "Space.Contacts": 1,
+  "Space.Damage.Stat": 1,
+  "Space.Damage.Teams": 1,
+  "Space.Nav": 1,
+  "Space.Ops.Stat": 1,
+  "Space.Power": 1,
+  "Space.Power.Group": 1,
+  "Space.Shields": 1,
+  "Space.Ship.Status": 1,
+  "Space.Tractor": 1,
+  "Space.Weapons": 1
+ },
+ "alert": "green",
+ "pending": 0,
+ "tree": {
+  "session": "s1",
+  "generation": 1,
+  "screen": "std.sensors",
+  "title": "Sensors",
+  "console": "science",
+  "theme": "tng",
+  "tokens": {
+   "color.accent": "#ff9900",
+   "color.accent2": "#33ccff",
+   "color.alert": "#ff3030",
+   "color.bg": "#06080c",
+   "color.dim": "#7a8a9a",
+   "color.ok": "#66dd88",
+   "color.panel": "#0e1218",
+   "color.text": "#e8e0d0",
+   "color.warn": "#ffcc33",
+   "radius": 4,
+   "stroke": 1
+  },
+  "packKey": "19bac4f407ef0aef05f3412738b653f90a14dad0713d2b9c785be6c47ce2cf55/tng",
+  "root": {
+   "path": "0",
+   "widget": "label",
+   "props": {
+    "text": ""
+   },
+   "layout": {
+    "dir": "col",
+    "gap": 6
+   },
+   "enabled": true,
+   "children": [
+    {
+     "path": "0.0",
+     "widget": "label",
+     "props": {
+      "text": "SENSORS  -  SS BOOTY KING"
+     },
+     "layout": {},
+     "enabled": true
+    },
+    {
+     "path": "0.1",
+     "widget": "label",
+     "props": {
+      "text": ""
+     },
+     "layout": {
+      "dir": "row",
+      "gap": 6,
+      "weight": 1
+     },
+     "enabled": true,
+     "children": [
+      {
+       "path": "0.1.0",
+       "id": "view",
+       "widget": "viewscreen",
+       "props": {
+        "contacts": {
+         "11": {
+          "bearing": {
+           "az": 258,
+           "mark": -89
+          },
+          "cid": 11,
+          "distance_m": 797.8,
+          "distance_text": "797.8m",
+          "facing": "AF:AS",
+          "name": "AST5716",
+          "rel": {
+           "az": 0,
+           "mark": 60
+          }
+         },
+         "15": {
+          "bearing": {
+           "az": 337,
+           "mark": 26
+          },
+          "cid": 15,
+          "distance_m": 775968000,
+          "distance_text": "775968km",
+          "facing": "lP:LA",
+          "name": "UFPTRukh",
+          "rel": {
+           "az": 265,
+           "mark": -28
+          }
+         },
+         "17": {
+          "bearing": {
+           "az": 108,
+           "mark": 22
+          },
+          "cid": 17,
+          "class": "Marauder",
+          "distance_m": 163061679063,
+          "distance_text": "1.09AU",
+          "empire": "federation",
+          "facing": "-a:hP",
+          "faction": "United Federation",
+          "heading": {
+           "az": 20,
+           "mark": 0,
+           "roll": 0
+          },
+          "iff": "friend",
+          "integrity": {
+           "hull": 0.9,
+           "port_nacelle": 1,
+           "starboard_nacelle": 0.8
+          },
+          "name": "UFP40EA1",
+          "rel": {
+           "az": 152,
+           "mark": 3
+          },
+          "size_m": 120,
+          "type": "Ship"
+         },
+         "3": {
+          "bearing": {
+           "az": 333,
+           "mark": 22
+          },
+          "cid": 3,
+          "class": "M",
+          "distance_m": 394044000,
+          "distance_text": "394044km",
+          "empire": "vulcan",
+          "facing": "lP:la",
+          "faction": "Vulcan",
+          "name": "Vulcan",
+          "rel": {
+           "az": 271,
+           "mark": -27
+          },
+          "type": "Planet"
+         },
+         "5": {
+          "bearing": {
+           "az": 94,
+           "mark": 33
+          },
+          "cid": 5,
+          "distance_m": 130150147509,
+          "distance_text": "0.87AU",
+          "facing": "-A:LP",
+          "name": "40 Eridani A",
+          "rel": {
+           "az": 166,
+           "mark": -4
+          }
+         }
+        },
+        "heading": {
+         "az": 0,
+         "mark": 0,
+         "roll": 1.7
+        },
+        "items": [],
+        "scene": "main"
+       },
+       "layout": {
+        "weight": 2
+       },
+       "enabled": true
+      },
+      {
+       "path": "0.1.1",
+       "id": "radar",
+       "widget": "radar",
+       "props": {
+        "contacts": {
+         "11": {
+          "bearing": {
+           "az": 258,
+           "mark": -89
+          },
+          "cid": 11,
+          "distance_m": 797.8,
+          "distance_text": "797.8m",
+          "facing": "AF:AS",
+          "name": "AST5716",
+          "rel": {
+           "az": 0,
+           "mark": 60
+          }
+         },
+         "15": {
+          "bearing": {
+           "az": 337,
+           "mark": 26
+          },
+          "cid": 15,
+          "distance_m": 775968000,
+          "distance_text": "775968km",
+          "facing": "lP:LA",
+          "name": "UFPTRukh",
+          "rel": {
+           "az": 265,
+           "mark": -28
+          }
+         },
+         "17": {
+          "bearing": {
+           "az": 108,
+           "mark": 22
+          },
+          "cid": 17,
+          "class": "Marauder",
+          "distance_m": 163061679063,
+          "distance_text": "1.09AU",
+          "empire": "federation",
+          "facing": "-a:hP",
+          "faction": "United Federation",
+          "heading": {
+           "az": 20,
+           "mark": 0,
+           "roll": 0
+          },
+          "iff": "friend",
+          "integrity": {
+           "hull": 0.9,
+           "port_nacelle": 1,
+           "starboard_nacelle": 0.8
+          },
+          "name": "UFP40EA1",
+          "rel": {
+           "az": 152,
+           "mark": 3
+          },
+          "size_m": 120,
+          "type": "Ship"
+         },
+         "3": {
+          "bearing": {
+           "az": 333,
+           "mark": 22
+          },
+          "cid": 3,
+          "class": "M",
+          "distance_m": 394044000,
+          "distance_text": "394044km",
+          "empire": "vulcan",
+          "facing": "lP:la",
+          "faction": "Vulcan",
+          "name": "Vulcan",
+          "rel": {
+           "az": 271,
+           "mark": -27
+          },
+          "type": "Planet"
+         },
+         "5": {
+          "bearing": {
+           "az": 94,
+           "mark": 33
+          },
+          "cid": 5,
+          "distance_m": 130150147509,
+          "distance_text": "0.87AU",
+          "facing": "-A:LP",
+          "name": "40 Eridani A",
+          "rel": {
+           "az": 166,
+           "mark": -4
+          }
+         }
+        },
+        "selected": null
+       },
+       "layout": {
+        "weight": 1
+       },
+       "enabled": true,
+       "events": [
+        "select"
+       ]
+      }
+     ]
+    },
+    {
+     "path": "0.2",
+     "widget": "label",
+     "props": {
+      "text": ""
+     },
+     "layout": {
+      "dir": "row",
+      "gap": 6
+     },
+     "enabled": true,
+     "children": [
+      {
+       "path": "0.2.0",
+       "widget": "button",
+       "props": {
+        "text": "SRS",
+        "tone": "accent"
+       },
+       "layout": {},
+       "enabled": true,
+       "events": [
+        "click"
+       ]
+      },
+      {
+       "path": "0.2.1",
+       "widget": "button",
+       "props": {
+        "text": "LRS",
+        "tone": "accent"
+       },
+       "layout": {},
+       "enabled": true,
+       "events": [
+        "click"
+       ]
+      },
+      {
+       "path": "0.2.2",
+       "widget": "button",
+       "props": {
+        "text": "PASSIVE",
+        "tone": "accent"
+       },
+       "layout": {},
+       "enabled": true,
+       "events": [
+        "click"
+       ]
+      },
+      {
+       "path": "0.2.3",
+       "widget": "button",
+       "props": {
+        "text": "INTERNAL",
+        "tone": "accent"
+       },
+       "layout": {},
+       "enabled": true,
+       "events": [
+        "click"
+       ]
+      },
+      {
+       "path": "0.2.4",
+       "widget": "button",
+       "props": {
+        "text": "DOCKSCAN",
+        "tone": "accent"
+       },
+       "layout": {},
+       "enabled": true,
+       "events": [
+        "click"
+       ]
+      }
+     ]
+    },
+    {
+     "path": "0.3",
+     "id": "list",
+     "widget": "table",
+     "props": {
+      "columns": [
+       {
+        "key": "cid",
+        "title": "CID"
+       },
+       {
+        "key": "name",
+        "title": "NAME"
+       },
+       {
+        "key": "bearing",
+        "title": "BRG"
+       },
+       {
+        "key": "distance_text",
+        "title": "DIST"
+       }
+      ],
+      "rows": {
+       "11": {
+        "bearing": {
+         "az": 258,
+         "mark": -89
+        },
+        "cid": 11,
+        "distance_m": 797.8,
+        "distance_text": "797.8m",
+        "facing": "AF:AS",
+        "name": "AST5716",
+        "rel": {
+         "az": 0,
+         "mark": 60
+        }
+       },
+       "15": {
+        "bearing": {
+         "az": 337,
+         "mark": 26
+        },
+        "cid": 15,
+        "distance_m": 775968000,
+        "distance_text": "775968km",
+        "facing": "lP:LA",
+        "name": "UFPTRukh",
+        "rel": {
+         "az": 265,
+         "mark": -28
+        }
+       },
+       "17": {
+        "bearing": {
+         "az": 108,
+         "mark": 22
+        },
+        "cid": 17,
+        "class": "Marauder",
+        "distance_m": 163061679063,
+        "distance_text": "1.09AU",
+        "empire": "federation",
+        "facing": "-a:hP",
+        "faction": "United Federation",
+        "heading": {
+         "az": 20,
+         "mark": 0,
+         "roll": 0
+        },
+        "iff": "friend",
+        "integrity": {
+         "hull": 0.9,
+         "port_nacelle": 1,
+         "starboard_nacelle": 0.8
+        },
+        "name": "UFP40EA1",
+        "rel": {
+         "az": 152,
+         "mark": 3
+        },
+        "size_m": 120,
+        "type": "Ship"
+       },
+       "3": {
+        "bearing": {
+         "az": 333,
+         "mark": 22
+        },
+        "cid": 3,
+        "class": "M",
+        "distance_m": 394044000,
+        "distance_text": "394044km",
+        "empire": "vulcan",
+        "facing": "lP:la",
+        "faction": "Vulcan",
+        "name": "Vulcan",
+        "rel": {
+         "az": 271,
+         "mark": -27
+        },
+        "type": "Planet"
+       },
+       "5": {
+        "bearing": {
+         "az": 94,
+         "mark": 33
+        },
+        "cid": 5,
+        "distance_m": 130150147509,
+        "distance_text": "0.87AU",
+        "facing": "-A:LP",
+        "name": "40 Eridani A",
+        "rel": {
+         "az": 166,
+         "mark": -4
+        }
+       }
+      },
+      "selectable": true
+     },
+     "layout": {
+      "size": 120,
+      "hasSize": true
+     },
+     "enabled": true,
+     "events": [
+      "select"
+     ]
+    },
+    {
+     "path": "0.4",
+     "id": "text",
+     "widget": "textport",
+     "props": {},
+     "layout": {
+      "size": 140,
+      "hasSize": true
+     },
+     "enabled": true
+    }
+   ]
+  },
+  "ui": {}
+ }
+}
