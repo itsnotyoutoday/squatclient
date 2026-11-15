@@ -5,7 +5,11 @@ import { findTextport, place, type Placed } from './layout';
 import { skinFor } from './skins';
 import { layoutSkinned } from './skinlayout';
 import type { Pal, Skin } from './skins/types';
-import { col, fitText, frameShapes, navShapes, templateVars } from './skinframe';
+import { col, fitText, frameShapes, measureText, navShapes, noticeX, templateVars } from './skinframe';
+
+/** the notice pill: its height and the widest it gets (scene units) */
+export const NOTICE_H = 26;
+export const NOTICE_MAX = 640;
 export type AlertRecolour = 'full' | 'edge' | 'off';
 import { skinFromTheme } from './skins/pack';
 import { setActiveCmcp, useAmbient, usePane, useScreenHelp, useThemeInUse } from './pane';
@@ -565,9 +569,12 @@ export class CmcpController {
     // the notice line: one pill at the top edge of the scene, styled by the skin, clear of the text port, the input bar and the nav column
     const nt = s.ui?.notice;
     if (nt && nt.text) {
-      const nw = Math.min(900, Math.max(320, nt.text.length * 15 + 48)), nx = 800 - nw / 2, bad = nt.state === 'failed' || nt.kind === 'error' || nt.kind === 'warning';
-      prims.push({ id: 'notice.bg', type: 'rect', props: { x: nx, y: 4, w: nw, h: 34, r: skin.sharp ? 0 : 17, fill: col('bg', pal), stroke: col(bad ? 'r' : skin.port.frame.role, edgePal), strokeWidth: 2, glow: 0.1, z: 9400 } });
-      prims.push({ id: 'notice.tx', type: 'text', props: { x: 800, y: 21, text: nt.text, size: 22 * (skin.font.tscale ?? 1), fill: col(bad ? 'r' : 'k', edgePal), align: 'center', baseline: 'middle', weight: '700', font: skin.font.family, z: 9401 } });
+      // a short pill at the very top edge (y 2..28), centred, at most NOTICE_MAX wide; a longer line shrinks and ends with an ellipsis. It sits above every
+      // skin's own title texts (they start below y 30), so it never covers the game or ship name
+      const nsz = 18 * (skin.font.tscale ?? 1), nf = fitText(nt.text, nsz, NOTICE_MAX - 28, skin.font.family, '700');
+      const nw = Math.min(NOTICE_MAX, Math.max(200, measureText(nf.text, nf.size, skin.font.family, '700') + 28)), nx = noticeX(prims.filter((q) => q.type === 'text' && q.id.startsWith('fr.')).map((q) => q.props as { x: number; y: number; text: string; size: number; align?: string; weight?: string }), nw, NOTICE_H, skin.font.family), bad = nt.state === 'failed' || nt.kind === 'error' || nt.kind === 'warning';
+      prims.push({ id: 'notice.bg', type: 'rect', props: { x: nx, y: 2, w: nw, h: NOTICE_H, r: skin.sharp ? 0 : NOTICE_H / 2, fill: col('bg', pal), stroke: col(bad ? 'r' : skin.port.frame.role, edgePal), strokeWidth: 2, glow: 0.1, z: 9400 } });
+      prims.push({ id: 'notice.tx', type: 'text', props: { x: nx + nw / 2, y: 2 + NOTICE_H / 2, text: nf.text, size: nf.size, fill: col(bad ? 'r' : 'k', edgePal), align: 'center', baseline: 'middle', weight: '700', font: skin.font.family, z: 9401 } });
     }
     const noticeNew = nt?.id !== s.noticeId;
     s.noticeId = nt?.id;

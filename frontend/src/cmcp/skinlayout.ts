@@ -60,6 +60,8 @@ export function layoutSkinned(tree: CmcpNode, skin: Skin, screenName: string, lo
   const PAGER = 44;
   const band: Rect4 = pages ? [band0[0], band0[1] + PAGER, band0[2], band0[3] - PAGER] : band0;
   const pager: Rect4 | undefined = pages ? [band0[0], band0[1], band0[2], PAGER - 6] : undefined;
+  // the hero widgets (viewscreen, radar, scope, sector map, schematic) take the height the column has left over: big, not their minimum
+  if (dense) root = stretchHero(root, tp);
   // (a single panel taller than the band still shrinks, never below 55%)
   const need = dense ? intrinsic(withoutPort(root, tp), 'h') : 0;
   const scale = dense ? Math.max(0.55, Math.min(1, (band[3] * K) / Math.max(1, need))) : 1;
@@ -75,6 +77,15 @@ export function layoutSkinned(tree: CmcpNode, skin: Skin, screenName: string, lo
   }
   ov.set(tp, { x: (port[0] * K) / scale, y: (port[1] * K) / scale, w: (port[2] * K) / scale, h: (port[3] * K) / scale });
   return { root: place(root, { x: (band[0] * K) / scale, y: (band[1] * K) / scale, w: (band[2] * K) / scale, h: (band[3] * K) / scale }, ov), port, mode, tree: root, scale, pages, pager, narrow };
+}
+
+const HERO = new Set(['viewscreen', 'radar', 'scope', 'sector-map', 'schematic']);
+const hasHero = (n: CmcpNode): boolean => HERO.has(n.widget) || (n.children ?? []).some(hasHero);
+/** hero leaves flex (weight 1, no fixed size) so they fill what the column leaves over */
+function stretchHero(n: CmcpNode, tp: string): CmcpNode {
+  if (n.path === tp) return n;
+  if (!(n.children ?? []).length) return HERO.has(n.widget) && !n.layout.hasSize ? { ...n, layout: { ...n.layout, weight: Math.max(1, n.layout.weight ?? 0) } } : n;
+  return { ...n, children: (n.children ?? []).map((c) => stretchHero(c, tp)) };
 }
 
 /** the smallest scale at which the widgets' text is still readable */
@@ -94,6 +105,8 @@ function paginate(tree: CmcpNode, tp: string, bandK: number, page: number): { ro
     for (const p of parts) sections.push(reflow({ ...p, layout: { ...p.layout, weight: 0 } }));
   }
   if (sections.length < 2) return null;
+  // the hero widgets come first (the picture is what the player looks at), the other panels keep their order
+  sections.splice(0, sections.length, ...sections.filter(hasHero), ...sections.filter((x) => !hasHero(x)));
   const gap = 4, head = (title ? intrinsic(title, 'h') + gap : 0) + 44 * K;
   const cap = Math.max(60, (bandK - head) / MIN_SCALE);
   const groups: CmcpNode[][] = [];

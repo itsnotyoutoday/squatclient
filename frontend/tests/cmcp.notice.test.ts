@@ -61,3 +61,22 @@ describe('the notice line', () => {
     for (const x of [sk.log.button, sk.off.button]) expect(hit(bar, [x.x, x.y, x.w, x.h])).toBe(false);
   });
 });
+
+describe('the notice pill never covers a title text of the frame', () => {
+  it.each(Object.keys(SKINS))('in %s the widest pill is placed clear of every text of the frame', async (name) => {
+    const { frameShapes, measureText, noticeX } = await import('../src/cmcp/skinframe');
+    const { NOTICE_H, NOTICE_MAX } = await import('../src/cmcp/controller');
+    const sk = SKINS[name];
+    const vars = { ship: 'ACS PATHFINDER', class: 'NEBULA CLASS', game: 'CMCP TESTGAME', mode: 'COMMAND', title: 'COMMAND', hull: '100', core: '96', lock: 'KHV Tolghan', alert: 'YELLOW', screen: 'command' };
+    const texts = frameShapes(sk.frame, sk.pal.normal, vars, 'fr.', sk.font.family).filter((p) => p.type === 'text').map((p) => p.props as { x: number; y: number; text: string; size: number; align?: string; weight?: string });
+    const x = noticeX(texts, NOTICE_MAX, NOTICE_H, sk.font.family);
+    expect(x).toBeGreaterThanOrEqual(0);
+    expect(x + NOTICE_MAX).toBeLessThanOrEqual(1600);
+    for (const t of texts) {
+      if (!t.text) continue;
+      const w = measureText(t.text, t.size, sk.font.family, t.weight ?? '700');
+      const x0 = t.align === 'center' ? t.x - w / 2 : t.align === 'right' ? t.x - w : t.x;
+      expect(hit([x, 2, NOTICE_MAX, NOTICE_H], [x0, t.y - t.size * 0.4, w, t.size * 0.8]), `${name}: pill at ${x} covers "${t.text}" at ${t.x},${t.y}`).toBe(false);
+    }
+  });
+});

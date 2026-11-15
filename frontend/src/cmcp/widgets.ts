@@ -236,7 +236,7 @@ function columnsOf(v: unknown): Col[] {
 const table: Draw = (p, ctx, out) => {
   const id = p.node.path, pr = p.node.props;
   const picker = p.node.widget === 'contact-picker';
-  const inner = panel(p, ctx, out, id, picker ? 'Contacts' : str(pr.label));
+  const inner = panel(p, ctx, out, id, str(pr.label)); // (a picker has no title of its own: the screen's pack puts a CONTACTS label above it)
   let cols = columnsOf(pr.columns);
   if (picker && cols.length === 0) cols = [{ key: 'cid', title: 'CID' }, { key: 'name', title: 'NAME' }, { key: 'distance_text', title: 'DIST' }];
   if (cols.length === 0) cols = [{ key: 'name', title: 'NAME' }];

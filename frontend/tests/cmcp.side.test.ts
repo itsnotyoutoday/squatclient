@@ -75,3 +75,15 @@ describe.each(Object.entries(SKINS))('the text pane is at least max_cols columns
     expect(cols(L.port[2] * k), `${L.mode}${L.narrow ? ' (narrow window)' : ''}: pane ${Math.round(L.port[2] * k)} px`).toBeGreaterThanOrEqual(80 - 0.5);
   });
 });
+
+describe.each(Object.entries(SKINS))('hero visuals are big in the side layout, skin %s', (_n, skin) => {
+  it.each(['helm', 'tactical', 'sensors', 'live-nhaalveth-helm', 'live-drakhar-sci'])('%s: the viewscreen / radar / scope on the first page is at least 240 scene units tall', (name) => {
+    const { root, screen } = tree(name);
+    const L = layoutSkinned(root, skin, screen, false, 'balanced', (80 * 0.6 * 14 + 28) / (1300 / 1600), true, 0)!;
+    if (L.narrow) return;
+    const heroes = leaves(L.root).filter((p) => ['viewscreen', 'radar', 'scope'].includes(p.node.widget));
+    expect(heroes.length, `${name}: a hero widget on page 1`).toBeGreaterThan(0);
+    const best = Math.max(...heroes.map((p) => (p.rect.h * L.scale) / K));
+    expect(best, `${name}: tallest hero ${best.toFixed(0)}`).toBeGreaterThanOrEqual(240);
+  });
+});

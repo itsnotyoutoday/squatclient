@@ -52,7 +52,7 @@ export function textBoxes(shapes: Shape[]): (R4 | null)[] {
 }
 /** the width a text may use at its anchor: inside its shape (with a margin), else up to the scene edge */
 export function textRoom(t: Extract<Shape, { t: 'text' }>, box: R4 | null): number {
-  const m = 8, al = t.align ?? 'left';
+  const m = 16, al = t.align ?? 'left'; // (a slanted or notched plate is narrower than its bounding box at the ends)
   if (box) {
     if (al === 'center') return 2 * Math.min(t.x - box[0], box[0] + box[2] - t.x) - 2 * m;
     if (al === 'right') return t.x - box[0] - m;
@@ -150,4 +150,17 @@ export function navShapes(skin: Skin, pal: Pal, current: number, idp: string, av
   const m = skin.nav.marker;
   if (m && curShown >= 0) out.push({ id: `${idp}marker`, type: 'rect', props: { x: m.x, y: m.y + curShown * (b.dy ?? 0), w: m.w, h: m.h, fill: col(m.fill, pal), glow: m.glow } });
   return out;
+}
+
+/** Where the notice pill goes: centred at the top edge unless that covers one of the frame's texts (a title that starts near the top), then the
+ * right end, then the left end, then wherever it overlaps least. Returns the pill's left edge (scene units). `texts` are the frame's text prims. */
+export function noticeX(texts: { x: number; y: number; text: string; size: number; align?: string; weight?: string }[], w: number, h: number, font?: string): number {
+  const boxes = texts.filter((t) => t.text).map((t) => {
+    const tw = measureText(t.text, t.size, font, t.weight ?? '700');
+    const x0 = t.align === 'center' ? t.x - tw / 2 : t.align === 'right' ? t.x - tw : t.x;
+    return [x0, t.y - t.size * 0.4, tw, t.size * 0.8] as [number, number, number, number];
+  });
+  const clash = (x: number): number => boxes.reduce((n, b) => n + (x < b[0] + b[2] && x + w > b[0] && 2 < b[1] + b[3] && 2 + h > b[1] ? 1 : 0), 0);
+  const cands = [800 - w / 2, 1580 - w, 20, 400, 1000];
+  return cands.reduce((best, x) => (clash(x) < clash(best) ? x : best), cands.find((x) => clash(x) === 0) ?? cands[0]);
 }
