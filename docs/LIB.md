@@ -58,3 +58,12 @@ real Lua runtime with a manual clock.
 
 All fonts are SIL Open Font License 1.1; each licence text sits beside its font. Antonio (TNG), Rajdhani (soft, Romulan, bridge),
 Teko (Klingon), Orbitron (TOS) and Cinzel (Ferengi) are from the Google Fonts repository (github.com/google/fonts, `ofl/`).
+
+## The classic TinyFugue library (lib/tf)
+
+The installed app also carries the unmodified standard TinyFugue library (`internal/stdlib/tflib/`, notice in
+`TF-NOTICE.md`; the same files gtf ships): `tintin.tf`, `at.tf`, `kb-*.tf`, `spedwalk.tf`, `tf-help` and the rest. It is
+written to `<config>/lib/tf` at every start (managed, like `lib/squat`). `/load` and `/require` search, for a relative
+name: `lib/squat`, then `lib/tf`, then the scripts folder, so `/load tintin.tf` and `/load examples/hello.tf` work without
+a path; an absolute path (or `~/...`) loads from anywhere. Only `lib/squat/stdlib.tf` runs at start; the classic
+`stdlib.tf` stays available as `lib/tf/stdlib.tf` (`SQUATCLIENT_TFLIB` can still point the start-up library elsewhere).

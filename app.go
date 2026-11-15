@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"sync"
 
 	"github.com/itsnotyoutoday/squatClientDaemon/pkg/engine"
@@ -85,7 +86,9 @@ func (a *App) build(ctx context.Context) (*app.Service, *config.Store, error) {
 	if lib, err := stdlib.Install(scripts); err != nil {
 		slog.Warn("standard library not installed", "err", err)
 	} else {
-		libDirs = []string{lib, scripts}
+		// /load and /require search: our library first (its stdlib.tf is the one loaded at start), then the classic
+		// TinyFugue library (tintin.tf, at.tf, ...), then the user's own scripts. Absolute paths and ~ go anywhere.
+		libDirs = []string{lib, filepath.Join(scripts, filepath.FromSlash(stdlib.TFDir)), scripts}
 		if stdLib == "" {
 			stdLib = lib
 		}

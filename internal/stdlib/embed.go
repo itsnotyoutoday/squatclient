@@ -13,6 +13,15 @@ import (
 //go:embed squat
 var files embed.FS
 
+// tflib is the unmodified standard TinyFugue library (tf/*.tf and its help file, see tflib/TF-NOTICE.md): the same
+// set gtf ships, so /load and /require find the classic scripts (tintin.tf, at.tf, kb-*.tf, ...) in an installed client.
+//
+//go:embed tflib
+var tflib embed.FS
+
+// TFDir is the folder under the configuration folder that Install writes the classic library into (lib/tf).
+const TFDir = "lib/tf"
+
 // Dir is the folder under the configuration folder that Install writes (lib/squat).
 const Dir = "lib/squat"
 
@@ -47,7 +56,32 @@ func Install(configDir string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	if err := installTF(configDir); err != nil {
+		return out, err
+	}
 	return out, nil
+}
+
+// installTF writes the classic library into <configDir>/lib/tf (managed like lib/squat: rewritten when it differs).
+func installTF(configDir string) error {
+	out := filepath.Join(configDir, filepath.FromSlash(TFDir))
+	return fs.WalkDir(tflib, "tflib/tf", func(p string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		dst := filepath.Join(out, filepath.FromSlash(strings.TrimPrefix(strings.TrimPrefix(p, "tflib/tf"), "/")))
+		if d.IsDir() {
+			return os.MkdirAll(dst, 0o755)
+		}
+		b, err := tflib.ReadFile(p)
+		if err != nil {
+			return err
+		}
+		if old, err := os.ReadFile(dst); err == nil && string(old) == string(b) {
+			return nil
+		}
+		return os.WriteFile(dst, b, 0o644)
+	})
 }
 
 // Files lists the embedded library files (slash paths below squat/).

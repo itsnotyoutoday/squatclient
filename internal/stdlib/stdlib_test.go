@@ -299,3 +299,33 @@ func TestRequireGfxIsQuietAndIdempotent(t *testing.T) {
 		t.Fatalf("/require -q printed %v", got)
 	}
 }
+
+func TestClassicLibraryIsInstalledAndLoadable(t *testing.T) {
+	dir := t.TempDir()
+	if _, err := Install(dir); err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range []string{"stdlib.tf", "tintin.tf", "at.tf", "kb-bash.tf", "tf-help"} {
+		if _, err := os.Stat(filepath.Join(dir, "lib", "tf", f)); err != nil {
+			t.Errorf("classic library file %s not installed: %v", f, err)
+		}
+	}
+}
+
+func TestLoadFindsClassicLibraryAndExamples(t *testing.T) {
+	cfg := t.TempDir()
+	dir, err := Install(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := &host{}
+	e := tfengine.New(h, tfengine.Options{StdLib: dir, LibDirs: []string{dir, filepath.Join(cfg, TFDir), cfg}, MaxTime: 10 * time.Second})
+	t.Cleanup(e.Close)
+	for _, line := range []string{"/load tintin.tf", "/load examples/hello.tf", "/hello_example"} {
+		_ = e.Exec("", line)
+	}
+	all := strings.Join(h.echo, "\n")
+	if strings.Contains(all, "not found") || strings.Contains(all, "No such") || !strings.Contains(all, "example loaded") {
+		t.Fatalf("library not found through /load:\n%s", all)
+	}
+}
