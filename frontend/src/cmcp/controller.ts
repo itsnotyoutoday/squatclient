@@ -470,8 +470,11 @@ export class CmcpController {
     const pu = s.pulse?.active && alert ? s.pulse : undefined;
     const withPulse = (p: Pal): Pal => (pu?.roles ? ({ ...p, ...(pu.roles.r ? { r: pu.roles.r } : {}), ...(pu.roles.x ? { x: pu.roles.x } : {}) } as Pal) : p);
     const red = withPulse(skin.pal.red);
-    const pal = withPulse(alert && mode === 'full' ? skin.pal.red : alert && mode === 'edge' ? ({ ...skin.pal.normal, r: skin.pal.red.r, x: skin.pal.red.x } as Pal) : skin.pal.normal);
-    const edgePal = alert && mode !== 'off' ? red : pal;
+    const amb = s.pulse?.ambient; // the ship-wide alert ambience (6.17.1): the engine sends it only while an alert is on and the ambience is enabled
+    const basePal = withPulse(alert && mode === 'full' ? skin.pal.red : alert && mode === 'edge' ? ({ ...skin.pal.normal, r: skin.pal.red.r, x: skin.pal.red.x } as Pal) : skin.pal.normal);
+    const ambCol = (alert ? red.r : amb?.edge) ?? '#ff2020';
+    const pal = amb ? ({ ...basePal, ...(amb.roles.includes('r') ? { r: ambCol } : {}), ...(amb.roles.includes('x') ? { x: alert ? red.x : ambCol } : {}) } as Pal) : basePal;
+    const edgePal = (alert && mode !== 'off') || amb ? { ...red, r: ambCol } as Pal : pal;
     const screenName = t.screen.split(/[./]/).pop() ?? '';
     const cur = skin.nav.items.findIndex((i) => i.screens.includes(screenName));
     const label = cur >= 0 ? skin.nav.items[cur].label : (t.title || screenName);
@@ -535,7 +538,7 @@ export class CmcpController {
     }
     const noticeNew = nt?.id !== s.noticeId;
     s.noticeId = nt?.id;
-    if (alert && mode !== 'off') prims.push({ id: 'alertedge', type: 'rect', props: { x: 4, y: 4, w: 1592, h: 892, r: skin.alertEdge?.r ?? 0, stroke: pu?.edge ?? skin.alertEdge?.color ?? skin.pal.red.r, strokeWidth: skin.alertEdge?.width ?? 8, fill: '#00000000', z: 9500 } });
+    if ((alert && mode !== 'off') || amb) prims.push({ id: 'alertedge', type: 'rect', props: { x: 4, y: 4, w: 1592, h: 892, r: skin.alertEdge?.r ?? 0, stroke: pu?.edge ?? (alert ? skin.alertEdge?.color : undefined) ?? amb?.edge ?? skin.pal.red.r, strokeWidth: skin.alertEdge?.width ?? 8, fill: '#00000000', z: 9500 } });
     const palKey = alert ? (mode === 'full' ? 'red' : mode === 'edge' ? 'edge' : 'normal') : 'normal';
     const pulsing = !!pu;
     const palChanged = s.lastPal !== '' && s.lastPal !== palKey;
@@ -545,13 +548,20 @@ export class CmcpController {
       if (!slow) return 0;
       const calm = t.view?.calm ? 2.5 : 1; // calm mode: 2.5 times slower
       if ((id === PORT_ID || id === 'portframe' || id === 'cw' || id === 'logsum') && /^(x|y|w|h|opacity)$/.test(prop)) return 0.35 * calm; // the animated LOG toggle (the Lua themes' portNode tween)
+      if (id === 'shk' && /^(x|y)$/.test(prop)) return 0.03; // a shake sample glides in 30 ms
       if (pulsing && /^(fill|stroke|color)$/.test(prop)) return 0.06; // a pulse sample: a short smoothing glide
       if (palChanged && /^(fill|stroke|color)$/.test(prop)) return ((skin.motion?.alertMs ?? 900) / 1000) * calm;
       return 0;
     };
+    // hit shake (6.18): the frame and the widgets move by the core's offset (scene px); the text port, the alert edge and the notice stay put
+    const sh = s.pulse?.shake?.active ? s.pulse.shake : undefined;
+    const steady = (id: string): boolean => id === PORT_ID || id === 'alertedge' || id.startsWith('notice.');
+    const shaken: Prim[] = [{ id: 'shk', type: 'group', props: { x: sh?.x ?? 0, y: sh?.y ?? 0, z: 0 } }];
+    for (const p of prims) shaken.push(steady(p.id) ? p : { ...p, parent: p.parent ?? 'shk' });
+    prims.splice(0, prims.length, ...shaken);
     const { ops, map } = diffOps(s.prev, prims, ease);
     const rt = this.rtFor(s.id);
-    const head: GfxOp[] = [sceneOp(W, H, pal.bg, skin.bloom)];
+    const head: GfxOp[] = [sceneOp(W, H, amb?.hueBg ?? pal.bg, skin.bloom)];
     if (!s.open) head.push({ op: 'on', scene: SCENE, id: '#scene', events: ['close'] });
     s.open = true;
     s.prev = map;

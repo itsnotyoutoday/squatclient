@@ -210,6 +210,8 @@ export interface Settings {
   cmcpPackConsent: 'always' | 'ask' | 'never';
   cmcpAlertRecolour: 'theme' | 'full' | 'edge' | 'off';
   cmcpAlertPulse: 'theme' | 'on' | 'off';
+  cmcpAlertAmbient: 'theme' | 'on' | 'off';
+  cmcpHitShake: 'theme' | 'on' | 'off';
   cmcpTextLayout: 'auto' | 'left' | 'stacked';
   /** Console theme: follow the ship's suggested theme (default) or always use `consoleTheme`. */
   consoleThemeMode: 'ship' | 'fixed';
@@ -934,6 +936,8 @@ export const DEFAULT_SETTINGS: Settings = {
   cmcpPackConsent: 'always',
   cmcpAlertRecolour: 'theme',
   cmcpAlertPulse: 'theme',
+  cmcpAlertAmbient: 'theme',
+  cmcpHitShake: 'theme',
   cmcpTextLayout: 'auto',
   consoleThemeMode: 'ship',
   cmcpPortDefault: 'balanced',

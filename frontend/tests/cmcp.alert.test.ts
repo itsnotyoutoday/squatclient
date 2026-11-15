@@ -148,3 +148,60 @@ describe('the red-alert pulse (samples come from the engine, which asks the core
     expect(engine.cmcpCalls.some((c) => c.fn === 'cmcpReducedMotion')).toBe(true);
   });
 });
+
+describe('hit shake and the ship-wide alert ambience (samples come from the engine, which asks the core)', () => {
+  const run = (alert: string, reduce = false) => {
+    const engine = new MockEngine();
+    const rt = new GfxRuntime();
+    rt.paused = true;
+    const ops: GfxOp[] = [];
+    const apply = rt.apply.bind(rt);
+    rt.apply = (o: GfxOp[]): void => { ops.push(...o); apply(o); };
+    const ctl = new CmcpController(engine, () => rt);
+    ctl.reduceMotion = reduce;
+    ctl.attach();
+    const ui = { ...fx('sensors'), session: 's1', alert, status: { alert, hull: { cur: 80, max: 100 }, core_pct: 60, name: 'SS Test' }, commands: ['alert.set'] } as CmcpUI;
+    ui.tree!.session = 's1';
+    ui.tree!.theme = 'romulan';
+    ui.tree!.alertMode = 'edge';
+    engine.pushCmcp(ui);
+    const fin = (id: string): Record<string, unknown> | undefined => {
+      let cur: Record<string, unknown> | undefined;
+      for (const o of ops) {
+        if (o.op === 'create' && o.id === id) cur = { ...(o.props as Record<string, unknown>), parent: o.parent };
+        else if (o.op === 'set' && o.id === id && cur) Object.assign(cur, o.props);
+        else if (o.op === 'tween' && o.target === id && cur) for (const [k, v] of Object.entries(o.tracks as Record<string, { to: unknown }>)) cur[k] = v.to;
+      }
+      return cur;
+    };
+    return { engine, fin, ops };
+  };
+  it('moves the frame and the widgets by the offset, never the text port, the alert edge or the notice', () => {
+    const { engine, fin } = run('red');
+    expect(fin('shk')).toMatchObject({ x: 0, y: 0 });
+    engine.pushCmcpPulse({ session: 's1', active: false, level: 1, phase: 'on', shake: { active: true, x: 7.5, y: -3 } });
+    expect(fin('shk')).toMatchObject({ x: 7.5, y: -3 });
+    expect(fin('cw')?.parent).toBe('shk'); // the widgets
+    expect(fin('portframe')?.parent).toBe('shk'); // the frame
+    expect(fin('cmcp.port')?.parent).toBeUndefined(); // the text port
+    expect(fin('alertedge')?.parent).toBeUndefined();
+    engine.pushCmcpPulse({ session: 's1', active: false, level: 1, phase: 'on' });
+    expect(fin('shk')).toMatchObject({ x: 0, y: 0 });
+  });
+  it('with reduced motion the shake glides nowhere (the engine sends none; samples set the offset at once)', () => {
+    const { engine, ops } = run('red', true);
+    ops.length = 0;
+    engine.pushCmcpPulse({ session: 's1', active: false, level: 1, phase: 'on', shake: { active: true, x: 4, y: 4 } });
+    expect(ops.some((o) => o.op === 'tween' && o.target === 'shk')).toBe(false);
+  });
+  it('shows the ambience on any screen: the edge in the alert colour even with recolour off, the alert roles and the tinted background', () => {
+    const { engine, fin, ops } = run('red');
+    engine.pushCmcpPulse({ session: 's1', active: false, level: 1, phase: 'on', ambient: { edge: '#ff2020', roles: ['r', 'x'], hueBg: '#2a0505' } });
+    expect(fin('alertedge')?.stroke).toBe('#ff2020');
+    expect(ops.filter((o) => o.op === 'scene').at(-1)).toMatchObject({ bg: '#2a0505' });
+  });
+  it('ignores a green screen without ambience (nothing is drawn)', () => {
+    const { fin } = run('green');
+    expect(fin('alertedge')).toBeUndefined();
+  });
+});

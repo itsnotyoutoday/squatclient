@@ -320,6 +320,20 @@ export function SettingsDialog() {
             <option value="off">Off</option>
           </select>
         </Field>
+        <Field label="Alert on every screen" hint="A red or yellow alert shows on every screen aboard (the edge, the alert colours and an optional tint that breathes with the pulse). Theme (default): the theme decides.">
+          <select aria-label="Alert on every screen" value={settings.cmcpAlertAmbient || 'theme'} onChange={(e) => update({ cmcpAlertAmbient: e.target.value as 'theme' | 'on' | 'off' })}>
+            <option value="theme">Theme decides (default)</option>
+            <option value="on">On</option>
+            <option value="off">Off</option>
+          </select>
+        </Field>
+        <Field label="Shake when hit" hint="The console frame and widgets shake when your ship is hit (never the text or the input line). Reduced motion keeps it still.">
+          <select aria-label="Shake when hit" value={settings.cmcpHitShake || 'theme'} onChange={(e) => update({ cmcpHitShake: e.target.value as 'theme' | 'on' | 'off' })}>
+            <option value="theme">Theme decides (default)</option>
+            <option value="on">On</option>
+            <option value="off">Off</option>
+          </select>
+        </Field>
         <ThemeInUse />
         <SoundDiagnostics />
         <Field label="Sound era" hint="Which set of sounds to use for your own recordings. Empty = what the game or the ship's theme suggests.">

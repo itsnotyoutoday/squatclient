@@ -108,4 +108,9 @@ export interface CmcpNote {
 
 /** One sample of the red-alert pulse from the engine (the core's pulse function and theme.PulseColour): the roles r and x and the alert edge
  * re-coloured at this level. `active` false = steady (draw the plain colours). */
-export interface CmcpPulse { session: string; active: boolean; level: number; phase: string; periodMs?: number; alert?: string; roles?: Record<string, string>; edge?: string }
+export interface CmcpPulse {
+  session: string; active: boolean; level: number; phase: string; periodMs?: number; alert?: string; roles?: Record<string, string>; edge?: string;
+  /** the ship-wide alert ambience (drawn on every screen aboard) and the hit shake offset (scene px; frame and widgets only) */
+  ambient?: { edge: string; roles: string[]; hueBg?: string };
+  shake?: { active: boolean; x: number; y: number };
+}

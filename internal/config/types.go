@@ -134,6 +134,8 @@ type Settings struct {
 	CmcpCalm           bool           `json:"cmcpCalm"`                       // eased motion 2.5x slower
 	CmcpPackConsent    string         `json:"cmcpPackConsent"`                // interface packs from games: always (default) | ask | never
 	CmcpTextLayout     string         `json:"cmcpTextLayout"`                 // auto (default) | left | stacked: the console text beside the widgets (wide windows) or under them
+	CmcpAlertAmbient   string         `json:"cmcpAlertAmbient"`               // theme (default) | on | off: the alert shows on every screen aboard
+	CmcpHitShake       string         `json:"cmcpHitShake"`                   // theme (default) | on | off: the display shakes when your ship is hit
 	CmcpAlertPulse     string         `json:"cmcpAlertPulse"`                 // theme (default) | on | off: whether a red alert pulses
 	CmcpAlertRecolour  string         `json:"cmcpAlertRecolour"`              // theme (default) | full | edge | off
 	CmcpStartCollapsed bool           `json:"cmcpStartCollapsed"`             // a console screen starts switched off
@@ -195,7 +197,7 @@ func DefaultSettings() Settings {
 		ScrollbackLines: 20000, Notifications: true, Linkify: true, PauseOnScroll: true,
 		DefaultEncoding: "utf-8", Truecolor: true,
 		EditorHeight: DefaultEditorH, SoftcodeJoin: true, StripBlankLines: true, HistoryMax: DefaultHistoryMax, WarnUnbalanced: true, AutoReconnectSquatters: true, TFHideQueries: true,
-		Cmcp: true, ConsoleTheme: "tng", SoundVolume: 70, CmcpPortDefault: "balanced", CmcpPackConsent: "always", CmcpAlertRecolour: "theme", CmcpAlertPulse: "theme", CmcpTextLayout: "auto", ConsoleThemeMode: "ship",
+		Cmcp: true, ConsoleTheme: "tng", SoundVolume: 70, CmcpPortDefault: "balanced", CmcpPackConsent: "always", CmcpAlertRecolour: "theme", CmcpAlertPulse: "theme", CmcpAlertAmbient: "theme", CmcpHitShake: "theme", CmcpTextLayout: "auto", ConsoleThemeMode: "ship",
 	}
 }
 
