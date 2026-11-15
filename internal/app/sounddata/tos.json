@@ -1,0 +1,141 @@
+{
+  "format": 1,
+  "id": "tos",
+  "title": "Original-series style",
+  "folder": "tos",
+  "notes": "Contains no audio. Put your own recordings in <local sound folder>/tos/ using these names; any file you leave out falls back to the pack's sound, then to a synthesised one. ",
+  "events": {
+    "red_alert": [
+      {
+        "stages": [
+          {
+            "at_s": 0,
+            "file": "tos/red_alert.wav",
+            "loop": true
+          }
+        ],
+        "on_stop": {
+          "file": "tos/alert_off.wav"
+        }
+      }
+    ],
+    "yellow_alert": [
+      {
+        "file": "tos/yellow_alert.wav",
+        "loop": true
+      }
+    ],
+    "alert_off": [
+      {
+        "file": "tos/alert_off.wav"
+      }
+    ],
+    "phaser_fire": [
+      {
+        "files": [
+          "tos/phaser_1.wav",
+          "tos/phaser_2.wav"
+        ]
+      }
+    ],
+    "torpedo_launch": [
+      {
+        "file": "tos/torpedo_launch.wav"
+      }
+    ],
+    "torpedo_hit": [
+      {
+        "file": "tos/torpedo_hit.wav"
+      }
+    ],
+    "shield_hit": [
+      {
+        "file": "tos/shield_hit.wav"
+      }
+    ],
+    "hull_hit": [
+      {
+        "files": [
+          "tos/hull_hit_1.wav",
+          "tos/hull_hit_2.wav"
+        ]
+      }
+    ],
+    "explosion": [
+      {
+        "file": "tos/explosion.wav"
+      }
+    ],
+    "ship_destroyed": [
+      {
+        "file": "tos/ship_destroyed.wav"
+      }
+    ],
+    "hatch_open": [
+      {
+        "file": "tos/hatch_open.wav"
+      }
+    ],
+    "docking_door": [
+      {
+        "file": "tos/docking_door.wav"
+      }
+    ],
+    "phaser_hit": [
+      {
+        "file": "tos/phaser_hit.wav"
+      }
+    ],
+    "torpedo_travel": [
+      {
+        "file": "tos/torpedo_travel.wav",
+        "loop": true,
+        "volume": 0.4
+      }
+    ],
+    "hatch_close": [
+      {
+        "file": "tos/hatch_close.wav"
+      }
+    ],
+    "comm_beep": [
+      {
+        "file": "tos/comm_beep.wav"
+      }
+    ],
+    "hail": [
+      {
+        "file": "tos/hail.wav"
+      }
+    ],
+    "tractor_engage": [
+      {
+        "file": "tos/tractor.wav"
+      }
+    ],
+    "warp_engage": [
+      {
+        "file": "tos/warp_engage.wav"
+      }
+    ],
+    "warp_disengage": [
+      {
+        "file": "tos/warp_disengage.wav"
+      }
+    ],
+    "impulse_loop": [
+      {
+        "file": "tos/impulse_loop.wav",
+        "loop": true,
+        "volume": 0.3
+      }
+    ],
+    "warp_core_hum": [
+      {
+        "file": "tos/warp_core_hum.wav",
+        "loop": true,
+        "volume": 0.3
+      }
+    ]
+  }
+}

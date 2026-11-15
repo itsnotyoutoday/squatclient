@@ -1,0 +1,147 @@
+{
+  "format": 1,
+  "id": "klingon",
+  "title": "Klingon-style (staged klaxon)",
+  "folder": "klingon",
+  "notes": "Contains no audio. Put your own recordings in <local sound folder>/klingon/ using these names; any file you leave out falls back to the pack's sound, then to a synthesised one. ",
+  "events": {
+    "red_alert": [
+      {
+        "stages": [
+          {
+            "at_s": 0,
+            "file": "klingon/red_alert_a.wav",
+            "loop": true
+          },
+          {
+            "at_s": 45,
+            "file": "klingon/red_alert_b.wav",
+            "loop": true,
+            "crossfade_ms": 800
+          }
+        ],
+        "on_stop": {
+          "file": "klingon/alert_off.wav"
+        }
+      }
+    ],
+    "yellow_alert": [
+      {
+        "file": "klingon/yellow_alert.wav",
+        "loop": true
+      }
+    ],
+    "alert_off": [
+      {
+        "file": "klingon/alert_off.wav"
+      }
+    ],
+    "phaser_fire": [
+      {
+        "files": [
+          "klingon/phaser_1.wav",
+          "klingon/phaser_2.wav"
+        ]
+      }
+    ],
+    "torpedo_launch": [
+      {
+        "file": "klingon/torpedo_launch.wav"
+      }
+    ],
+    "torpedo_hit": [
+      {
+        "file": "klingon/torpedo_hit.wav"
+      }
+    ],
+    "shield_hit": [
+      {
+        "file": "klingon/shield_hit.wav"
+      }
+    ],
+    "hull_hit": [
+      {
+        "files": [
+          "klingon/hull_hit_1.wav",
+          "klingon/hull_hit_2.wav"
+        ]
+      }
+    ],
+    "explosion": [
+      {
+        "file": "klingon/explosion.wav"
+      }
+    ],
+    "ship_destroyed": [
+      {
+        "file": "klingon/ship_destroyed.wav"
+      }
+    ],
+    "hatch_open": [
+      {
+        "file": "klingon/hatch_open.wav"
+      }
+    ],
+    "docking_door": [
+      {
+        "file": "klingon/docking_door.wav"
+      }
+    ],
+    "phaser_hit": [
+      {
+        "file": "klingon/phaser_hit.wav"
+      }
+    ],
+    "torpedo_travel": [
+      {
+        "file": "klingon/torpedo_travel.wav",
+        "loop": true,
+        "volume": 0.4
+      }
+    ],
+    "hatch_close": [
+      {
+        "file": "klingon/hatch_close.wav"
+      }
+    ],
+    "comm_beep": [
+      {
+        "file": "klingon/comm_beep.wav"
+      }
+    ],
+    "hail": [
+      {
+        "file": "klingon/hail.wav"
+      }
+    ],
+    "tractor_engage": [
+      {
+        "file": "klingon/tractor.wav"
+      }
+    ],
+    "warp_engage": [
+      {
+        "file": "klingon/warp_engage.wav"
+      }
+    ],
+    "warp_disengage": [
+      {
+        "file": "klingon/warp_disengage.wav"
+      }
+    ],
+    "impulse_loop": [
+      {
+        "file": "klingon/impulse_loop.wav",
+        "loop": true,
+        "volume": 0.3
+      }
+    ],
+    "warp_core_hum": [
+      {
+        "file": "klingon/warp_core_hum.wav",
+        "loop": true,
+        "volume": 0.3
+      }
+    ]
+  }
+}

@@ -1,0 +1,141 @@
+{
+  "format": 1,
+  "id": "tng",
+  "title": "Next-generation style",
+  "folder": "tng",
+  "notes": "Contains no audio. Put your own recordings in <local sound folder>/tng/ using these names; any file you leave out falls back to the pack's sound, then to a synthesised one. ",
+  "events": {
+    "red_alert": [
+      {
+        "stages": [
+          {
+            "at_s": 0,
+            "file": "tng/red_alert.wav",
+            "loop": true
+          }
+        ],
+        "on_stop": {
+          "file": "tng/alert_off.wav"
+        }
+      }
+    ],
+    "yellow_alert": [
+      {
+        "file": "tng/yellow_alert.wav",
+        "loop": true
+      }
+    ],
+    "alert_off": [
+      {
+        "file": "tng/alert_off.wav"
+      }
+    ],
+    "phaser_fire": [
+      {
+        "files": [
+          "tng/phaser_1.wav",
+          "tng/phaser_2.wav"
+        ]
+      }
+    ],
+    "torpedo_launch": [
+      {
+        "file": "tng/torpedo_launch.wav"
+      }
+    ],
+    "torpedo_hit": [
+      {
+        "file": "tng/torpedo_hit.wav"
+      }
+    ],
+    "shield_hit": [
+      {
+        "file": "tng/shield_hit.wav"
+      }
+    ],
+    "hull_hit": [
+      {
+        "files": [
+          "tng/hull_hit_1.wav",
+          "tng/hull_hit_2.wav"
+        ]
+      }
+    ],
+    "explosion": [
+      {
+        "file": "tng/explosion.wav"
+      }
+    ],
+    "ship_destroyed": [
+      {
+        "file": "tng/ship_destroyed.wav"
+      }
+    ],
+    "hatch_open": [
+      {
+        "file": "tng/hatch_open.wav"
+      }
+    ],
+    "docking_door": [
+      {
+        "file": "tng/docking_door.wav"
+      }
+    ],
+    "phaser_hit": [
+      {
+        "file": "tng/phaser_hit.wav"
+      }
+    ],
+    "torpedo_travel": [
+      {
+        "file": "tng/torpedo_travel.wav",
+        "loop": true,
+        "volume": 0.4
+      }
+    ],
+    "hatch_close": [
+      {
+        "file": "tng/hatch_close.wav"
+      }
+    ],
+    "comm_beep": [
+      {
+        "file": "tng/comm_beep.wav"
+      }
+    ],
+    "hail": [
+      {
+        "file": "tng/hail.wav"
+      }
+    ],
+    "tractor_engage": [
+      {
+        "file": "tng/tractor.wav"
+      }
+    ],
+    "warp_engage": [
+      {
+        "file": "tng/warp_engage.wav"
+      }
+    ],
+    "warp_disengage": [
+      {
+        "file": "tng/warp_disengage.wav"
+      }
+    ],
+    "impulse_loop": [
+      {
+        "file": "tng/impulse_loop.wav",
+        "loop": true,
+        "volume": 0.3
+      }
+    ],
+    "warp_core_hum": [
+      {
+        "file": "tng/warp_core_hum.wav",
+        "loop": true,
+        "volume": 0.3
+      }
+    ]
+  }
+}

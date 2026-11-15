@@ -1,0 +1,16 @@
+{
+  "format": 1,
+  "generic_era": "any",
+  "theme_to_era": {
+    "tos": "tos",
+    "tng": "tng",
+    "soft": "tng",
+    "ops": "tng",
+    "ds9": "ds9",
+    "voy": "voy",
+    "klingon": "klingon",
+    "romulan": "romulan",
+    "ferengi": "ferengi"
+  },
+  "default": "tng"
+}

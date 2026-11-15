@@ -3,8 +3,10 @@ package main
 import (
 	"embed"
 	"log/slog"
+	"net/http"
 	"os"
 	"runtime"
+	"strings"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
@@ -56,13 +58,21 @@ func main() {
 		MinWidth:         700,
 		MinHeight:        420,
 		BackgroundColour: &options.RGBA{R: bgR, G: bgG, B: bgB, A: 255},
-		AssetServer:      &assetserver.Options{Assets: assets},
-		Menu:             buildMenu(a),
-		OnStartup:        a.startup,
-		OnDomReady:       a.domReady,
-		OnBeforeClose:    a.beforeClose,
-		OnShutdown:       a.shutdown,
-		Bind:             []interface{}{a},
+		AssetServer: &assetserver.Options{Assets: assets, Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if strings.HasPrefix(r.URL.Path, "/cmcp-audio/") { // sound bytes come from the Go side, never from the game (cmcp spec 8, 9)
+				if svc, err := a.service(); err == nil {
+					svc.AudioHandler().ServeHTTP(w, r)
+					return
+				}
+			}
+			http.NotFound(w, r)
+		})},
+		Menu:          buildMenu(a),
+		OnStartup:     a.startup,
+		OnDomReady:    a.domReady,
+		OnBeforeClose: a.beforeClose,
+		OnShutdown:    a.shutdown,
+		Bind:          []interface{}{a},
 		// Windows/Linux keep the native frame (ADR 0002); macOS uses an
 		// integrated title bar below.
 		Frameless: false,

@@ -32,6 +32,9 @@ func (s *Service) version() string { return "dev" }
 // applyCmcpSettings (re)configures the engine from the settings; called at start and after SaveSettings.
 func (s *Service) applyCmcpSettings() {
 	st := s.cfg.Settings()
+	if s.snd != nil {
+		s.snd.configure(st.SoundFolder)
+	}
 	if st.Cmcp {
 		s.eng.SetCmcp(s.cmcpHello)
 	} else {

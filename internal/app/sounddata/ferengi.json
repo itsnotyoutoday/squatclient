@@ -1,0 +1,141 @@
+{
+  "format": 1,
+  "id": "ferengi",
+  "title": "Ferengi-style",
+  "folder": "ferengi",
+  "notes": "Contains no audio. Put your own recordings in <local sound folder>/ferengi/ using these names; any file you leave out falls back to the pack's sound, then to a synthesised one. ",
+  "events": {
+    "red_alert": [
+      {
+        "stages": [
+          {
+            "at_s": 0,
+            "file": "ferengi/red_alert.wav",
+            "loop": true
+          }
+        ],
+        "on_stop": {
+          "file": "ferengi/alert_off.wav"
+        }
+      }
+    ],
+    "yellow_alert": [
+      {
+        "file": "ferengi/yellow_alert.wav",
+        "loop": true
+      }
+    ],
+    "alert_off": [
+      {
+        "file": "ferengi/alert_off.wav"
+      }
+    ],
+    "phaser_fire": [
+      {
+        "files": [
+          "ferengi/phaser_1.wav",
+          "ferengi/phaser_2.wav"
+        ]
+      }
+    ],
+    "torpedo_launch": [
+      {
+        "file": "ferengi/torpedo_launch.wav"
+      }
+    ],
+    "torpedo_hit": [
+      {
+        "file": "ferengi/torpedo_hit.wav"
+      }
+    ],
+    "shield_hit": [
+      {
+        "file": "ferengi/shield_hit.wav"
+      }
+    ],
+    "hull_hit": [
+      {
+        "files": [
+          "ferengi/hull_hit_1.wav",
+          "ferengi/hull_hit_2.wav"
+        ]
+      }
+    ],
+    "explosion": [
+      {
+        "file": "ferengi/explosion.wav"
+      }
+    ],
+    "ship_destroyed": [
+      {
+        "file": "ferengi/ship_destroyed.wav"
+      }
+    ],
+    "hatch_open": [
+      {
+        "file": "ferengi/hatch_open.wav"
+      }
+    ],
+    "docking_door": [
+      {
+        "file": "ferengi/docking_door.wav"
+      }
+    ],
+    "phaser_hit": [
+      {
+        "file": "ferengi/phaser_hit.wav"
+      }
+    ],
+    "torpedo_travel": [
+      {
+        "file": "ferengi/torpedo_travel.wav",
+        "loop": true,
+        "volume": 0.4
+      }
+    ],
+    "hatch_close": [
+      {
+        "file": "ferengi/hatch_close.wav"
+      }
+    ],
+    "comm_beep": [
+      {
+        "file": "ferengi/comm_beep.wav"
+      }
+    ],
+    "hail": [
+      {
+        "file": "ferengi/hail.wav"
+      }
+    ],
+    "tractor_engage": [
+      {
+        "file": "ferengi/tractor.wav"
+      }
+    ],
+    "warp_engage": [
+      {
+        "file": "ferengi/warp_engage.wav"
+      }
+    ],
+    "warp_disengage": [
+      {
+        "file": "ferengi/warp_disengage.wav"
+      }
+    ],
+    "impulse_loop": [
+      {
+        "file": "ferengi/impulse_loop.wav",
+        "loop": true,
+        "volume": 0.3
+      }
+    ],
+    "warp_core_hum": [
+      {
+        "file": "ferengi/warp_core_hum.wav",
+        "loop": true,
+        "volume": 0.3
+      }
+    ]
+  }
+}

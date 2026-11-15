@@ -1,0 +1,141 @@
+{
+  "format": 1,
+  "id": "romulan",
+  "title": "Romulan-style",
+  "folder": "romulan",
+  "notes": "Contains no audio. Put your own recordings in <local sound folder>/romulan/ using these names; any file you leave out falls back to the pack's sound, then to a synthesised one. ",
+  "events": {
+    "red_alert": [
+      {
+        "stages": [
+          {
+            "at_s": 0,
+            "file": "romulan/red_alert.wav",
+            "loop": true
+          }
+        ],
+        "on_stop": {
+          "file": "romulan/alert_off.wav"
+        }
+      }
+    ],
+    "yellow_alert": [
+      {
+        "file": "romulan/yellow_alert.wav",
+        "loop": true
+      }
+    ],
+    "alert_off": [
+      {
+        "file": "romulan/alert_off.wav"
+      }
+    ],
+    "phaser_fire": [
+      {
+        "files": [
+          "romulan/phaser_1.wav",
+          "romulan/phaser_2.wav"
+        ]
+      }
+    ],
+    "torpedo_launch": [
+      {
+        "file": "romulan/torpedo_launch.wav"
+      }
+    ],
+    "torpedo_hit": [
+      {
+        "file": "romulan/torpedo_hit.wav"
+      }
+    ],
+    "shield_hit": [
+      {
+        "file": "romulan/shield_hit.wav"
+      }
+    ],
+    "hull_hit": [
+      {
+        "files": [
+          "romulan/hull_hit_1.wav",
+          "romulan/hull_hit_2.wav"
+        ]
+      }
+    ],
+    "explosion": [
+      {
+        "file": "romulan/explosion.wav"
+      }
+    ],
+    "ship_destroyed": [
+      {
+        "file": "romulan/ship_destroyed.wav"
+      }
+    ],
+    "hatch_open": [
+      {
+        "file": "romulan/hatch_open.wav"
+      }
+    ],
+    "docking_door": [
+      {
+        "file": "romulan/docking_door.wav"
+      }
+    ],
+    "phaser_hit": [
+      {
+        "file": "romulan/phaser_hit.wav"
+      }
+    ],
+    "torpedo_travel": [
+      {
+        "file": "romulan/torpedo_travel.wav",
+        "loop": true,
+        "volume": 0.4
+      }
+    ],
+    "hatch_close": [
+      {
+        "file": "romulan/hatch_close.wav"
+      }
+    ],
+    "comm_beep": [
+      {
+        "file": "romulan/comm_beep.wav"
+      }
+    ],
+    "hail": [
+      {
+        "file": "romulan/hail.wav"
+      }
+    ],
+    "tractor_engage": [
+      {
+        "file": "romulan/tractor.wav"
+      }
+    ],
+    "warp_engage": [
+      {
+        "file": "romulan/warp_engage.wav"
+      }
+    ],
+    "warp_disengage": [
+      {
+        "file": "romulan/warp_disengage.wav"
+      }
+    ],
+    "impulse_loop": [
+      {
+        "file": "romulan/impulse_loop.wav",
+        "loop": true,
+        "volume": 0.3
+      }
+    ],
+    "warp_core_hum": [
+      {
+        "file": "romulan/warp_core_hum.wav",
+        "loop": true,
+        "volume": 0.3
+      }
+    ]
+  }
+}

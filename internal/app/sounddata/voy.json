@@ -1,0 +1,147 @@
+{
+  "format": 1,
+  "id": "voy",
+  "title": "Long-voyage style",
+  "folder": "voy",
+  "notes": "Contains no audio. Put your own recordings in <local sound folder>/voy/ using these names; any file you leave out falls back to the pack's sound, then to a synthesised one. ",
+  "events": {
+    "red_alert": [
+      {
+        "stages": [
+          {
+            "at_s": 0,
+            "file": "voy/red_alert.wav",
+            "loop": true
+          },
+          {
+            "at_s": 60,
+            "file": "voy/red_alert_long.wav",
+            "loop": true,
+            "crossfade_ms": 1000
+          }
+        ],
+        "on_stop": {
+          "file": "voy/alert_off.wav"
+        }
+      }
+    ],
+    "yellow_alert": [
+      {
+        "file": "voy/yellow_alert.wav",
+        "loop": true
+      }
+    ],
+    "alert_off": [
+      {
+        "file": "voy/alert_off.wav"
+      }
+    ],
+    "phaser_fire": [
+      {
+        "files": [
+          "voy/phaser_1.wav",
+          "voy/phaser_2.wav"
+        ]
+      }
+    ],
+    "torpedo_launch": [
+      {
+        "file": "voy/torpedo_launch.wav"
+      }
+    ],
+    "torpedo_hit": [
+      {
+        "file": "voy/torpedo_hit.wav"
+      }
+    ],
+    "shield_hit": [
+      {
+        "file": "voy/shield_hit.wav"
+      }
+    ],
+    "hull_hit": [
+      {
+        "files": [
+          "voy/hull_hit_1.wav",
+          "voy/hull_hit_2.wav"
+        ]
+      }
+    ],
+    "explosion": [
+      {
+        "file": "voy/explosion.wav"
+      }
+    ],
+    "ship_destroyed": [
+      {
+        "file": "voy/ship_destroyed.wav"
+      }
+    ],
+    "hatch_open": [
+      {
+        "file": "voy/hatch_open.wav"
+      }
+    ],
+    "docking_door": [
+      {
+        "file": "voy/docking_door.wav"
+      }
+    ],
+    "phaser_hit": [
+      {
+        "file": "voy/phaser_hit.wav"
+      }
+    ],
+    "torpedo_travel": [
+      {
+        "file": "voy/torpedo_travel.wav",
+        "loop": true,
+        "volume": 0.4
+      }
+    ],
+    "hatch_close": [
+      {
+        "file": "voy/hatch_close.wav"
+      }
+    ],
+    "comm_beep": [
+      {
+        "file": "voy/comm_beep.wav"
+      }
+    ],
+    "hail": [
+      {
+        "file": "voy/hail.wav"
+      }
+    ],
+    "tractor_engage": [
+      {
+        "file": "voy/tractor.wav"
+      }
+    ],
+    "warp_engage": [
+      {
+        "file": "voy/warp_engage.wav"
+      }
+    ],
+    "warp_disengage": [
+      {
+        "file": "voy/warp_disengage.wav"
+      }
+    ],
+    "impulse_loop": [
+      {
+        "file": "voy/impulse_loop.wav",
+        "loop": true,
+        "volume": 0.3
+      }
+    ],
+    "warp_core_hum": [
+      {
+        "file": "voy/warp_core_hum.wav",
+        "loop": true,
+        "volume": 0.3
+      }
+    ]
+  }
+}

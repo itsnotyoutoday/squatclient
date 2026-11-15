@@ -275,10 +275,13 @@ export interface StatusField {
 }
 
 import type { CmcpEventResult, CmcpNote, CmcpUI } from '../cmcp/types';
+import type { SoundMsg } from '../cmcp/audio';
 
 export interface EngineEvents {
   /** The CMCP model of a session changed (throttled); `tree` is the bound console screen, null when none is up. */
   cmcp: CmcpUI;
+  /** A CMCP sound, resolved by the Go side (local file, pack sample, recipe, bell) for the Web Audio engine. */
+  'cmcp-audio': SoundMsg;
   /** CMCP sounds, events and replies of a session (never coalesced). */
   'cmcp-notes': { session: string; notes: CmcpNote[] };
   line: Line;

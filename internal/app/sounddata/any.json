@@ -1,0 +1,138 @@
+{
+  "format": 1,
+  "id": "any",
+  "title": "Generic fallback (era-independent sounds)",
+  "folder": "any",
+  "notes": "Contains no audio. Put your own recordings in <local sound folder>/any/ using these names; any file you leave out falls back to the pack's sound, then to a synthesised one. The generic era: tried when the active era has no usable file for an event.",
+  "events": {
+    "red_alert": [
+      {
+        "stages": [
+          {
+            "at_s": 0,
+            "file": "any/red_alert.wav",
+            "loop": true
+          }
+        ],
+        "on_stop": {
+          "file": "any/alert_off.wav"
+        }
+      }
+    ],
+    "yellow_alert": [
+      {
+        "file": "any/yellow_alert.wav",
+        "loop": true
+      }
+    ],
+    "alert_off": [
+      {
+        "file": "any/alert_off.wav"
+      }
+    ],
+    "phaser_fire": [
+      {
+        "files": [
+          "any/phaser_1.wav",
+          "any/phaser_2.wav"
+        ]
+      }
+    ],
+    "torpedo_launch": [
+      {
+        "file": "any/torpedo_launch.wav"
+      }
+    ],
+    "torpedo_hit": [
+      {
+        "file": "any/torpedo_hit.wav"
+      }
+    ],
+    "shield_hit": [
+      {
+        "file": "any/shield_hit.wav"
+      }
+    ],
+    "hull_hit": [
+      {
+        "files": [
+          "any/hull_hit_1.wav",
+          "any/hull_hit_2.wav"
+        ]
+      }
+    ],
+    "explosion": [
+      {
+        "file": "any/explosion.wav"
+      }
+    ],
+    "ship_destroyed": [
+      {
+        "file": "any/ship_destroyed.wav"
+      }
+    ],
+    "hatch_open": [
+      {
+        "file": "any/hatch_open.wav"
+      }
+    ],
+    "docking_door": [
+      {
+        "file": "any/docking_door.wav"
+      }
+    ],
+    "phaser_hit": [
+      {
+        "file": "any/phaser_hit.wav"
+      }
+    ],
+    "hatch_close": [
+      {
+        "file": "any/hatch_close.wav"
+      }
+    ],
+    "comm_beep": [
+      {
+        "file": "any/comm_beep.wav"
+      }
+    ],
+    "hail": [
+      {
+        "file": "any/hail.wav"
+      }
+    ],
+    "tractor_engage": [
+      {
+        "file": "any/tractor.wav"
+      }
+    ],
+    "warp_engage": [
+      {
+        "file": "any/warp_engage.wav"
+      }
+    ],
+    "warp_disengage": [
+      {
+        "file": "any/warp_disengage.wav"
+      }
+    ],
+    "impulse_loop": [
+      {
+        "file": "any/impulse_loop.wav",
+        "loop": true,
+        "volume": 0.3
+      }
+    ],
+    "warp_core_hum": [
+      {
+        "file": "any/warp_core_hum.wav",
+        "loop": true,
+        "volume": 0.3
+      }
+    ]
+  },
+  "unmapped": [
+    "torpedo_travel",
+    "tractor_release"
+  ]
+}

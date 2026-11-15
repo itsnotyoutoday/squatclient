@@ -1,0 +1,141 @@
+{
+  "format": 1,
+  "id": "ds9",
+  "title": "Deep-space-station style",
+  "folder": "ds9",
+  "notes": "Contains no audio. Put your own recordings in <local sound folder>/ds9/ using these names; any file you leave out falls back to the pack's sound, then to a synthesised one. ",
+  "events": {
+    "red_alert": [
+      {
+        "stages": [
+          {
+            "at_s": 0,
+            "file": "ds9/red_alert.wav",
+            "loop": true
+          }
+        ],
+        "on_stop": {
+          "file": "ds9/alert_off.wav"
+        }
+      }
+    ],
+    "yellow_alert": [
+      {
+        "file": "ds9/yellow_alert.wav",
+        "loop": true
+      }
+    ],
+    "alert_off": [
+      {
+        "file": "ds9/alert_off.wav"
+      }
+    ],
+    "phaser_fire": [
+      {
+        "files": [
+          "ds9/phaser_1.wav",
+          "ds9/phaser_2.wav"
+        ]
+      }
+    ],
+    "torpedo_launch": [
+      {
+        "file": "ds9/torpedo_launch.wav"
+      }
+    ],
+    "torpedo_hit": [
+      {
+        "file": "ds9/torpedo_hit.wav"
+      }
+    ],
+    "shield_hit": [
+      {
+        "file": "ds9/shield_hit.wav"
+      }
+    ],
+    "hull_hit": [
+      {
+        "files": [
+          "ds9/hull_hit_1.wav",
+          "ds9/hull_hit_2.wav"
+        ]
+      }
+    ],
+    "explosion": [
+      {
+        "file": "ds9/explosion.wav"
+      }
+    ],
+    "ship_destroyed": [
+      {
+        "file": "ds9/ship_destroyed.wav"
+      }
+    ],
+    "hatch_open": [
+      {
+        "file": "ds9/hatch_open.wav"
+      }
+    ],
+    "docking_door": [
+      {
+        "file": "ds9/docking_door.wav"
+      }
+    ],
+    "phaser_hit": [
+      {
+        "file": "ds9/phaser_hit.wav"
+      }
+    ],
+    "torpedo_travel": [
+      {
+        "file": "ds9/torpedo_travel.wav",
+        "loop": true,
+        "volume": 0.4
+      }
+    ],
+    "hatch_close": [
+      {
+        "file": "ds9/hatch_close.wav"
+      }
+    ],
+    "comm_beep": [
+      {
+        "file": "ds9/comm_beep.wav"
+      }
+    ],
+    "hail": [
+      {
+        "file": "ds9/hail.wav"
+      }
+    ],
+    "tractor_engage": [
+      {
+        "file": "ds9/tractor.wav"
+      }
+    ],
+    "warp_engage": [
+      {
+        "file": "ds9/warp_engage.wav"
+      }
+    ],
+    "warp_disengage": [
+      {
+        "file": "ds9/warp_disengage.wav"
+      }
+    ],
+    "impulse_loop": [
+      {
+        "file": "ds9/impulse_loop.wav",
+        "loop": true,
+        "volume": 0.3
+      }
+    ],
+    "warp_core_hum": [
+      {
+        "file": "ds9/warp_core_hum.wav",
+        "loop": true,
+        "volume": 0.3
+      }
+    ]
+  }
+}

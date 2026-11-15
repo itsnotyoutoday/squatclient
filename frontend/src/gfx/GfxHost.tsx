@@ -1,12 +1,13 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { EngineAPI } from '../api/types';
-import { useSessions, useUi } from '../state/stores';
+import { useSessions, useSettings, useUi } from '../state/stores';
 import { GfxRenderer } from './renderer';
 import { GfxRuntime } from './runtime';
 import { holeClip, planScene, portNodeOf, stripBasis, type Plan, type Rect } from './port';
 import type { GfxNode } from './scene';
 import { CmcpController } from '../cmcp/controller';
+import { CmcpAudio, WebAudioBackend } from '../cmcp/audio';
 
 /** The rectangle where the real game text sits while a scene has a text port (CSS px in the output area). Mutable on
  * purpose: an animated port (the console's LOG toggle) changes every frame and must not go through React renders. */
@@ -171,8 +172,19 @@ export function GfxProvider({ engine, children }: { engine: EngineAPI; children:
     c.onError = (text) => useUi.getState().toast('warn', text);
     cmcp.current = c;
     const off = c.attach();
+    // sound: the Go side resolved what to play; this plays it, for the session in front only
+    const audio = new CmcpAudio(new WebAudioBackend());
+    const applySettings = (): void => {
+      const st = useSettings.getState().settings;
+      audio.setSettings({ volume: st.soundVolume, muted: st.soundMuted, categories: st.soundCategoryVolumes ?? {} });
+    };
+    applySettings();
+    audio.setForeground(useSessions.getState().fg ?? '');
+    const offAudio = engine.on('cmcp-audio', (m) => audio.handle(m));
+    const offSet = useSettings.subscribe(applySettings);
+    const offFg = useSessions.subscribe((st, prev) => { if (st.fg !== prev.fg) audio.setForeground(st.fg ?? ''); });
     void engine.listSessions().then((ss) => ss.forEach((x) => void c.sync(x.id))).catch(() => undefined);
-    return () => { off(); cmcp.current = null; };
+    return () => { off(); offAudio(); offSet(); offFg(); audio.stopAll(50); cmcp.current = null; };
   }, [engine, get]);
   const peek = useCallback((session: string) => all.get(session), [all]);
   const drop = useCallback((session: string): void => {

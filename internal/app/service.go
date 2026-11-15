@@ -61,6 +61,7 @@ type Service struct {
 	pair       pairing
 	hist       *historyStore
 	lay        *layouts.Manager
+	snd        *soundSvc // sound resolution and the audio file handler (sound.go)
 	gfxMu      sync.Mutex
 	gfxHubs    map[string]*gfx.Hub // one graphics hub per session (gfxbridge.go)
 	gfxDirs    []string
@@ -123,6 +124,7 @@ func New(o Options) (*Service, error) {
 		eo.Notify = s.notify // /gfx, /canvas and the window commands of lib/squat arrive here
 	}
 	s.eng = engine.New(eo)
+	s.snd = newSoundSvc(s)
 	s.applyCmcpSettings()
 	s.eng.SetAutoReconnectSquatters(o.Config.Settings().AutoReconnectSquatters)
 	s.eng.SetShowGagged(o.Config.Settings().ShowGagged)
@@ -370,6 +372,7 @@ func (s *Service) deliver(batch []engine.Event) {
 				s.emit("cmcp", ev.Cmcp)
 			}
 		case engine.EvCmcpNote:
+			s.handleSoundNotes(ev.Session, ev.CmcpNotes)
 			s.emit("cmcp-notes", cmcpNotesPayload{Session: ev.Session, Notes: ev.CmcpNotes})
 		case engine.EvTFKeys:
 			var seqs []string
