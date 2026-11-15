@@ -5,7 +5,7 @@ import { findTextport, place } from './layout';
 import { diffOps, PORT_ID, SCENE, sceneOp } from './ops';
 import { drawSprite, type SpriteView } from './sprite';
 import type { CmcpNode, CmcpNote, CmcpTree, CmcpUI } from './types';
-import { draw, recordHistory, type Ctx, type Prim, type Target } from './widgets';
+import { contextStrip, draw, readonlyBadge, recordHistory, type Ctx, type Prim, type Target } from './widgets';
 
 const BASE_W = 1200;
 
@@ -178,11 +178,15 @@ export class CmcpController {
     const t = s.tree;
     if (!t || s.dismissed === s.key) return;
     const W = BASE_W, H = Math.round(BASE_W * s.aspect);
-    const root = place(t.root, { x: 0, y: 0, w: W, h: H });
+    const stack = s.ui?.stack ?? [];
+    const strip = stack.length > 1 ? 26 : 0; // the context strip: only when more than one context is held
+    const root = place(t.root, { x: 0, y: strip, w: W, h: H - strip });
     const tp = findTextport(root);
     if (!tp) return; // a screen without a text port is invalid (spec 6.2); never draw it
     const ctx: Ctx = { tree: t, local: s.local, history: s.history, images: s.images, readonly: s.ui?.readonly ?? false, reduceMotion: this.reduceMotion };
     const prims: Prim[] = draw(root, ctx);
+    if (strip) prims.push(...contextStrip(stack, W, ctx));
+    if (ctx.readonly) prims.push(...readonlyBadge(s.ui?.ai ?? false, s.ui?.console?.manned_by, W, ctx));
     // the port node: the rectangle where the real text shows (never drawn over)
     prims.unshift({ id: PORT_ID, type: 'rect', props: { x: tp.rect.x, y: tp.rect.y, w: tp.rect.w, h: tp.rect.h, fill: '#00000000' } });
     const { ops, map } = diffOps(s.prev, prims);

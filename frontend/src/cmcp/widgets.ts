@@ -1,4 +1,4 @@
-import type { CmcpNode, CmcpTree } from './types';
+import type { CmcpNode, CmcpStackEntry, CmcpTree } from './types';
 import { findTextport, type Placed, type Rect } from './layout';
 
 /** One graphics object of the scene protocol (docs/GFX.md) plus what a pointer event on it means. */
@@ -389,4 +389,29 @@ export function recordHistory(n: CmcpNode, hist: Map<string, number[]>): void {
     hist.set(n.path, h);
   }
   for (const c of n.children ?? []) recordHistory(c, hist);
+}
+
+/** The held contexts as chips along the top (highest priority at the left); the active one is lit. Informational: the server decides. */
+export function contextStrip(stack: CmcpStackEntry[], w: number, ctx: Ctx): Prim[] {
+  const out: Prim[] = [];
+  let x = 6;
+  [...stack].reverse().forEach((e, i) => {
+    const label = (e.title || e.name || e.id).toUpperCase().slice(0, 22);
+    const cw = Math.max(70, label.length * 9 + 24);
+    if (x + cw > w - 40) return;
+    out.push(rect(`ctx.${i}.bg`, { x, y: 3, w: cw, h: 20 }, e.active ? tok(ctx, 'color.accent') : tok(ctx, 'color.panel'), { r: 10, stroke: tok(ctx, 'color.accent'), strokeWidth: 1, opacity: e.active ? 1 : 0.8 }));
+    out.push(text(`ctx.${i}.t`, x + cw / 2, 13, `${label}${e.readonly ? ' (VIEW)' : ''}`, 12, e.active ? tok(ctx, 'color.bg') : tok(ctx, 'color.text'), { align: 'center', font: font(ctx, true), weight: '700', maxWidth: cw - 8 }));
+    x += cw + 6;
+  });
+  return out;
+}
+
+/** Why nothing can be clicked: the ship is on AI, or somebody else took the console (spec 3.1 rule 4). */
+export function readonlyBadge(ai: boolean, mannedBy: string | undefined, w: number, ctx: Ctx): Prim[] {
+  const t = ai ? 'AI CONTROL - VIEW ONLY' : mannedBy ? `${mannedBy.toUpperCase()} HAS THE CONSOLE - VIEW ONLY` : 'VIEW ONLY';
+  const bw = Math.min(w / 2, t.length * 8.5 + 28);
+  return [
+    rect('ro.bg', { x: w - bw - 44, y: 4, w: bw, h: 22 }, tok(ctx, 'color.warn'), { r: 11, glow: 0.2 }),
+    text('ro.t', w - bw / 2 - 44, 15, t, 13, tok(ctx, 'color.bg'), { align: 'center', font: font(ctx, true), weight: '700', maxWidth: bw - 12 }),
+  ];
 }

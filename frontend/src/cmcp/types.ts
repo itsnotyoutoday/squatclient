@@ -35,6 +35,8 @@ export interface CmcpTree {
 export interface CmcpSub { pkg: string; rateMs?: number; source: string; ok: boolean; err?: string }
 export interface CmcpCommandSpec { name: string; consoles: string[]; mutating: boolean; text: string; args: Record<string, unknown> }
 
+export interface CmcpStackEntry { key: string; kind: string; id: string; name?: string; title?: string; screen: string; priority: number; active: boolean; readonly?: boolean; mannedBy?: string; expiresMs?: number }
+
 export interface CmcpUI {
   session: string;
   rev: number;
@@ -54,6 +56,9 @@ export interface CmcpUI {
   consoleTheme?: string;
   screen: { id: string; resolved: string; packId?: string; fallback: boolean };
   commands: string[];
+  /** Held contexts (consoles, rooms, away teams, events, docks), lowest priority first; the last one is shown. */
+  stack?: CmcpStackEntry[];
+  catalogueComplete?: boolean;
   catalogue?: Record<string, CmcpCommandSpec>;
   subs: CmcpSub[];
   docs?: Record<string, unknown>;

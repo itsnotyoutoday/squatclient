@@ -570,6 +570,18 @@
  },
  "alert": "green",
  "pending": 0,
+ "stack": [
+  {
+   "key": "console",
+   "kind": "console",
+   "id": "navigation",
+   "name": "navigation",
+   "screen": "std.helm",
+   "priority": 100,
+   "active": true
+  }
+ ],
+ "catalogueComplete": true,
  "tree": {
   "session": "s1",
   "generation": 1,

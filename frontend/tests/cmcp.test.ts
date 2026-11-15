@@ -5,7 +5,7 @@ import { MockEngine } from '../src/api/mock';
 import { CmcpController } from '../src/cmcp/controller';
 import { findTextport, place, type Placed } from '../src/cmcp/layout';
 import { diffOps, PORT_ID, SCENE } from '../src/cmcp/ops';
-import { cell, draw, entries, type Ctx, type Prim } from '../src/cmcp/widgets';
+import { cell, contextStrip, draw, entries, readonlyBadge, type Ctx, type Prim } from '../src/cmcp/widgets';
 import type { CmcpNode, CmcpUI } from '../src/cmcp/types';
 
 // The fixtures are what the Go engine produced for the built-in screens (squatClientDaemon TestCmcpDumpFixtures): real bound trees.
@@ -94,6 +94,24 @@ describe('widgets draw the data the engine evaluated', () => {
     expect(cell(null)).toBe('-');
     expect(cell(1.23456)).toBe('1.23');
     expect(entries({ '10': 1, '2': 2, a: 3 }).map(([k]) => k)).toEqual(['2', '10', 'a']);
+  });
+});
+
+describe('contexts and read-only', () => {
+  it('shows the held contexts as chips, the active one first and lit', () => {
+    const ui = fx('damage');
+    const stack = [
+      { key: 'console', kind: 'console', id: 'operations', name: 'Operations', screen: 'std.operations', priority: 100, active: false },
+      { key: 'event:boarding', kind: 'event', id: 'boarding', title: 'Boarders', screen: 'std.damage', priority: 120, active: true },
+    ];
+    const chips = contextStrip(stack, 1200, ctxFor(ui));
+    expect(chips.filter((p) => p.type === 'text').map((p) => p.props.text)).toEqual(['BOARDERS', 'OPERATIONS']);
+    expect(chips[0].props.fill).toBe(ui.tree!.tokens['color.accent']);
+  });
+  it('says why a read-only screen offers nothing', () => {
+    const ui = fx('damage');
+    expect(readonlyBadge(true, undefined, 1200, ctxFor(ui)).some((p) => p.props.text === 'AI CONTROL - VIEW ONLY')).toBe(true);
+    expect(readonlyBadge(false, 'Nveid', 1200, ctxFor(ui)).some((p) => String(p.props.text).startsWith('NVEID HAS THE CONSOLE'))).toBe(true);
   });
 });
 
