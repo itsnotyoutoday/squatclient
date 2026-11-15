@@ -40,6 +40,9 @@ func (s *Service) applyCmcpSettings() {
 	if s.snd != nil {
 		s.snd.configure(st.SoundFolder)
 	}
+	if line := fmt.Sprintf("settings: soundFolder=%q soundVolume=%d soundMuted=%v soundEra=%q cmcp=%v", st.SoundFolder, st.SoundVolume, st.SoundMuted, st.SoundEra, st.Cmcp); line != s.lastSoundCfg.Swap(line) {
+		s.ClientLog(line)
+	}
 	if st.Cmcp {
 		s.eng.SetCmcp(s.cmcpHello)
 	} else {

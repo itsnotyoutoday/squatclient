@@ -34,6 +34,8 @@ export interface Backend {
   playUrl(url: string, o: { gain: number; loop: boolean; crossfadeMs: number; pan: number; onEnd: () => void; onFail?: (why: string) => void }): Handle;
   /** start/resume the audio context (browsers and WebKit views only allow it from a user gesture) */
   unlock?(): void;
+  /** whether this view decodes a format: 'ogg' | 'mp3' | 'wav' */
+  canDecode?(fmt: string): boolean;
   /** the audio context's state: running | suspended | closed | none (not created yet) */
   state?(): string;
   playRecipe(r: ResolvedRecipe, o: { gain: number; pan: number; onEnd: () => void }): Handle;
@@ -125,6 +127,7 @@ export class CmcpAudio {
     return r.kind;
   }
   private played(m: SoundMsg, _kind: string): void {
+    if (this.be.state?.() === 'suspended') this.problem('suspended', 'Sound failed: the web view keeps audio suspended until you click or press a key in the window');
     const st = useAudioStats.getState();
     st.set({ played: st.played + 1, last: `${m.event ?? '?'} [${this.describe(m.res)}]`, ctx: this.be.state?.() ?? st.ctx });
   }
@@ -134,7 +137,19 @@ export class CmcpAudio {
     st.set({ dropped: st.dropped + 1, lastDrop: `${m.event ?? '?'}: ${why}` });
   }
   /** a file could not be loaded: say so, and play the pack's recipe for the event instead when there is one */
+  /** told once with the exact reason when a sound cannot play ("Sound failed: ..."); also written to the app's client.log */
+  onProblem?: (text: string) => void;
+  sink?: (line: string) => void;
+  private told = new Set<string>();
+  private problem(key: string, text: string): void {
+    this.sink?.(text);
+    if (this.told.has(key)) return;
+    this.told.add(key);
+    this.onProblem?.(text);
+  }
+
   private failedUrl(v: Voice, i: Instr, m: SoundMsg, why: string): void {
+    this.problem(`fail:${i.url ?? ''}`, `Sound failed: ${m.event ?? '?'} (${i.url ?? 'url'}): ${why}${i.alt ? ' - trying the fallback' : ''}`);
     const st = useAudioStats.getState();
     st.set({ failed: st.failed + 1, lastError: `${m.event ?? '?'}: ${why}` });
     this.log.push(`fail ${m.event}: ${why}${i.alt ? ' (playing the recipe)' : ''}`);
@@ -164,7 +179,10 @@ export class CmcpAudio {
 
   private instrBase(m: SoundMsg, i: Instr): number { return (m.volume || 1) * (i.volume || 1) * (i.gain || 1); }
 
-  private start(v: Voice, i: Instr, fadeMs: number, m: SoundMsg): Handle | null {
+  private start(v: Voice, i0: Instr, fadeMs: number, m: SoundMsg): Handle | null {
+    let i = i0;
+    // a view that cannot decode Ogg Vorbis (WebKit before 18.4) goes straight to the fallback (the pack's wav, then the recipe)
+    while (i.kind === 'url' && i.alt && /\.ogg(\?|$)/i.test(i.url ?? '') && this.be.canDecode && !this.be.canDecode('ogg')) i = i.alt;
     v.base = this.instrBase(m, i);
     const g = this.gain(v);
     const onEnd = (): void => { if (!i.loop && !m.loop) this.drop(v); };
@@ -261,6 +279,13 @@ export class WebAudioBackend implements Backend {
     try { void this.c; } catch { /* no audio in this view */ }
   }
   state(): string { return this.ctx ? this.ctx.state : 'none'; }
+  canDecode(fmt: string): boolean {
+    try {
+      const a = new Audio();
+      const t: Record<string, string> = { ogg: 'audio/ogg; codecs="vorbis"', mp3: 'audio/mpeg', wav: 'audio/wav' };
+      return a.canPlayType(t[fmt] ?? '') !== '';
+    } catch { return true; }
+  }
   private get c(): AudioContext {
     if (!this.ctx) {
       this.ctx = new AudioContext();

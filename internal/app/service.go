@@ -46,8 +46,10 @@ type Options struct {
 
 // Service implements the bound methods.
 type Service struct {
-	mutedSeen     atomic.Bool // the last soundMuted setting applied (to notice a change)
-	reducedMotion atomic.Bool // the web view's prefers-reduced-motion (CmcpReducedMotion)
+	soundLines    atomic.Int64 // lines the sound path wrote to client.log this run
+	lastSoundCfg  atomic.Value // the last sound settings line written to client.log (string)
+	mutedSeen     atomic.Bool  // the last soundMuted setting applied (to notice a change)
+	reducedMotion atomic.Bool  // the web view's prefers-reduced-motion (CmcpReducedMotion)
 	cfg           *config.Store
 	sec           secrets.Store
 	emit          Emitter

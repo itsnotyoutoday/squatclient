@@ -671,6 +671,16 @@ export class MockEngine implements EngineAPI {
   async cmcpClose(session: string, reason: 'user' | 'client'): Promise<void> {
     this.cmcpCall('cmcpClose', session, reason);
   }
+  clientLogs: string[] = [];
+  async clientLog(line: string): Promise<void> {
+    this.clientLogs.push(line);
+  }
+  async audioSelfTestDir(): Promise<string> {
+    return '';
+  }
+  async audioSelfTestLive(): Promise<string> {
+    return '';
+  }
   async cmcpReducedMotion(on: boolean): Promise<void> {
     this.cmcpCall('cmcpReducedMotion', String(on));
   }

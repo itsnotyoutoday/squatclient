@@ -170,3 +170,26 @@ func (a *App) CmcpClose(session, reason string) error {
 	}
 	return s.CmcpClose(session, reason)
 }
+
+// ClientLog writes a line of the web view's diagnostics to client.log in the config folder.
+func (a *App) ClientLog(line string) {
+	if s, err := a.service(); err == nil {
+		s.ClientLog(line)
+	}
+}
+
+// AudioSelfTestDir is the developer sound self-test folder ("" in a normal run).
+func (a *App) AudioSelfTestDir() string {
+	if s, err := a.service(); err == nil {
+		return s.AudioSelfTestDir()
+	}
+	return ""
+}
+
+// AudioSelfTestLive is the developer live self-test script ("" in a normal run).
+func (a *App) AudioSelfTestLive() string {
+	if s, err := a.service(); err == nil {
+		return s.AudioSelfTestLive()
+	}
+	return ""
+}

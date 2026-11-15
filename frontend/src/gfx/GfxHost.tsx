@@ -8,6 +8,7 @@ import { holeClip, planScene, portNodeOf, stripBasis, type Plan, type Rect } fro
 import type { GfxNode } from './scene';
 import { CmcpController } from '../cmcp/controller';
 import { CmcpAudio, setAudioEngine, WebAudioBackend } from '../cmcp/audio';
+import { runAudioSelfTest, runLiveSelfTest } from '../cmcp/audioSelfTest';
 import { collectPrompts } from '../cmcp/prompts';
 import { CmcpOverlays } from '../cmcp/OverlayLayer';
 import { getActiveCmcp, usePane } from '../cmcp/pane';
@@ -185,6 +186,10 @@ export function GfxProvider({ engine, children }: { engine: EngineAPI; children:
     // sound: the Go side resolved what to play; this plays it, for the session in front only
     const audio = new CmcpAudio(new WebAudioBackend());
     setAudioEngine(audio);
+    audio.sink = (line) => { void engine.clientLog(line).catch(() => undefined); };
+    audio.onProblem = (text) => useUi.getState().toast('error', text);
+    void engine.audioSelfTestLive().then((script) => { if (script) void runLiveSelfTest(engine, script); }).catch(() => undefined);
+    void engine.audioSelfTestDir().then((dir) => { if (dir) void runAudioSelfTest(engine, ['red_alert.wav', 'red_alert.ogg', 'phaser.ogg', '/cmcp-audio/local/redalertandklaxons/tng_red_alert3.mp3']); }).catch(() => undefined);
     // a WebKit view starts the audio context suspended: the first click or key unlocks it
     const unlock = (): void => audio.unlock();
     window.addEventListener('pointerdown', unlock, true);

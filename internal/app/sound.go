@@ -3,6 +3,7 @@ package app
 import (
 	"embed"
 	"encoding/json"
+	"fmt"
 	"io/fs"
 	"math"
 	"net/http"
@@ -12,6 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/itsnotyoutoday/cmcp/audio"
 	"github.com/itsnotyoutoday/cmcp/msg"
@@ -27,8 +29,9 @@ import (
 var eraFS embed.FS
 
 const (
-	audioURLLocal  = "/cmcp-audio/local/"
-	audioURLSample = "/cmcp-audio/sample/"
+	audioURLLocal    = "/cmcp-audio/local/"
+	audioURLSample   = "/cmcp-audio/sample/"
+	audioURLSelfTest = "/cmcp-audio/selftest/"
 )
 
 type soundSvc struct {
@@ -234,6 +237,12 @@ func (ss *soundSvc) instr(sid string, r audio.Resolution, p *msg.SoundPlay) *Ins
 		ss.mu.Unlock()
 	case audio.FromPack:
 		in.Kind, in.URL = "url", audioURLSample+url.PathEscape(sid)+"/"+url.PathEscape(r.Name)
+		// a WebKit view may not decode Ogg Vorbis: the pack's wav of the same sound (when it has one) is the fallback, then the recipe
+		if alt := ss.wavSibling(sid, r.Name); alt != "" {
+			w := &Instr{Kind: "url", URL: audioURLSample + url.PathEscape(sid) + "/" + url.PathEscape(alt), Gain: 1}
+			w.Alt = ss.recipeAlt(sid, p)
+			in.Alt = w
+		}
 	case audio.Recipe:
 		sp := ss.s.eng.CmcpSoundPack(sid)
 		if sp == nil || sp.Recipes[r.Name] == nil {
@@ -259,7 +268,7 @@ func (ss *soundSvc) instr(sid string, r audio.Resolution, p *msg.SoundPlay) *Ins
 	default:
 		return nil
 	}
-	if in.Kind == "url" {
+	if in.Kind == "url" && in.Alt == nil {
 		in.Alt = ss.recipeAlt(sid, p)
 	}
 	opt(r.Option, in)
@@ -333,17 +342,20 @@ func (s *Service) playSound(session string, p *msg.SoundPlay) {
 		return
 	}
 	s.snd.noteLoop(session, p, false, "") // a loop is remembered even while muted: unmuting resumes it
-	if s.MuteState(session) != "" {
-		return // muted (globally or for this world): nothing is resolved and nothing plays
-	}
-	res := s.snd.resolve(session, p)
-	if res == nil || res.Kind == "silence" {
-		return
-	}
 	ev := p.Event
 	if ev == "" {
 		ev = p.Sound
 	}
+	if st := s.MuteState(session); st != "" {
+		s.soundLog("Sound.Play %q not played: muted (%s)", ev, st)
+		return // muted (globally or for this world): nothing is resolved and nothing plays
+	}
+	res := s.snd.resolve(session, p)
+	if res == nil || res.Kind == "silence" {
+		s.soundLog("Sound.Play %q resolved to nothing (no local file in %q, no pack sample or recipe, no bell)", ev, s.cfg.Settings().SoundFolder)
+		return
+	}
+	s.soundLog("Sound.Play %q -> %s", ev, describeInstr(res))
 	m := SoundMsg{Session: session, Op: "play", Key: p.Key, Event: ev, Category: categoryOf(ev), Volume: 1, Priority: 5, FadeMS: p.FadeMS, Loop: p.Loop, Res: res}
 	if p.Volume != nil {
 		m.Volume = *p.Volume
@@ -380,11 +392,37 @@ func (s *Service) AudioHandler() http.Handler {
 			w.Header().Set("Content-Type", ct)
 			w.Header().Set("Cache-Control", "private, max-age=3600")
 			_, _ = w.Write(b)
+		case strings.HasPrefix(r.URL.Path, audioURLSelfTest):
+			// developer diagnostics: SQUATCLIENT_AUDIO_SELFTEST_DIR=<folder> serves that folder's files for the sound self-test (never set in a release)
+			dir := os.Getenv("SQUATCLIENT_AUDIO_SELFTEST_DIR")
+			name := path.Base(strings.TrimPrefix(r.URL.Path, audioURLSelfTest))
+			if dir == "" || name == "." || name == "/" {
+				http.NotFound(w, r)
+				return
+			}
+			http.ServeFile(w, r, filepath.Join(dir, name))
 		default:
 			http.NotFound(w, r)
 		}
 	})
 }
+
+// ClientLog appends a line of the web view's own diagnostics (a sound that could not play, the self-test) to client.log in the config folder, so a
+// problem inside the real WKWebView can be read without a web inspector.
+func (s *Service) ClientLog(line string) {
+	f, err := os.OpenFile(filepath.Join(s.cfg.Dir(), "client.log"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+	_, _ = f.WriteString(time.Now().Format("2006-01-02 15:04:05 ") + strings.ReplaceAll(strings.TrimSpace(line), "\n", " | ") + "\n")
+}
+
+// AudioSelfTestDir is the developer sound self-test folder (SQUATCLIENT_AUDIO_SELFTEST_DIR), "" in a normal run.
+func (s *Service) AudioSelfTestDir() string { return os.Getenv("SQUATCLIENT_AUDIO_SELFTEST_DIR") }
+
+// AudioSelfTestLive is the developer live self-test script (SQUATCLIENT_AUDIO_SELFTEST_LIVE="host:port|command|command..."), "" in a normal run.
+func (s *Service) AudioSelfTestLive() string { return os.Getenv("SQUATCLIENT_AUDIO_SELFTEST_LIVE") }
 
 func (s *Service) serveLocal(w http.ResponseWriter, r *http.Request, rel string) {
 	if s.snd == nil {
@@ -557,4 +595,42 @@ func (ss *soundSvc) noteLoop(session string, p *msg.SoundPlay, stop bool, key st
 		ss.loops[session] = map[string]*msg.SoundPlay{}
 	}
 	ss.loops[session][k] = p
+}
+
+// wavSibling is the pack's wav file of the same sound as an ogg sample ("red_alert.ogg" -> "red_alert.wav"), "" when it has none.
+func (ss *soundSvc) wavSibling(sid, name string) string {
+	if !strings.HasSuffix(strings.ToLower(name), ".ogg") {
+		return ""
+	}
+	sp := ss.s.eng.CmcpSoundPack(sid)
+	if sp == nil {
+		return ""
+	}
+	w := strings.TrimSuffix(name, name[len(name)-4:]) + ".wav"
+	if _, ok := sp.Files[w]; ok {
+		return w
+	}
+	return ""
+}
+
+// soundLog writes a line of the sound path's decisions to client.log (at most 300 lines per run), so a silent client can be diagnosed from the file.
+func (s *Service) soundLog(format string, a ...any) {
+	if s.soundLines.Add(1) > 300 {
+		return
+	}
+	s.ClientLog("sound: " + fmt.Sprintf(format, a...))
+}
+
+func describeInstr(in *Instr) string {
+	switch in.Kind {
+	case "url":
+		return "url " + in.URL
+	case "staged":
+		var parts []string
+		for i := range in.Stages {
+			parts = append(parts, describeInstr(&in.Stages[i]))
+		}
+		return "staged [" + strings.Join(parts, " > ") + "]"
+	}
+	return in.Kind
 }

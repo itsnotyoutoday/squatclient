@@ -674,6 +674,12 @@ export interface EngineAPI {
   cmcpPackConsent(session: string, packId: string, allow: boolean): Promise<void>;
   cmcpThemeDoc(session: string, themeId: string): Promise<Record<string, unknown>>;
   cmcpReducedMotion(on: boolean): Promise<void>;
+  /** a line of the web view's own diagnostics for client.log in the config folder */
+  clientLog(line: string): Promise<void>;
+  /** the developer sound self-test folder ("" in a normal run) */
+  audioSelfTestDir(): Promise<string>;
+  /** developer live self-test script ("host:port|command|command"), "" in a normal run */
+  audioSelfTestLive(): Promise<string>;
   /** ask the game to close the active context (the X of the console window); the game decides, nothing is hidden here */
   cmcpClose(session: string, reason: 'user' | 'client'): Promise<void>;
   /** mute or unmute one session's world (persisted on a saved world, else for this connection) */
