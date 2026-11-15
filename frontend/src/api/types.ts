@@ -311,6 +311,8 @@ export interface EngineEvents {
   /** The Go side wrote a diagnostics snapshot: the page adds its own state lines (tabs, audio, mutes). */
   'diag-snapshot': { why: string };
   line: Line;
+  /** A line of the console (its `session` is empty; the page keeps it under CONSOLE_ID). */
+  console: Line;
   session: SessionInfo;
   status: { session: string; fields: StatusField[] };
   notice: { level: 'info' | 'warn' | 'error'; text: string; session?: string };
@@ -724,6 +726,10 @@ export interface EngineAPI {
   cmcpReducedMotion(on: boolean): Promise<void>;
   /** a line of the web view's own diagnostics (classified by its prefix) for the diagnostics log */
   clientLog(line: string): Promise<void>;
+  /** The console's lines newer than afterSeq (0 = all that are kept): start-up output and whatever scripts print with no world. */
+  consoleLines(afterSeq: number): Promise<Line[]>;
+  /** Run a line typed into the console (a TinyFugue command, with no world). */
+  consoleInput(text: string): Promise<void>;
   /** the build's diagnostics policy and constants (docs/DIAGNOSTICS.md) */
   diagInfo(): Promise<DiagInfo>;
   /** logging state and the sizes of the current and the previous session's logs */

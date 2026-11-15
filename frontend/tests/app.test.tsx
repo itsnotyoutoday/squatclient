@@ -49,10 +49,32 @@ describe('App smoke (mock mode)', () => {
     expect(screen.getByLabelText('Command input')).toBeInTheDocument();
   });
 
-  it('shows the empty state when there are no sessions', async () => {
+  it('shows the Console when there are no sessions: the start-up output, and the Worlds buttons', async () => {
     await boot('empty');
-    expect(screen.getByText(/Open a world/)).toBeInTheDocument();
+    expect(screen.getByTestId('console')).toBeInTheDocument();
+    expect(await screen.findByText(/Loading commands from stdlib.tf/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Worlds' })).toBeInTheDocument();
+    expect(screen.getByTestId('console-tab')).toHaveAttribute('aria-selected', 'true');
     expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('the Console is the first tab: a world in front hides it, picking it brings it back, and a command typed there runs with no world', async () => {
+    const e = await boot();
+    await userEvent.keyboard('{Escape}');
+    expect(screen.queryByTestId('console')).toBeNull(); // a world is in front at start
+    await userEvent.click(screen.getByTestId('console-tab'));
+    expect(await screen.findByTestId('console')).toBeInTheDocument();
+    expect(await screen.findByText(/Loading commands from stdlib.tf/)).toBeInTheDocument();
+    expect(screen.getByTestId('console-tab')).toHaveAttribute('aria-selected', 'true');
+    const input = screen.getByLabelText('Console command line');
+    await userEvent.type(input, '/version{Enter}');
+    await waitFor(() => expect(e.consoleInputs).toEqual(['/version']));
+    expect(await screen.findByText(/version: demo console/)).toBeInTheDocument(); // the engine's answer arrives as a console event
+    // a world tab leaves the console
+    const worldTab = screen.getAllByRole('tab')[1];
+    await userEvent.click(worldTab);
+    await waitFor(() => expect(screen.queryByTestId('console')).toBeNull());
+    expect(worldTab).toHaveAttribute('aria-selected', 'true');
   });
 
   it('opens the "While you were away" summary at startup with unread and ended sessions', async () => {
@@ -77,12 +99,12 @@ describe('App smoke (mock mode)', () => {
     await boot();
     await userEvent.keyboard('{Escape}');
     const tabs = screen.getAllByRole('tab');
-    expect(tabs).toHaveLength(4);
-    expect(within(tabs[1]).getByLabelText(/\d+ unread/)).toBeInTheDocument();
-    expect(within(tabs[2]).getByText('ended')).toBeInTheDocument();
+    expect(tabs).toHaveLength(5); // the Console, then the four worlds
+    expect(within(tabs[2]).getByLabelText(/\d+ unread/)).toBeInTheDocument();
+    expect(within(tabs[3]).getByText('ended')).toBeInTheDocument();
     fireEvent.keyDown(window, { key: '2', code: 'Digit2', altKey: true });
     await waitFor(() => expect(useSessions.getState().fg).toBe(useSessions.getState().order[1]));
-    expect(screen.getAllByRole('tab')[1]).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getAllByRole('tab')[2]).toHaveAttribute('aria-selected', 'true');
     // switching acks: unread clears
     await waitFor(() =>
       expect(useSessions.getState().sessions[useSessions.getState().order[1]].unread).toBe(0),
@@ -284,7 +306,7 @@ describe('dialogs', () => {
     const id = useSessions.getState().order[0];
     const before = useSessions.getState().sessions[id];
     expect(before.worldId).toBeTruthy();
-    fireEvent.contextMenu(screen.getAllByRole('tab')[0]);
+    fireEvent.contextMenu(screen.getAllByRole('tab')[1]); // [0] is the Console
     await userEvent.click(await screen.findByRole('menuitem', { name: 'Rename...' }));
     const d = await screen.findByRole('dialog', { name: 'Rename' });
     expect(within(d).getByText(/Renames the saved world and this connection/)).toBeInTheDocument();

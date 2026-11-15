@@ -15,6 +15,7 @@ import type {
   EditAttrOwnerResult,
   EditExamineResult,
   EditLinesResult,
+  Line,
   EditReplyResult,
   EditTestLockResult,
   EditAttrInfoResult,
@@ -205,6 +206,8 @@ export class WailsEngine implements EngineAPI {
   soundMuteState = (session: string) => call<'' | 'global' | 'world'>('SoundMuteState', session);
   cmcpClose = (session: string, reason: 'user' | 'client') => call<void>('CmcpClose', session, reason);
   clientLog = (line: string) => call<void>('ClientLog', line);
+  consoleLines = (afterSeq: number) => list(call<Line[] | null>('ConsoleLines', afterSeq));
+  consoleInput = (text: string) => call<void>('ConsoleInput', text);
   diagInfo = () => call<DiagInfo>('DiagLogInfo');
   diagStatus = () => call<DiagStatus>('DiagLogStatus');
   diagSetEnabled = (on: boolean) => call<void>('DiagLogSetEnabled', on);

@@ -1,7 +1,7 @@
 import { installDiagHooks, logEnvironment, logPageSnapshot, registerDiagProvider, setDiagEngine } from '../lib/diaglog';
 import { muteOf } from './soundMute';
 import type { EngineAPI, Line, SessionInfo } from '../api/types';
-import { getBuffer, dropBuffer, setBufferCap, useSessions, useSettings, useUi } from './stores';
+import { CONSOLE_ID, getBuffer, dropBuffer, setBufferCap, useSessions, useSettings, useUi } from './stores';
 import { recordProblem } from '../lib/problems';
 import { closeActiveEditorTab, toggleEditorView } from '../lib/editor/view';
 import { runUndoRedo } from '../lib/editcommands';
@@ -114,6 +114,14 @@ export async function startController(
       else pending.set(l.session, [l]);
       schedule();
     }),
+    // the client's own screen: its lines are kept under CONSOLE_ID and flow through the same batching as a session's
+    engine.on('console', (l) => {
+      const line = { ...l, session: CONSOLE_ID };
+      const arr = pending.get(CONSOLE_ID);
+      if (arr) arr.push(line);
+      else pending.set(CONSOLE_ID, [line]);
+      schedule();
+    }),
     engine.on('session', (info) => {
       useSessions.getState().upsert(info);
     }),
@@ -167,6 +175,7 @@ export async function startController(
     engine.on('foreground', ({ session }) => {
       const s = useSessions.getState();
       if (s.sessions[session] && s.fg !== session) s.setFg(session);
+      if (s.sessions[session]) useUi.getState().showConsole(false); // a world came to the front (one you connected to, or the first): show it
     }),
     engine.on('reset', ({ session }) => {
       void reloadSession(session);
@@ -221,6 +230,13 @@ export async function startController(
   const fg = connected?.id ?? null;
   useSessions.getState().setFg(fg);
   if (fg) void engine.foreground(fg).catch(() => undefined);
+  ui.showConsole(!fg); // with a world to show it opens in front; the console is one tab away. With none, the console is the screen
+  // the console's lines so far (the start-up output happened before this page was listening); later lines arrive as events
+  const consoleSoFar = await engine.consoleLines(0).catch(() => [] as Line[]);
+  if (consoleSoFar.length) {
+    getBuffer(CONSOLE_ID).merge(consoleSoFar.map((l) => ({ ...l, session: CONSOLE_ID })));
+    useSessions.getState().bump([CONSOLE_ID]);
+  }
 
   await Promise.all(
     sessions.map(async (s) => {
@@ -270,6 +286,7 @@ export async function startController(
     switchTo(id) {
       const s = useSessions.getState();
       if (!s.sessions[id]) return;
+      useUi.getState().showConsole(false);
       s.setFg(id);
       void engine.foreground(id).catch(() => undefined);
       if (!s.paused[id]?.paused) ackLater(id);

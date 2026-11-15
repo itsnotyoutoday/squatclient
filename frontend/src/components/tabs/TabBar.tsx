@@ -29,6 +29,8 @@ export function TabBar() {
   const controller = useControllerRef();
   const squatters = useUi((s) => s.squatters);
   const [menu, setMenu] = useState<{ id: string; x: number; y: number } | null>(null);
+  const consoleOpen = useUi((s) => s.consoleOpen);
+  const showingConsole = consoleOpen || order.length === 0 || !fg;
 
   const close = (id: string): void => {
     const s = sessions[id];
@@ -39,10 +41,23 @@ export function TabBar() {
 
   return (
     <div className="tabbar" role="tablist" aria-label="Sessions">
+      <div className={`tab console${showingConsole ? ' active' : ''}`}>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={showingConsole}
+          className="tabmain"
+          title="Console: the client's own screen (start-up output, commands with no world)"
+          data-testid="console-tab"
+          onClick={() => useUi.getState().showConsole(true)}
+        >
+          <span className="tabname">Console</span>
+        </button>
+      </div>
       {order.map((id, i) => {
         const s = sessions[id];
         if (!s) return null;
-        const active = id === fg;
+        const active = id === fg && !showingConsole;
         const unread = active ? 0 : s.unread;
         return (
           <div

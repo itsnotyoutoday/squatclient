@@ -377,6 +377,8 @@ func (s *Service) deliver(batch []engine.Event) {
 			}
 		case engine.EvReset:
 			s.emit("reset", map[string]string{"session": ev.Session})
+		case engine.EvConsole:
+			s.emit("console", ev.Line)
 		case engine.EvNotice:
 			s.emit("notice", Notice{Level: ev.Level, Text: ev.Text, Session: ev.Session})
 		case engine.EvBell:

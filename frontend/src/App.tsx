@@ -8,6 +8,7 @@ import { useTheme } from './state/hooks';
 import { applyTheme } from './themes';
 import { LiveRegion } from './components/output/LiveRegion';
 import { getOutput } from './components/output/handle';
+import { ConsoleView } from './components/console/ConsoleView';
 import { LayoutHost } from './layout/host';
 import { StatusBar } from './components/statusbar/StatusBar';
 import { TabBar } from './components/tabs/TabBar';
@@ -113,23 +114,10 @@ function Toasts() {
 function Workspace() {
   const fg = useSessions((s) => s.fg);
   const session = useSessions((s) => (s.fg ? s.sessions[s.fg] : undefined));
+  const consoleOpen = useUi((s) => s.consoleOpen);
 
-  if (!fg || !session) {
-    return (
-      <main className="empty" aria-label="No session">
-        <h1>SquatClient</h1>
-        <p>A graphical MU* client. Open a world to get started.</p>
-        <div className="actions">
-          <button type="button" className="primary" onClick={() => useUi.getState().openDialog('worlds')}>
-            Worlds
-          </button>
-          <button type="button" onClick={() => useUi.getState().openDialog('quick')}>
-            Quick connect
-          </button>
-        </div>
-      </main>
-    );
-  }
+  // the Console is the screen while no world is open, and whenever its tab is picked
+  if (consoleOpen || !fg || !session) return <ConsoleView />;
   return <LayoutHost session={session} />;
 }
 

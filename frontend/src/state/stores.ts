@@ -129,10 +129,16 @@ export interface Toast {
 
 export type AppView = 'terminal' | 'editor';
 
+/** The id the console's buffer is kept under (the console is not a session: it is the client's own screen, shown before any world and always as the first tab). */
+export const CONSOLE_ID = 'console';
+
 export interface UiState {
   engine: EngineAPI | null;
   /** which full-window view is showing; the terminal and its connections keep running under the editor */
   view: AppView;
+  /** the Console tab is the one showing (also whenever there is no session to show) */
+  consoleOpen: boolean;
+  showConsole(open: boolean): void;
   dialog: DialogId;
   searchOpen: boolean;
   worlds: WorldConfig[];
@@ -180,6 +186,8 @@ let toastId = 0;
 export const useUi = create<UiState>((set) => ({
   engine: null,
   view: 'terminal',
+  consoleOpen: true,
+  showConsole: (open) => set({ consoleOpen: open }),
   dialog: null,
   searchOpen: false,
   worlds: [],

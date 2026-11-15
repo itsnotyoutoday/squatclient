@@ -400,6 +400,24 @@ func (a *App) Input(id, text string) error {
 	return s.Input(id, text)
 }
 
+// ConsoleLines returns the console's lines newer than the given sequence number.
+func (a *App) ConsoleLines(after uint64) ([]proto.Line, error) {
+	s, err := a.service()
+	if err != nil {
+		return nil, err
+	}
+	return s.ConsoleLines(after), nil
+}
+
+// ConsoleInput runs a line typed into the console.
+func (a *App) ConsoleInput(text string) error {
+	s, err := a.service()
+	if err != nil {
+		return err
+	}
+	return s.ConsoleInput(text)
+}
+
 // Resize reports the output size.
 func (a *App) Resize(id string, cols, rows int) error {
 	s, err := a.service()

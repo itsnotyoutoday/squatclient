@@ -115,6 +115,7 @@ textarea {
   flex: none;
 }
 .workspace,
+.console,
 .empty {
   flex: 1;
   min-height: 0;
@@ -1756,4 +1757,50 @@ h3.lay-panel-title {
   width: 100%;
   box-sizing: border-box;
   margin-top: 4px;
+}
+
+
+/* the Console: the client's own screen (like a Home tab) */
+.console-bar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--ui-border);
+  background: var(--ui-panel);
+}
+.console-title {
+  font-weight: 600;
+}
+.console-actions {
+  display: flex;
+  gap: 6px;
+}
+.console-out {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.console-in {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-top: 1px solid var(--ui-border);
+  background: var(--ui-panel);
+}
+.console-in .prompt {
+  color: var(--ui-muted, inherit);
+  font-family: var(--mono, monospace);
+}
+.console-in input {
+  flex: 1;
+  font-family: var(--mono, monospace);
+}
+.tab.console .tabname {
+  font-weight: 600;
 }

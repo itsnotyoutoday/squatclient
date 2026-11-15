@@ -120,7 +120,14 @@ func TestInstallRendersConfigDirAndKeepsAssets(t *testing.T) {
 
 func TestLibraryLoadsWithoutErrors(t *testing.T) {
 	_, h, _ := start(t)
-	out := h.dump()
+	// the "% Loading commands from <path>." lines are expected (the console shows them, as TinyFugue does); the path may hold anything
+	var kept []string
+	for _, l := range strings.Split(h.dump(), "\n") {
+		if !strings.HasPrefix(l, "% Loading commands from ") {
+			kept = append(kept, l)
+		}
+	}
+	out := strings.Join(kept, "\n")
 	for _, bad := range []string{"no such", "not supported", "invalid", "Error", "error", "cannot", "unknown"} {
 		if strings.Contains(out, bad) {
 			t.Errorf("loading the library printed %q:\n%s", bad, out)

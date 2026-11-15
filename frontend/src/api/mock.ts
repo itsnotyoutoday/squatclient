@@ -679,6 +679,25 @@ export class MockEngine implements EngineAPI {
   async clientLog(line: string): Promise<void> {
     this.clientLogs.push(line);
   }
+  /** the console (the client's own screen): what the tests and the demo see */
+  consoleLog: Line[] = [
+    { session: '', seq: 1, ts: Date.now(), kind: 'system', spans: [{ s: 'SquatClient (demo): a graphical MU* client with TinyFugue-compatible scripting.' }] },
+    { session: '', seq: 2, ts: Date.now(), kind: 'system', spans: [{ s: '% Loading commands from stdlib.tf.' }] },
+  ];
+  async consoleLines(afterSeq: number): Promise<Line[]> {
+    return this.consoleLog.filter((l) => l.seq > afterSeq);
+  }
+  consoleInputs: string[] = [];
+  async consoleInput(text: string): Promise<void> {
+    this.consoleInputs.push(text);
+    const add = (kind: Line['kind'], s: string): void => {
+      const line: Line = { session: '', seq: this.consoleLog.length + 1, ts: Date.now(), kind, spans: [{ s }] };
+      this.consoleLog.push(line);
+      this.emit('console', line);
+    };
+    add('echo', text);
+    add('system', text.startsWith('/') ? `% ${text.slice(1).split(' ')[0]}: demo console` : '% No world: connect with /connect <world>.');
+  }
   diagState = { enabled: true, mode: 'always' as 'always' | 'optin' | 'off', lines: [] as string[], zips: [] as string[], opened: [] as string[], cleared: 0 };
   async diagInfo(): Promise<DiagInfo> {
     return { mode: this.diagState.mode, available: this.diagState.mode !== 'off', enabled: this.diagState.enabled, build: 'mock-build', version: '0.0.0', os: 'darwin', arch: 'arm64', repoSlug: 'owner/repo', contactName: 'Someone', contactHost: 'mud.example.org', contactPort: 1701, folder: '/tmp/diagnostics' };

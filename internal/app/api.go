@@ -237,6 +237,13 @@ func (s *Service) Foreground(id string) error {
 // Input hands a line to the engine (commands, macros, send).
 func (s *Service) Input(id, text string) error { return s.eng.Input(id, text) }
 
+// ConsoleLines returns the console's lines newer than the given sequence number (0 = all that are kept): the start-up output and whatever
+// scripts print with no world. New lines arrive as `console` events.
+func (s *Service) ConsoleLines(after uint64) []proto.Line { return s.eng.ConsoleLines(after) }
+
+// ConsoleInput runs a line typed into the console (a TinyFugue command, with no world).
+func (s *Service) ConsoleInput(text string) error { return s.eng.ConsoleInput(text) }
+
 // Resize reports the output pane size (NAWS).
 func (s *Service) Resize(id string, cols, rows int) error { return s.eng.Resize(id, cols, rows) }
 

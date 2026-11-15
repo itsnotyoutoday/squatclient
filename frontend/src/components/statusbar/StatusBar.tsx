@@ -27,7 +27,8 @@ export function StatusBar() {
   const suspended = useUi((s) => s.suspended);
   const engine = useUi((s) => s.engine);
   const squatters = useUi((s) => s.squatters);
-  const cur = fg ? sessions[fg] : undefined;
+  const consoleOpen = useUi((s) => s.consoleOpen);
+  const cur = fg && !consoleOpen ? sessions[fg] : undefined;
   const timestamps = useSettings((s) => s.settings.timestamps);
   const toggleTimestamps = (): void => {
     const next = { ...useSettings.getState().settings, timestamps: !timestamps };
@@ -45,7 +46,7 @@ export function StatusBar() {
 
   return (
     <footer className="statusbar" role="status" aria-label="Status">
-      <span className="seg world">{cur ? cur.name : 'No session'}</span>
+      <span className="seg world">{cur ? cur.name : 'Console'}</span>
       {cur && <span className={`seg state ${cur.state}`}>{STATE_LABEL[cur.state]}</span>}
       {cur && cur.state !== 'ended' && <WorldMuteButton session={cur.id} />}
       {cur?.link && cur.link !== 'attached' && (
