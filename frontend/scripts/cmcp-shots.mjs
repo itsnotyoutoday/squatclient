@@ -9,7 +9,7 @@ import path from 'node:path';
 
 const base = process.argv[2] || 'http://localhost:5173/';
 const out = process.argv[3] || '/tmp/cmcp-shots';
-const screens = (process.env.CMCP_SCREENS || 'operations,power,damage,sensors,tactical,helm').split(',');
+const screens = (process.env.CMCP_SCREENS || 'operations,power,damage,sensors,tactical,helm,command,communications,medical,security,cargo,away,engineering,transporter').split(',');
 const themes = (process.env.CMCP_THEMES || 'tng').split(',');
 fs.mkdirSync(out, { recursive: true });
 const chrome = process.env.CHROME_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';

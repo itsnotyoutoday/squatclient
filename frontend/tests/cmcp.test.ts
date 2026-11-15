@@ -10,7 +10,7 @@ import type { CmcpNode, CmcpUI } from '../src/cmcp/types';
 
 // The fixtures are what the Go engine produced for the built-in screens (squatClientDaemon TestCmcpDumpFixtures): real bound trees.
 const fx = (name: string): CmcpUI => JSON.parse(readFileSync(`public/cmcp/${name}.json`, 'utf8')) as CmcpUI;
-const SCREENS = ['operations', 'power', 'damage', 'sensors', 'tactical', 'helm'];
+const SCREENS = ['operations', 'power', 'damage', 'sensors', 'tactical', 'helm', 'command', 'communications', 'medical', 'security', 'cargo', 'away', 'engineering', 'transporter'];
 const ctxFor = (ui: CmcpUI, over: Partial<Ctx> = {}): Ctx => ({ tree: ui.tree!, local: new Map(), history: new Map(), images: new Map(), readonly: false, reduceMotion: true, ...over });
 const flat = (p: Placed, out: Placed[] = []): Placed[] => { out.push(p); p.children.forEach((c) => flat(c, out)); return out; };
 

@@ -430,7 +430,121 @@ const lights: Draw = (p, ctx, out) => {
   for (let i = 0; i < n; i++) out.push({ id: `${id}.${i}`, type: 'circle', props: { x: r.x + 8 + i * 14, y: r.y + r.h / 2, r: 4, fill: col, opacity: ctx.reduceMotion || (i * 7) % 3 !== 0 ? 0.9 : 0.35 } });
 };
 
+/** the sector from above: bodies, waypoints, the plotted course; a click on a marker selects it, a click on empty space plots a point (spec 6.4 sector-map) */
+const sectorMap: Draw = (p, ctx, out) => {
+  const pr = p.node.props, id = p.node.path;
+  const inner = panel(p, ctx, out, id, 'Sector');
+  const m = (pr.map ?? {}) as Record<string, unknown>;
+  const sector = (m.sector ?? {}) as Record<string, unknown>;
+  const size = num(sector.size_m, 0) || 2e9;
+  const side = Math.max(20, Math.min(inner.w, inner.h));
+  const x0 = inner.x + (inner.w - side) / 2, y0 = inner.y + (inner.h - side) / 2;
+  const toXY = (pos: unknown): [number, number] => {
+    const a = Array.isArray(pos) ? (pos as number[]) : [0, 0];
+    return [x0 + (num(a[0]) / size) * side, y0 + side - (num(a[1]) / size) * side];
+  };
+  out.push(rect(`${id}.field`, { x: x0, y: y0, w: side, h: side }, tok(ctx, 'color.bg'), { stroke: tok(ctx, 'color.dim'), strokeWidth: 1, r: 2 }));
+  for (let i = 1; i < 4; i++) {
+    out.push({ id: `${id}.gx${i}`, type: 'line', props: { x1: x0 + (side * i) / 4, y1: y0, x2: x0 + (side * i) / 4, y2: y0 + side, stroke: tok(ctx, 'color.dim'), strokeWidth: 1, opacity: 0.3 } });
+    out.push({ id: `${id}.gy${i}`, type: 'line', props: { x1: x0, y1: y0 + (side * i) / 4, x2: x0 + side, y2: y0 + (side * i) / 4, stroke: tok(ctx, 'color.dim'), strokeWidth: 1, opacity: 0.3 } });
+  }
+  const evs = p.node.events ?? [];
+  if (evs.includes('plot') && p.node.enabled && !ctx.readonly) {
+    out.push({ id: `${id}.bgHit`, type: 'rect', props: { x: x0, y: y0, w: side, h: side, fill: '#00000000' }, events: ['click'],
+      target: { path: p.node.path, event: 'plot', value: (x: number, y: number) => [Math.round(((x - x0) / side) * size), Math.round(((y0 + side - y) / side) * size), Math.round(size / 2)] } });
+  }
+  const sel = pr.selected === undefined || pr.selected === null ? null : String(pr.selected);
+  const bodies = entries(m.bodies);
+  bodies.forEach(([k, v]) => {
+    const b = (v ?? {}) as Record<string, unknown>, [x, y] = toXY(b.pos_m);
+    const kind = str(b.kind), r = kind === 'star' ? 12 : kind === 'planet' ? 8 : 4;
+    const col = kind === 'star' ? tok(ctx, 'color.warn') : kind === 'planet' ? tok(ctx, 'color.accent2') : tok(ctx, 'color.dim');
+    out.push({ id: `${id}.b${k}`, type: 'circle', props: { x, y, r: sel === k ? r + 3 : r, fill: col, glow: kind === 'star' ? 0.5 : 0.15, stroke: sel === k ? tok(ctx, 'color.text') : undefined, strokeWidth: 2 }, events: evs.includes('select') ? ['click'] : [], target: { path: p.node.path, event: 'select', value: k } });
+    out.push(text(`${id}.b${k}.n`, x + r + 5, y, str(b.name), 11, tok(ctx, 'color.text'), { font: font(ctx), maxWidth: 120 }));
+  });
+  const wps = entries(m.waypoints);
+  wps.forEach(([k, v]) => {
+    const w = (v ?? {}) as Record<string, unknown>, [x, y] = toXY(w.pos_m);
+    out.push({ id: `${id}.w${k}`, type: 'polygon', props: { points: [x, y - 7, x + 6, y, x, y + 7, x - 6, y], fill: sel === k ? tok(ctx, 'color.accent') : tok(ctx, 'color.ok') }, events: evs.includes('select') ? ['click'] : [], target: { path: p.node.path, event: 'select', value: k } });
+    out.push(text(`${id}.w${k}.n`, x + 10, y, str(w.name), 11, tok(ctx, 'color.ok'), { font: font(ctx), maxWidth: 110 }));
+  });
+  const course = (m.course ?? pr.course ?? {}) as Record<string, unknown>;
+  const legs = Array.isArray(course.legs) ? (course.legs as unknown[]) : [];
+  const pts: number[] = [];
+  for (const l of legs) {
+    const wp = (m.waypoints as Record<string, Record<string, unknown>> | undefined)?.[String(l)];
+    if (wp) pts.push(...toXY(wp.pos_m));
+  }
+  if (pts.length >= 4) out.push({ id: `${id}.course`, type: 'polyline', props: { points: pts, stroke: tok(ctx, 'color.accent'), strokeWidth: 2, glow: 0.2 } });
+  if (course.eta_s !== undefined) out.push(text(`${id}.eta`, inner.x + 6, inner.y + inner.h - 8, `COURSE ${str(course.mode).toUpperCase()}  ETA ${Math.round(num(course.eta_s))} S`, 12, tok(ctx, 'color.accent'), { font: font(ctx), weight: '700' }));
+};
+
+/** a face for a hail: a parametric head with a mood */
+const portrait: Draw = (p, ctx, out) => {
+  const pr = p.node.props, id = p.node.path, r = p.rect;
+  const inner = panel(p, ctx, out, id, str(pr.name) || 'No hail');
+  if (!pr.name && !pr.model && !pr.sprite) return;
+  const prm = (pr.params ?? {}) as Record<string, unknown>;
+  const tint = typeof prm.tint === 'string' ? prm.tint : tok(ctx, 'color.accent2');
+  const R = Math.max(10, Math.min(inner.w, inner.h) / 2 - 8), cx = inner.x + inner.w / 2, cy = inner.y + inner.h / 2 + 6;
+  const mood = str(pr.mood);
+  out.push({ id: `${id}.head`, type: 'ellipse', props: { x: cx, y: cy, rx: R * 0.75, ry: R, fill: tint, opacity: 0.85, glow: 0.2 } });
+  for (const s of [-1, 1]) {
+    out.push({ id: `${id}.eye${s}`, type: 'ellipse', props: { x: cx + s * R * 0.3, y: cy - R * 0.2, rx: R * 0.1, ry: mood === 'angry' ? R * 0.05 : R * 0.1, fill: '#0a0f14' } });
+    if (mood === 'angry') out.push({ id: `${id}.brow${s}`, type: 'line', props: { x1: cx + s * R * 0.45, y1: cy - R * 0.4 + s * 4, x2: cx + s * R * 0.15, y2: cy - R * 0.3 - s * 4, stroke: '#0a0f14', strokeWidth: 3 } });
+  }
+  const smile = mood === 'friendly' ? 1 : mood === 'angry' || mood === 'threat' ? -1 : 0;
+  out.push({ id: `${id}.mouth`, type: 'line', props: { x1: cx - R * 0.3, y1: cy + R * 0.45, x2: cx + R * 0.3, y2: cy + R * 0.45 - smile * 6, stroke: '#0a0f14', strokeWidth: 3, cap: 'round' } });
+  if (mood) out.push(text(`${id}.mood`, r.x + r.w / 2, r.y + r.h - 12, mood.toUpperCase(), 11, tok(ctx, 'color.dim'), { align: 'center', font: font(ctx) }));
+};
+
+/** a scrolling log, oldest first (the newest rows at the bottom) */
+const logw: Draw = (p, ctx, out) => {
+  const pr = p.node.props, id = p.node.path;
+  const inner = panel(p, ctx, out, id, 'Log');
+  const kinds = str(pr.kinds).split(',').map((k) => k.trim()).filter(Boolean);
+  let rows = entries(pr.rows).map(([k, v]) => [k, (v ?? {}) as Record<string, unknown>] as const).filter(([, o]) => !kinds.length || kinds.includes(str(o.kind)));
+  rows.sort((a, b) => num(a[1].t) - num(b[1].t));
+  const rh = 18, fit = Math.max(1, Math.floor(inner.h / rh));
+  rows = rows.slice(-Math.min(fit, num(pr.max, 200) || 200));
+  rows.forEach(([k, o], i) => {
+    const y = inner.y + i * rh + rh / 2, sev = str(o.severity);
+    const col = sev === 'alert' || sev === 'error' ? tok(ctx, 'color.alert') : sev === 'warn' ? tok(ctx, 'color.warn') : tok(ctx, 'color.text');
+    const d = typeof o.t === 'number' ? new Date(o.t) : null;
+    const clock = d ? d.toISOString().slice(11, 19) : '';
+    out.push(text(`${id}.r${k}.t`, inner.x + 4, y, clock, 11, tok(ctx, 'color.dim'), { font: font(ctx) }));
+    out.push(text(`${id}.r${k}.x`, inner.x + 66, y, `${o.from ? str(o.from).toUpperCase() + ': ' : ''}${str(o.text ?? o.line)}`, 13, col, { font: font(ctx), maxWidth: inner.w - 72 }));
+    if (p.node.events?.includes('select')) out.push({ id: `${id}.r${k}.hit`, type: 'rect', props: { x: inner.x, y: y - rh / 2, w: inner.w, h: rh, fill: '#00000000' }, events: ['click'], target: { path: p.node.path, event: 'select', value: k } });
+  });
+};
+
+/** the transporter pads with their occupants and the energizing progress */
+const padDiagram: Draw = (p, ctx, out) => {
+  const pr = p.node.props, id = p.node.path;
+  const inner = panel(p, ctx, out, id, 'Transporter pads');
+  const pads = entries(pr.pads);
+  const sel = pr.selected === undefined || pr.selected === null ? null : String(pr.selected);
+  const n = Math.max(1, pads.length), cols = Math.min(n, Math.max(1, Math.floor(inner.w / 130))), rowsN = Math.ceil(n / cols);
+  const cw = inner.w / cols, ch = (inner.h - 22) / rowsN;
+  pads.forEach(([k, v], i) => {
+    const o = (v ?? {}) as Record<string, unknown>, occ = entries(o.occupants);
+    const cx = inner.x + (i % cols) * cw + cw / 2, cy = inner.y + Math.floor(i / cols) * ch + ch / 2 - 6, R = Math.max(14, Math.min(cw, ch) / 2 - 22);
+    const busy = occ.length > 0, isSel = sel === k;
+    out.push({ id: `${id}.p${k}.ring`, type: 'circle', props: { x: cx, y: cy, r: R, fill: busy ? tok(ctx, 'color.accent') : tok(ctx, 'color.panel'), opacity: busy ? 0.35 : 1, stroke: isSel ? tok(ctx, 'color.text') : tok(ctx, 'color.accent2'), strokeWidth: isSel ? 4 : 2, glow: busy ? 0.4 : 0.1 }, events: p.node.events?.includes('select') ? ['click'] : [], target: { path: p.node.path, event: 'select', value: /^\d+$/.test(k) ? Number(k) : k } });
+    out.push(text(`${id}.p${k}.l`, cx, cy - 4, str(o.label) || `PAD ${k}`, 13, tok(ctx, 'color.text'), { align: 'center', font: font(ctx, true), weight: '700' }));
+    out.push(text(`${id}.p${k}.s`, cx, cy + 12, str(o.state).toUpperCase(), 10, tok(ctx, 'color.dim'), { align: 'center', font: font(ctx) }));
+    occ.slice(0, 3).forEach(([ok, ov], j) => out.push(text(`${id}.p${k}.o${ok}`, cx, cy + R + 10 + j * 12, str(((ov ?? {}) as Record<string, unknown>).name), 10, tok(ctx, 'color.text'), { align: 'center', font: font(ctx), maxWidth: cw - 8 })));
+  });
+  const pg = frac(pr.progress, 1, 1);
+  if (pg !== null) {
+    const tr: Rect = { x: inner.x, y: inner.y + inner.h - 14, w: inner.w, h: 8 };
+    out.push(rect(`${id}.pg.tr`, tr, tok(ctx, 'color.bg'), { r: 4, stroke: tok(ctx, 'color.dim'), strokeWidth: 1 }));
+    if (pg > 0) out.push(rect(`${id}.pg.f`, { ...tr, w: tr.w * pg }, tone(ctx, 'ok'), { r: 4, glow: 0.3 }));
+  }
+};
+
 const DRAW: Record<string, Draw> = {
+  'sector-map': sectorMap, portrait, log: logw, 'pad-diagram': padDiagram,
   'helm-controls': helmControls, lights,
   label, bar, 'bar-list': barList, list: table, table, 'contact-picker': table, 'group-picker': groupPicker, button, toggle, slider, graph, gauge,
   radar, scope: radar, 'team-assigner': teamAssigner, joystick, schematic, viewscreen, textport,

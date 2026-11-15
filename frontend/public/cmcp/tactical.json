@@ -1,6 +1,6 @@
 {
  "session": "s1",
- "rev": 16,
+ "rev": 33,
  "generation": 1,
  "state": "ready",
  "proto": 1,
@@ -25,18 +25,1970 @@
    {
     "name": "dmg.assign",
     "consoles": [
-     "operations"
+     "operations",
+     "engineering",
+     "room:engineering"
     ],
     "mutating": true,
     "text": "dmg assign {team}={system}",
     "args": {
      "system": {
-      "type": "string"
+      "type": "string",
+      "maxlen": 64
      },
      "team": {
-      "type": "int"
+      "type": "int",
+      "min": 1,
+      "max": 20
      }
-    }
+    },
+    "rate_per_s": 2,
+    "status": "live-verified",
+    "doc": "assign a damage-control team to a system"
+   },
+   {
+    "name": "power.set",
+    "consoles": [
+     "operations",
+     "engineering",
+     "room:engineering"
+    ],
+    "mutating": true,
+    "text": "power {target}={value}",
+    "args": {
+     "target": {
+      "type": "string",
+      "maxlen": 64
+     },
+     "value": {
+      "type": "string",
+      "maxlen": 16,
+      "pattern": "^(max|off|[0-9]+(\\.[0-9]+)?%?)$"
+     }
+    },
+    "rate_per_s": 4,
+    "status": "live-verified",
+    "doc": "set a power group or component: max, off, N% or an amount"
+   },
+   {
+    "name": "eng.main",
+    "consoles": [
+     "operations",
+     "engineering"
+    ],
+    "mutating": true,
+    "text": "eng main {value}",
+    "args": {
+     "value": {
+      "type": "string",
+      "maxlen": 16,
+      "pattern": "^(max|off|[0-9]+(\\.[0-9]+)?%?)$"
+     }
+    },
+    "rate_per_s": 2,
+    "status": "live-verified",
+    "doc": "primary generators"
+   },
+   {
+    "name": "eng.aux",
+    "consoles": [
+     "operations",
+     "engineering"
+    ],
+    "mutating": true,
+    "text": "eng aux {value}",
+    "args": {
+     "value": {
+      "type": "string",
+      "maxlen": 16,
+      "pattern": "^(max|off|[0-9]+(\\.[0-9]+)?%?)$"
+     }
+    },
+    "rate_per_s": 2,
+    "status": "live-verified",
+    "doc": "impulse engines / secondary generators"
+   },
+   {
+    "name": "hatch.toggle",
+    "consoles": [
+     "operations"
+    ],
+    "mutating": true,
+    "text": "hatch",
+    "args": {},
+    "rate_per_s": 1,
+    "status": "live-verified"
+   },
+   {
+    "name": "dock.doors",
+    "consoles": [
+     "operations"
+    ],
+    "mutating": true,
+    "text": "dd {state}",
+    "args": {
+     "state": {
+      "type": "enum",
+      "values": [
+       "open",
+       "close"
+      ]
+     }
+    },
+    "rate_per_s": 1,
+    "status": "live-verified"
+   },
+   {
+    "name": "tractor.lock",
+    "consoles": [
+     "operations"
+    ],
+    "mutating": true,
+    "text": "tractor lock {cid}",
+    "args": {
+     "cid": {
+      "type": "cid"
+     }
+    },
+    "rate_per_s": 2,
+    "status": "live-verified"
+   },
+   {
+    "name": "tractor.dest",
+    "consoles": [
+     "operations"
+    ],
+    "mutating": true,
+    "text": "tractor dest {room}",
+    "args": {
+     "room": {
+      "type": "string",
+      "maxlen": 32
+     }
+    },
+    "rate_per_s": 2,
+    "status": "live-verified"
+   },
+   {
+    "name": "tractor.engage",
+    "consoles": [
+     "operations"
+    ],
+    "mutating": true,
+    "text": "tractor engage",
+    "args": {},
+    "rate_per_s": 1,
+    "status": "live-verified"
+   },
+   {
+    "name": "tractor.reset",
+    "consoles": [
+     "operations"
+    ],
+    "mutating": true,
+    "text": "tractor reset",
+    "args": {},
+    "rate_per_s": 1,
+    "status": "live-verified"
+   },
+   {
+    "name": "scan.srs",
+    "consoles": [
+     "operations",
+     "science"
+    ],
+    "mutating": false,
+    "text": "srs",
+    "args": {},
+    "rate_per_s": 1,
+    "status": "live-verified"
+   },
+   {
+    "name": "scan.lrs",
+    "consoles": [
+     "operations",
+     "science"
+    ],
+    "mutating": false,
+    "text": "lrs",
+    "args": {},
+    "rate_per_s": 1,
+    "status": "live-verified"
+   },
+   {
+    "name": "scan.passive",
+    "consoles": [
+     "operations",
+     "science"
+    ],
+    "mutating": false,
+    "text": "passive {cid}",
+    "args": {
+     "cid": {
+      "type": "cid"
+     }
+    },
+    "rate_per_s": 1,
+    "status": "live-verified"
+   },
+   {
+    "name": "scan.internal",
+    "consoles": [
+     "operations",
+     "science"
+    ],
+    "mutating": false,
+    "text": "internal {cid}",
+    "args": {
+     "cid": {
+      "type": "cid"
+     }
+    },
+    "rate_per_s": 1,
+    "status": "live-verified"
+   },
+   {
+    "name": "scan.dock",
+    "consoles": [
+     "operations",
+     "science"
+    ],
+    "mutating": false,
+    "text": "dockscan {cid}",
+    "args": {
+     "cid": {
+      "type": "cid"
+     }
+    },
+    "rate_per_s": 1,
+    "status": "live-verified"
+   },
+   {
+    "name": "target.lock",
+    "consoles": [
+     "tactical"
+    ],
+    "mutating": true,
+    "text": "lock {cid}",
+    "args": {
+     "cid": {
+      "type": "cid"
+     }
+    },
+    "rate_per_s": 2,
+    "status": "designed",
+    "doc": "weapons lock on a contact (the real component command Lock)"
+   },
+   {
+    "name": "weapon.fire",
+    "consoles": [
+     "tactical"
+    ],
+    "mutating": true,
+    "text": "fire {mount}",
+    "args": {
+     "mount": {
+      "type": "string",
+      "maxlen": 64
+     }
+    },
+    "rate_per_s": 3,
+    "status": "designed",
+    "doc": "fire a mount, or `all`"
+   },
+   {
+    "name": "weapon.torpedo",
+    "consoles": [
+     "tactical"
+    ],
+    "mutating": true,
+    "text": "launch {tube}",
+    "args": {
+     "tube": {
+      "type": "int",
+      "min": 1,
+      "max": 16
+     }
+    },
+    "rate_per_s": 2,
+    "status": "designed",
+    "doc": "launch a torpedo tube"
+   },
+   {
+    "name": "weapon.arm",
+    "consoles": [
+     "tactical"
+    ],
+    "mutating": true,
+    "text": "arm {mount} {state}",
+    "args": {
+     "mount": {
+      "type": "string",
+      "maxlen": 64
+     },
+     "state": {
+      "type": "enum",
+      "values": [
+       "arm",
+       "safe"
+      ]
+     }
+    },
+    "rate_per_s": 2,
+    "status": "designed"
+   },
+   {
+    "name": "weapon.mode",
+    "consoles": [
+     "tactical"
+    ],
+    "mutating": true,
+    "text": "mode {mount} {mode}",
+    "args": {
+     "mode": {
+      "type": "enum",
+      "values": [
+       "single",
+       "burst",
+       "sweep"
+      ]
+     },
+     "mount": {
+      "type": "string",
+      "maxlen": 64
+     }
+    },
+    "rate_per_s": 2,
+    "status": "designed"
+   },
+   {
+    "name": "torpedo.load",
+    "consoles": [
+     "tactical"
+    ],
+    "mutating": true,
+    "text": "load {tube} {type}",
+    "args": {
+     "tube": {
+      "type": "int",
+      "min": 1,
+      "max": 16
+     },
+     "type": {
+      "type": "id"
+     }
+    },
+    "rate_per_s": 2,
+    "status": "designed",
+    "doc": "load a torpedo type (std, heavy, probe)"
+   },
+   {
+    "name": "torpedo.unload",
+    "consoles": [
+     "tactical"
+    ],
+    "mutating": true,
+    "text": "unload {tube}",
+    "args": {
+     "tube": {
+      "type": "int",
+      "min": 1,
+      "max": 16
+     }
+    },
+    "rate_per_s": 2,
+    "status": "designed"
+   },
+   {
+    "name": "shield.raise",
+    "consoles": [
+     "tactical"
+    ],
+    "mutating": true,
+    "text": "shields up",
+    "args": {},
+    "rate_per_s": 1,
+    "status": "designed"
+   },
+   {
+    "name": "shield.drop",
+    "consoles": [
+     "tactical"
+    ],
+    "mutating": true,
+    "text": "shields down",
+    "args": {},
+    "rate_per_s": 1,
+    "status": "designed"
+   },
+   {
+    "name": "shield.set",
+    "consoles": [
+     "tactical",
+     "engineering"
+    ],
+    "mutating": true,
+    "text": "shield {facing} {pct}",
+    "args": {
+     "facing": {
+      "type": "enum",
+      "values": [
+       "fore",
+       "aft",
+       "port",
+       "starboard",
+       "dorsal",
+       "ventral",
+       "all"
+      ]
+     },
+     "pct": {
+      "type": "number",
+      "min": 0,
+      "max": 100
+     }
+    },
+    "rate_per_s": 2,
+    "status": "designed",
+    "doc": "share of shield power for a facing"
+   },
+   {
+    "name": "target.exploit",
+    "consoles": [
+     "tactical"
+    ],
+    "mutating": true,
+    "text": "exploit {cid} {weakness}",
+    "args": {
+     "cid": {
+      "type": "cid"
+     },
+     "weakness": {
+      "type": "id"
+     }
+    },
+    "rate_per_s": 2,
+    "status": "designed",
+    "doc": "aim at a weakness science found (Space.Analysis)"
+   },
+   {
+    "name": "helm.stick",
+    "consoles": [
+     "navigation"
+    ],
+    "mutating": true,
+    "class": "continuous",
+    "text": "(helm stick)",
+    "args": {
+     "pitch": {
+      "type": "number",
+      "min": -1,
+      "max": 1
+     },
+     "throttle": {
+      "type": "number",
+      "min": 0,
+      "max": 1
+     },
+     "yaw": {
+      "type": "number",
+      "min": -1,
+      "max": 1
+     }
+    },
+    "rate_per_s": 10,
+    "status": "designed",
+    "doc": "joystick; continuous"
+   },
+   {
+    "name": "helm.heading",
+    "consoles": [
+     "navigation"
+    ],
+    "mutating": true,
+    "text": "heading {az} {mark}",
+    "args": {
+     "az": {
+      "type": "number",
+      "min": 0,
+      "max": 360
+     },
+     "mark": {
+      "type": "number",
+      "min": -90,
+      "max": 90
+     }
+    },
+    "rate_per_s": 2,
+    "status": "designed"
+   },
+   {
+    "name": "helm.speed",
+    "consoles": [
+     "navigation"
+    ],
+    "mutating": true,
+    "text": "speed {pct}",
+    "args": {
+     "pct": {
+      "type": "number",
+      "min": 0,
+      "max": 100
+     }
+    },
+    "rate_per_s": 2,
+    "status": "designed"
+   },
+   {
+    "name": "helm.warp",
+    "consoles": [
+     "navigation"
+    ],
+    "mutating": true,
+    "text": "warp {factor}",
+    "args": {
+     "factor": {
+      "type": "number",
+      "min": 0,
+      "max": 10
+     }
+    },
+    "rate_per_s": 2,
+    "status": "designed"
+   },
+   {
+    "name": "helm.stop",
+    "consoles": [
+     "navigation"
+    ],
+    "mutating": true,
+    "text": "stop",
+    "args": {},
+    "rate_per_s": 1,
+    "status": "designed"
+   },
+   {
+    "name": "helm.dock",
+    "consoles": [
+     "navigation"
+    ],
+    "mutating": true,
+    "text": "dock {cid}",
+    "args": {
+     "cid": {
+      "type": "cid"
+     }
+    },
+    "rate_per_s": 1,
+    "status": "designed"
+   },
+   {
+    "name": "helm.undock",
+    "consoles": [
+     "navigation"
+    ],
+    "mutating": true,
+    "text": "undock",
+    "args": {},
+    "rate_per_s": 1,
+    "status": "designed"
+   },
+   {
+    "name": "nav.waypoint_add",
+    "consoles": [
+     "navigation",
+     "command",
+     "science"
+    ],
+    "mutating": true,
+    "text": "waypoint add {name} {pos}",
+    "args": {
+     "name": {
+      "type": "id"
+     },
+     "pos": {
+      "type": "pos"
+     }
+    },
+    "rate_per_s": 2,
+    "status": "designed",
+    "doc": "mark a point in the sector"
+   },
+   {
+    "name": "nav.waypoint_remove",
+    "consoles": [
+     "navigation",
+     "command",
+     "science"
+    ],
+    "mutating": true,
+    "text": "waypoint remove {id}",
+    "args": {
+     "id": {
+      "type": "id"
+     }
+    },
+    "rate_per_s": 2,
+    "status": "designed"
+   },
+   {
+    "name": "nav.plot",
+    "consoles": [
+     "navigation",
+     "command"
+    ],
+    "mutating": true,
+    "text": "plot {legs}",
+    "args": {
+     "legs": {
+      "type": "list",
+      "items": {
+       "type": "id"
+      },
+      "maxitems": 8
+     }
+    },
+    "rate_per_s": 2,
+    "status": "designed",
+    "doc": "plot a course through waypoint ids"
+   },
+   {
+    "name": "nav.plot_to",
+    "consoles": [
+     "navigation",
+     "command"
+    ],
+    "mutating": true,
+    "text": "plot to {cid}",
+    "args": {
+     "cid": {
+      "type": "cid"
+     }
+    },
+    "rate_per_s": 2,
+    "status": "designed"
+   },
+   {
+    "name": "nav.engage",
+    "consoles": [
+     "navigation"
+    ],
+    "mutating": true,
+    "text": "engage {mode}",
+    "args": {
+     "mode": {
+      "type": "enum",
+      "values": [
+       "impulse",
+       "warp"
+      ]
+     }
+    },
+    "rate_per_s": 1,
+    "status": "designed"
+   },
+   {
+    "name": "nav.cancel",
+    "consoles": [
+     "navigation",
+     "command"
+    ],
+    "mutating": true,
+    "text": "course cancel",
+    "args": {},
+    "rate_per_s": 1,
+    "status": "designed"
+   },
+   {
+    "name": "power.reroute",
+    "consoles": [
+     "engineering",
+     "room:engineering"
+    ],
+    "mutating": true,
+    "text": "reroute {from_group} {to_group} {pct}",
+    "args": {
+     "from_group": {
+      "type": "string",
+      "maxlen": 64
+     },
+     "pct": {
+      "type": "number",
+      "min": 1,
+      "max": 100
+     },
+     "to_group": {
+      "type": "string",
+      "maxlen": 64
+     }
+    },
+    "rate_per_s": 2,
+    "status": "designed",
+    "doc": "move a share of power from one group to another (the server performs two `power` settings atomically)"
+   },
+   {
+    "name": "power.preset",
+    "consoles": [
+     "engineering",
+     "room:engineering"
+    ],
+    "mutating": true,
+    "text": "preset {preset}",
+    "args": {
+     "preset": {
+      "type": "enum",
+      "values": [
+       "balanced",
+       "combat",
+       "cruise",
+       "stealth",
+       "emergency"
+      ]
+     }
+    },
+    "rate_per_s": 1,
+    "status": "designed"
+   },
+   {
+    "name": "repair.priority",
+    "consoles": [
+     "engineering",
+     "room:engineering"
+    ],
+    "mutating": true,
+    "text": "priority {system} {level}",
+    "args": {
+     "level": {
+      "type": "int",
+      "min": 1,
+      "max": 5
+     },
+     "system": {
+      "type": "string",
+      "maxlen": 64
+     }
+    },
+    "rate_per_s": 2,
+    "status": "designed",
+    "doc": "tell damage-control teams which system matters most"
+   },
+   {
+    "name": "science.analyze",
+    "consoles": [
+     "science"
+    ],
+    "mutating": true,
+    "text": "analyze {cid} {kind}",
+    "args": {
+     "cid": {
+      "type": "cid"
+     },
+     "kind": {
+      "type": "enum",
+      "values": [
+       "hull",
+       "shields",
+       "weapons",
+       "crew",
+       "cargo",
+       "anomaly"
+      ]
+     }
+    },
+    "rate_per_s": 2,
+    "status": "designed",
+    "doc": "start an analysis; progress and findings appear in Space.Analysis"
+   },
+   {
+    "name": "science.cancel",
+    "consoles": [
+     "science"
+    ],
+    "mutating": true,
+    "text": "analyze cancel {cid}",
+    "args": {
+     "cid": {
+      "type": "cid"
+     }
+    },
+    "rate_per_s": 2,
+    "status": "designed"
+   },
+   {
+    "name": "sensors.mode",
+    "consoles": [
+     "science"
+    ],
+    "mutating": true,
+    "text": "sensors {mode}",
+    "args": {
+     "mode": {
+      "type": "enum",
+      "values": [
+       "wide",
+       "focused",
+       "passive"
+      ]
+     }
+    },
+    "rate_per_s": 1,
+    "status": "designed"
+   },
+   {
+    "name": "contact.tag",
+    "consoles": [
+     "science",
+     "tactical",
+     "command"
+    ],
+    "mutating": true,
+    "text": "tag {cid} {tag}",
+    "args": {
+     "cid": {
+      "type": "cid"
+     },
+     "tag": {
+      "type": "enum",
+      "values": [
+       "friend",
+       "hostile",
+       "neutral",
+       "unknown",
+       "priority"
+      ]
+     }
+    },
+    "rate_per_s": 2,
+    "status": "designed"
+   },
+   {
+    "name": "comms.hail",
+    "consoles": [
+     "communications"
+    ],
+    "mutating": true,
+    "text": "hail {cid}",
+    "args": {
+     "cid": {
+      "type": "cid"
+     }
+    },
+    "rate_per_s": 1,
+    "status": "designed"
+   },
+   {
+    "name": "comms.answer",
+    "consoles": [
+     "communications"
+    ],
+    "mutating": true,
+    "text": "answer {hail}",
+    "args": {
+     "hail": {
+      "type": "int",
+      "min": 1
+     }
+    },
+    "rate_per_s": 2,
+    "status": "designed"
+   },
+   {
+    "name": "comms.say",
+    "consoles": [
+     "communications"
+    ],
+    "mutating": true,
+    "text": "say {hail} {option}",
+    "args": {
+     "hail": {
+      "type": "int",
+      "min": 1
+     },
+     "option": {
+      "type": "id"
+     }
+    },
+    "rate_per_s": 2,
+    "status": "designed",
+    "doc": "choose one of the dialogue options offered in Comms.Hails"
+   },
+   {
+    "name": "comms.end",
+    "consoles": [
+     "communications"
+    ],
+    "mutating": true,
+    "text": "end {hail}",
+    "args": {
+     "hail": {
+      "type": "int",
+      "min": 1
+     }
+    },
+    "rate_per_s": 2,
+    "status": "designed"
+   },
+   {
+    "name": "comms.offer",
+    "consoles": [
+     "communications",
+     "command"
+    ],
+    "mutating": true,
+    "text": "offer {cid} {kind} {terms}",
+    "args": {
+     "cid": {
+      "type": "cid"
+     },
+     "kind": {
+      "type": "enum",
+      "values": [
+       "ceasefire",
+       "trade",
+       "passage",
+       "aid",
+       "alliance"
+      ]
+     },
+     "terms": {
+      "type": "text",
+      "maxlen": 120,
+      "required": false
+     }
+    },
+    "rate_per_s": 2,
+    "status": "designed"
+   },
+   {
+    "name": "comms.tune",
+    "consoles": [
+     "communications"
+    ],
+    "mutating": true,
+    "text": "tune {freq}",
+    "args": {
+     "freq": {
+      "type": "number",
+      "min": 0,
+      "max": 1000
+     }
+    },
+    "rate_per_s": 2,
+    "status": "designed"
+   },
+   {
+    "name": "announce.send",
+    "consoles": [
+     "command",
+     "communications"
+    ],
+    "mutating": true,
+    "text": "announce {scope} {text}",
+    "args": {
+     "scope": {
+      "type": "enum",
+      "values": [
+       "ship",
+       "deck",
+       "role"
+      ]
+     },
+     "text": {
+      "type": "text",
+      "maxlen": 160
+     },
+     "to": {
+      "type": "id",
+      "required": false
+     }
+    },
+    "rate_per_s": 2,
+    "status": "designed",
+    "doc": "ship-wide announcement; appears in Ship.Log and as an event"
+   },
+   {
+    "name": "medical.triage",
+    "consoles": [
+     "medical",
+     "room:sickbay"
+    ],
+    "mutating": true,
+    "text": "triage {casualty} {priority}",
+    "args": {
+     "casualty": {
+      "type": "id"
+     },
+     "priority": {
+      "type": "enum",
+      "values": [
+       "low",
+       "normal",
+       "urgent"
+      ]
+     }
+    },
+    "rate_per_s": 2,
+    "status": "designed"
+   },
+   {
+    "name": "medical.assign",
+    "consoles": [
+     "medical",
+     "room:sickbay"
+    ],
+    "mutating": true,
+    "text": "treat {team} {casualty}",
+    "args": {
+     "casualty": {
+      "type": "id"
+     },
+     "team": {
+      "type": "id"
+     }
+    },
+    "rate_per_s": 2,
+    "status": "designed"
+   },
+   {
+    "name": "medical.discharge",
+    "consoles": [
+     "medical",
+     "room:sickbay"
+    ],
+    "mutating": true,
+    "text": "discharge {casualty}",
+    "args": {
+     "casualty": {
+      "type": "id"
+     }
+    },
+    "rate_per_s": 2,
+    "status": "designed"
+   },
+   {
+    "name": "medical.quarantine",
+    "consoles": [
+     "medical",
+     "security",
+     "room:sickbay"
+    ],
+    "mutating": true,
+    "text": "quarantine {deck} {state}",
+    "args": {
+     "deck": {
+      "type": "id"
+     },
+     "state": {
+      "type": "enum",
+      "values": [
+       "on",
+       "off"
+      ]
+     }
+    },
+    "rate_per_s": 2,
+    "status": "designed"
+   },
+   {
+    "name": "security.deploy",
+    "consoles": [
+     "security"
+    ],
+    "mutating": true,
+    "text": "deploy {team} {deck} {order}",
+    "args": {
+     "deck": {
+      "type": "id"
+     },
+     "order": {
+      "type": "enum",
+      "values": [
+       "guard",
+       "patrol",
+       "intercept",
+       "repel",
+       "escort"
+      ]
+     },
+     "team": {
+      "type": "id"
+     }
+    },
+    "rate_per_s": 2,
+    "status": "designed"
+   },
+   {
+    "name": "security.seal",
+    "consoles": [
+     "security",
+     "room:brig"
+    ],
+    "mutating": true,
+    "text": "seal {deck} {state}",
+    "args": {
+     "deck": {
+      "type": "id"
+     },
+     "state": {
+      "type": "enum",
+      "values": [
+       "seal",
+       "open"
+      ]
+     }
+    },
+    "rate_per_s": 2,
+    "status": "designed"
+   },
+   {
+    "name": "security.arm",
+    "consoles": [
+     "security"
+    ],
+    "mutating": true,
+    "text": "arm team {team} {level}",
+    "args": {
+     "level": {
+      "type": "enum",
+      "values": [
+       "standby",
+       "armed",
+       "stun"
+      ]
+     },
+     "team": {
+      "type": "id"
+     }
+    },
+    "rate_per_s": 2,
+    "status": "designed"
+   },
+   {
+    "name": "security.lockdown",
+    "consoles": [
+     "security",
+     "command",
+     "room:brig"
+    ],
+    "mutating": true,
+    "text": "lockdown {state}",
+    "args": {
+     "state": {
+      "type": "enum",
+      "values": [
+       "on",
+       "off"
+      ]
+     }
+    },
+    "rate_per_s": 1,
+    "status": "designed"
+   },
+   {
+    "name": "marine.board",
+    "consoles": [
+     "security",
+     "command"
+    ],
+    "mutating": true,
+    "text": "board contact {cid} {team}",
+    "args": {
+     "cid": {
+      "type": "cid"
+     },
+     "team": {
+      "type": "id"
+     }
+    },
+    "rate_per_s": 1,
+    "status": "designed",
+    "doc": "boarding action; needs the target's shields down and a tractor lock or docking"
+   },
+   {
+    "name": "away.order",
+    "consoles": [
+     "security",
+     "away:*"
+    ],
+    "mutating": true,
+    "text": "away {team} {order}",
+    "args": {
+     "order": {
+      "type": "enum",
+      "values": [
+       "hold",
+       "explore",
+       "retreat",
+       "extract",
+       "follow",
+       "attack"
+      ]
+     },
+     "team": {
+      "type": "id"
+     }
+    },
+    "rate_per_s": 2,
+    "status": "designed"
+   },
+   {
+    "name": "away.recall",
+    "consoles": [
+     "security",
+     "operations",
+     "away:*"
+    ],
+    "mutating": true,
+    "text": "recall {team}",
+    "args": {
+     "team": {
+      "type": "id"
+     }
+    },
+    "rate_per_s": 1,
+    "status": "designed"
+   },
+   {
+    "name": "scan.transporter",
+    "consoles": [
+     "operations",
+     "science",
+     "security",
+     "room:transporter"
+    ],
+    "mutating": false,
+    "text": "tscan {cid}",
+    "args": {
+     "cid": {
+      "type": "cid"
+     }
+    },
+    "rate_per_s": 1,
+    "status": "designed"
+   },
+   {
+    "name": "transporter.select",
+    "consoles": [
+     "operations",
+     "room:transporter"
+    ],
+    "mutating": true,
+    "text": "transporter select {cid}",
+    "args": {
+     "cid": {
+      "type": "cid"
+     }
+    },
+    "rate_per_s": 2,
+    "status": "designed",
+    "doc": "choose the destination from the in-range list"
+   },
+   {
+    "name": "transporter.assign",
+    "consoles": [
+     "operations",
+     "room:transporter"
+    ],
+    "mutating": true,
+    "text": "transporter assign {pad} {team}",
+    "args": {
+     "pad": {
+      "type": "int",
+      "min": 1,
+      "max": 8
+     },
+     "team": {
+      "type": "id",
+      "required": false
+     }
+    },
+    "rate_per_s": 2,
+    "status": "designed",
+    "doc": "put a team on a pad (omit team to clear the pad)"
+   },
+   {
+    "name": "transporter.lock",
+    "consoles": [
+     "operations",
+     "room:transporter"
+    ],
+    "mutating": true,
+    "text": "transporter lock {cid}",
+    "args": {
+     "cid": {
+      "type": "cid",
+      "required": false
+     }
+    },
+    "rate_per_s": 1,
+    "status": "designed",
+    "doc": "acquire or refresh the pattern lock; with cid it selects that destination first"
+   },
+   {
+    "name": "transporter.tune",
+    "consoles": [
+     "operations",
+     "room:transporter"
+    ],
+    "mutating": true,
+    "class": "continuous",
+    "text": "transporter tune {param} {value}",
+    "args": {
+     "param": {
+      "type": "enum",
+      "values": [
+       "power",
+       "pattern"
+      ]
+     },
+     "value": {
+      "type": "number",
+      "min": 0,
+      "max": 100
+     }
+    },
+    "rate_per_s": 10,
+    "status": "designed",
+    "doc": "sliders: power allocation and pattern-integrity bias (more integrity is slower)"
+   },
+   {
+    "name": "transporter.energize",
+    "consoles": [
+     "operations",
+     "room:transporter"
+    ],
+    "mutating": true,
+    "text": "transporter energize {direction} {cid}",
+    "args": {
+     "cid": {
+      "type": "cid",
+      "required": false
+     },
+     "direction": {
+      "type": "enum",
+      "values": [
+       "down",
+       "up",
+       "swap"
+      ]
+     }
+    },
+    "rate_per_s": 1,
+    "status": "designed",
+    "doc": "begin the cycle; needs a held lock, shields down at the destination, range and power"
+   },
+   {
+    "name": "transporter.abort",
+    "consoles": [
+     "operations",
+     "room:transporter"
+    ],
+    "mutating": true,
+    "text": "transporter abort",
+    "args": {},
+    "rate_per_s": 1,
+    "status": "designed",
+    "doc": "abort a cycle in progress (risks the pattern)"
+   },
+   {
+    "name": "transporter.recall",
+    "consoles": [
+     "operations",
+     "room:transporter",
+     "security",
+     "command"
+    ],
+    "mutating": true,
+    "text": "transporter recall {team}",
+    "args": {
+     "team": {
+      "type": "id"
+     }
+    },
+    "rate_per_s": 1,
+    "status": "designed",
+    "doc": "emergency extraction of an away team"
+   },
+   {
+    "name": "cargo.move",
+    "consoles": [
+     "operations",
+     "room:cargo"
+    ],
+    "mutating": true,
+    "text": "cargo move {item} {qty} {from_bay} {to_bay}",
+    "args": {
+     "from_bay": {
+      "type": "id"
+     },
+     "item": {
+      "type": "id"
+     },
+     "qty": {
+      "type": "int",
+      "min": 1,
+      "max": 100000
+     },
+     "to_bay": {
+      "type": "id"
+     }
+    },
+    "rate_per_s": 2,
+    "status": "designed"
+   },
+   {
+    "name": "cargo.jettison",
+    "consoles": [
+     "operations",
+     "room:cargo"
+    ],
+    "mutating": true,
+    "text": "cargo jettison {item} {qty}",
+    "args": {
+     "item": {
+      "type": "id"
+     },
+     "qty": {
+      "type": "int",
+      "min": 1,
+      "max": 100000
+     }
+    },
+    "rate_per_s": 1,
+    "status": "designed"
+   },
+   {
+    "name": "cargo.manifest",
+    "consoles": [
+     "operations",
+     "room:cargo"
+    ],
+    "mutating": false,
+    "text": "cargo manifest",
+    "args": {},
+    "rate_per_s": 1,
+    "status": "designed"
+   },
+   {
+    "name": "order.issue",
+    "consoles": [
+     "command"
+    ],
+    "mutating": true,
+    "text": "order {to}/{priority}={text}",
+    "args": {
+     "expires_s": {
+      "type": "int",
+      "min": 10,
+      "max": 3600,
+      "required": false
+     },
+     "priority": {
+      "type": "enum",
+      "values": [
+       "routine",
+       "priority",
+       "urgent",
+       "flash"
+      ],
+      "required": false
+     },
+     "text": {
+      "type": "text",
+      "maxlen": 160
+     },
+     "to": {
+      "type": "enum",
+      "values": [
+       "all",
+       "captain",
+       "helm",
+       "tactical",
+       "operations",
+       "engineering",
+       "science",
+       "communications",
+       "medical",
+       "security"
+      ]
+     }
+    },
+    "rate_per_s": 2,
+    "status": "designed",
+    "doc": "an order appears on the recipient's screen and in Ship.Orders"
+   },
+   {
+    "name": "order.cancel",
+    "consoles": [
+     "*"
+    ],
+    "mutating": true,
+    "text": "order cancel {id}",
+    "args": {
+     "id": {
+      "type": "int",
+      "min": 1
+     }
+    },
+    "rate_per_s": 2,
+    "status": "designed",
+    "doc": "the issuer of an order, or the sender of a request, withdraws it (anyone else: not_permitted)"
+   },
+   {
+    "name": "stance.set",
+    "consoles": [
+     "command"
+    ],
+    "mutating": true,
+    "text": "stance {stance}",
+    "args": {
+     "stance": {
+      "type": "enum",
+      "values": [
+       "defensive",
+       "balanced",
+       "aggressive",
+       "evasive",
+       "stealth"
+      ]
+     }
+    },
+    "rate_per_s": 1,
+    "status": "designed"
+   },
+   {
+    "name": "alert.set",
+    "consoles": [
+     "command"
+    ],
+    "mutating": true,
+    "text": "alert {level}",
+    "args": {
+     "level": {
+      "type": "enum",
+      "values": [
+       "green",
+       "yellow",
+       "red"
+      ]
+     }
+    },
+    "rate_per_s": 1,
+    "status": "designed"
+   },
+   {
+    "name": "viewscreen.set",
+    "consoles": [
+     "command"
+    ],
+    "mutating": true,
+    "text": "viewscreen {mode} {cid}",
+    "args": {
+     "cid": {
+      "type": "cid",
+      "required": false
+     },
+     "mode": {
+      "type": "enum",
+      "values": [
+       "forward",
+       "target",
+       "tactical",
+       "sector",
+       "hail",
+       "ship"
+      ]
+     }
+    },
+    "rate_per_s": 1,
+    "status": "designed"
+   },
+   {
+    "name": "target.designate",
+    "consoles": [
+     "command",
+     "tactical",
+     "science"
+    ],
+    "mutating": true,
+    "text": "designate {cid}",
+    "args": {
+     "cid": {
+      "type": "cid"
+     },
+     "note": {
+      "type": "text",
+      "maxlen": 80,
+      "required": false
+     }
+    },
+    "rate_per_s": 2,
+    "status": "designed"
+   },
+   {
+    "name": "target.clear",
+    "consoles": [
+     "command",
+     "tactical"
+    ],
+    "mutating": true,
+    "text": "designate clear",
+    "args": {},
+    "rate_per_s": 1,
+    "status": "designed"
+   },
+   {
+    "name": "mission.track",
+    "consoles": [
+     "command"
+    ],
+    "mutating": true,
+    "text": "track {id}",
+    "args": {
+     "id": {
+      "type": "id"
+     }
+    },
+    "rate_per_s": 1,
+    "status": "designed"
+   },
+   {
+    "name": "crew.relieve",
+    "consoles": [
+     "command"
+    ],
+    "mutating": true,
+    "text": "relieve {role}",
+    "args": {
+     "role": {
+      "type": "enum",
+      "values": [
+       "captain",
+       "helm",
+       "tactical",
+       "operations",
+       "engineering",
+       "science",
+       "communications",
+       "medical",
+       "security"
+      ]
+     }
+    },
+    "rate_per_s": 1,
+    "status": "designed",
+    "doc": "relieve the human at a role; the AI crew takes it if its mode allows"
+   },
+   {
+    "name": "crew.assign",
+    "consoles": [
+     "command"
+    ],
+    "mutating": true,
+    "text": "assign {role} {player}",
+    "args": {
+     "player": {
+      "type": "id"
+     },
+     "role": {
+      "type": "enum",
+      "values": [
+       "captain",
+       "helm",
+       "tactical",
+       "operations",
+       "engineering",
+       "science",
+       "communications",
+       "medical",
+       "security"
+      ]
+     }
+    },
+    "rate_per_s": 1,
+    "status": "designed"
+   },
+   {
+    "name": "ai.mode",
+    "consoles": [
+     "command"
+    ],
+    "mutating": true,
+    "text": "aimode {role} {mode}",
+    "args": {
+     "mode": {
+      "type": "enum",
+      "values": [
+       "off",
+       "advise",
+       "auto"
+      ]
+     },
+     "role": {
+      "type": "enum",
+      "values": [
+       "captain",
+       "helm",
+       "tactical",
+       "operations",
+       "engineering",
+       "science",
+       "communications",
+       "medical",
+       "security"
+      ]
+     }
+    },
+    "rate_per_s": 1,
+    "status": "designed",
+    "doc": "what the AI crew does at an unmanned role: nothing, advise through requests, or act on orders and doctrine"
+   },
+   {
+    "name": "request.send",
+    "consoles": [
+     "*"
+    ],
+    "mutating": true,
+    "text": "request {to}/{kind}={text}",
+    "args": {
+     "cid": {
+      "type": "cid",
+      "required": false
+     },
+     "group": {
+      "type": "string",
+      "maxlen": 64,
+      "required": false
+     },
+     "kind": {
+      "type": "enum",
+      "values": [
+       "viewscreen",
+       "power",
+       "target",
+       "hail",
+       "repair",
+       "course",
+       "alert",
+       "medical",
+       "security",
+       "other"
+      ]
+     },
+     "pct": {
+      "type": "number",
+      "min": 0,
+      "max": 100,
+      "required": false
+     },
+     "text": {
+      "type": "text",
+      "maxlen": 160
+     },
+     "to": {
+      "type": "enum",
+      "values": [
+       "captain",
+       "helm",
+       "tactical",
+       "operations",
+       "engineering",
+       "science",
+       "communications",
+       "medical",
+       "security"
+      ]
+     }
+    },
+    "rate_per_s": 1,
+    "status": "designed",
+    "doc": "ask another role for something (tactical asks engineering for power, science asks the captain for the viewscreen)"
+   },
+   {
+    "name": "request.accept",
+    "consoles": [
+     "*"
+    ],
+    "mutating": true,
+    "text": "accept {id}",
+    "args": {
+     "id": {
+      "type": "int",
+      "min": 1
+     }
+    },
+    "rate_per_s": 2,
+    "status": "designed",
+    "doc": "the recipient accepts a request"
+   },
+   {
+    "name": "request.deny",
+    "consoles": [
+     "*"
+    ],
+    "mutating": true,
+    "text": "deny {id} {reason}",
+    "args": {
+     "id": {
+      "type": "int",
+      "min": 1
+     },
+     "reason": {
+      "type": "text",
+      "maxlen": 80,
+      "required": false
+     }
+    },
+    "rate_per_s": 2,
+    "status": "designed"
+   },
+   {
+    "name": "order.ack",
+    "consoles": [
+     "*"
+    ],
+    "mutating": true,
+    "text": "ack {id}",
+    "args": {
+     "id": {
+      "type": "int",
+      "min": 1
+     }
+    },
+    "rate_per_s": 2,
+    "status": "designed"
+   },
+   {
+    "name": "order.done",
+    "consoles": [
+     "*"
+    ],
+    "mutating": true,
+    "text": "done {id}",
+    "args": {
+     "id": {
+      "type": "int",
+      "min": 1
+     }
+    },
+    "rate_per_s": 2,
+    "status": "designed"
+   },
+   {
+    "name": "order.reject",
+    "consoles": [
+     "*"
+    ],
+    "mutating": true,
+    "text": "reject {id} {reason}",
+    "args": {
+     "id": {
+      "type": "int",
+      "min": 1
+     },
+     "reason": {
+      "type": "text",
+      "maxlen": 80,
+      "required": false
+     }
+    },
+    "rate_per_s": 2,
+    "status": "designed"
+   },
+   {
+    "name": "crew.handoff",
+    "consoles": [
+     "*"
+    ],
+    "mutating": true,
+    "text": "handoff {role} {player}",
+    "args": {
+     "player": {
+      "type": "id"
+     },
+     "role": {
+      "type": "enum",
+      "values": [
+       "captain",
+       "helm",
+       "tactical",
+       "operations",
+       "engineering",
+       "science",
+       "communications",
+       "medical",
+       "security"
+      ]
+     }
+    },
+    "rate_per_s": 1,
+    "status": "designed",
+    "doc": "the holder of a role hands it to another player"
+   },
+   {
+    "name": "console.man",
+    "consoles": [],
+    "mutating": true,
+    "text": "man {console}",
+    "args": {
+     "console": {
+      "type": "enum",
+      "values": [
+       "command",
+       "navigation",
+       "tactical",
+       "operations",
+       "engineering",
+       "science",
+       "communications",
+       "medical",
+       "security"
+      ]
+     }
+    },
+    "rate_per_s": 1,
+    "status": "designed",
+    "doc": "take a console; if the AI crew holds it, it hands over at once"
+   },
+   {
+    "name": "console.unman",
+    "consoles": [],
+    "mutating": true,
+    "text": "unman",
+    "args": {},
+    "rate_per_s": 1,
+    "status": "designed"
+   },
+   {
+    "name": "ship.board",
+    "consoles": [],
+    "mutating": true,
+    "text": "board {ship}",
+    "args": {
+     "ship": {
+      "type": "string",
+      "maxlen": 64
+     }
+    },
+    "rate_per_s": 0.5,
+    "status": "designed"
+   },
+   {
+    "name": "ship.ai",
+    "consoles": [],
+    "mutating": true,
+    "text": "ai {state}",
+    "args": {
+     "state": {
+      "type": "enum",
+      "values": [
+       "on",
+       "off"
+      ]
+     }
+    },
+    "rate_per_s": 0.5,
+    "status": "designed"
    }
   ]
  },
@@ -105,31 +2057,2048 @@
   "science.analyze"
  ],
  "catalogue": {
+  "ai.mode": {
+   "name": "ai.mode",
+   "consoles": [
+    "command"
+   ],
+   "mutating": true,
+   "text": "aimode {role} {mode}",
+   "args": {
+    "mode": {
+     "type": "enum",
+     "values": [
+      "off",
+      "advise",
+      "auto"
+     ]
+    },
+    "role": {
+     "type": "enum",
+     "values": [
+      "captain",
+      "helm",
+      "tactical",
+      "operations",
+      "engineering",
+      "science",
+      "communications",
+      "medical",
+      "security"
+     ]
+    }
+   },
+   "rate_per_s": 1,
+   "status": "designed",
+   "doc": "what the AI crew does at an unmanned role: nothing, advise through requests, or act on orders and doctrine"
+  },
+  "alert.set": {
+   "name": "alert.set",
+   "consoles": [
+    "command"
+   ],
+   "mutating": true,
+   "text": "alert {level}",
+   "args": {
+    "level": {
+     "type": "enum",
+     "values": [
+      "green",
+      "yellow",
+      "red"
+     ]
+    }
+   },
+   "rate_per_s": 1,
+   "status": "designed"
+  },
+  "announce.send": {
+   "name": "announce.send",
+   "consoles": [
+    "command",
+    "communications"
+   ],
+   "mutating": true,
+   "text": "announce {scope} {text}",
+   "args": {
+    "scope": {
+     "type": "enum",
+     "values": [
+      "ship",
+      "deck",
+      "role"
+     ]
+    },
+    "text": {
+     "type": "text",
+     "maxlen": 160
+    },
+    "to": {
+     "type": "id",
+     "required": false
+    }
+   },
+   "rate_per_s": 2,
+   "status": "designed",
+   "doc": "ship-wide announcement; appears in Ship.Log and as an event"
+  },
+  "away.order": {
+   "name": "away.order",
+   "consoles": [
+    "security",
+    "away:*"
+   ],
+   "mutating": true,
+   "text": "away {team} {order}",
+   "args": {
+    "order": {
+     "type": "enum",
+     "values": [
+      "hold",
+      "explore",
+      "retreat",
+      "extract",
+      "follow",
+      "attack"
+     ]
+    },
+    "team": {
+     "type": "id"
+    }
+   },
+   "rate_per_s": 2,
+   "status": "designed"
+  },
+  "away.recall": {
+   "name": "away.recall",
+   "consoles": [
+    "security",
+    "operations",
+    "away:*"
+   ],
+   "mutating": true,
+   "text": "recall {team}",
+   "args": {
+    "team": {
+     "type": "id"
+    }
+   },
+   "rate_per_s": 1,
+   "status": "designed"
+  },
+  "cargo.jettison": {
+   "name": "cargo.jettison",
+   "consoles": [
+    "operations",
+    "room:cargo"
+   ],
+   "mutating": true,
+   "text": "cargo jettison {item} {qty}",
+   "args": {
+    "item": {
+     "type": "id"
+    },
+    "qty": {
+     "type": "int",
+     "min": 1,
+     "max": 100000
+    }
+   },
+   "rate_per_s": 1,
+   "status": "designed"
+  },
+  "cargo.manifest": {
+   "name": "cargo.manifest",
+   "consoles": [
+    "operations",
+    "room:cargo"
+   ],
+   "mutating": false,
+   "text": "cargo manifest",
+   "args": {},
+   "rate_per_s": 1,
+   "status": "designed"
+  },
+  "cargo.move": {
+   "name": "cargo.move",
+   "consoles": [
+    "operations",
+    "room:cargo"
+   ],
+   "mutating": true,
+   "text": "cargo move {item} {qty} {from_bay} {to_bay}",
+   "args": {
+    "from_bay": {
+     "type": "id"
+    },
+    "item": {
+     "type": "id"
+    },
+    "qty": {
+     "type": "int",
+     "min": 1,
+     "max": 100000
+    },
+    "to_bay": {
+     "type": "id"
+    }
+   },
+   "rate_per_s": 2,
+   "status": "designed"
+  },
+  "comms.answer": {
+   "name": "comms.answer",
+   "consoles": [
+    "communications"
+   ],
+   "mutating": true,
+   "text": "answer {hail}",
+   "args": {
+    "hail": {
+     "type": "int",
+     "min": 1
+    }
+   },
+   "rate_per_s": 2,
+   "status": "designed"
+  },
+  "comms.end": {
+   "name": "comms.end",
+   "consoles": [
+    "communications"
+   ],
+   "mutating": true,
+   "text": "end {hail}",
+   "args": {
+    "hail": {
+     "type": "int",
+     "min": 1
+    }
+   },
+   "rate_per_s": 2,
+   "status": "designed"
+  },
+  "comms.hail": {
+   "name": "comms.hail",
+   "consoles": [
+    "communications"
+   ],
+   "mutating": true,
+   "text": "hail {cid}",
+   "args": {
+    "cid": {
+     "type": "cid"
+    }
+   },
+   "rate_per_s": 1,
+   "status": "designed"
+  },
+  "comms.offer": {
+   "name": "comms.offer",
+   "consoles": [
+    "communications",
+    "command"
+   ],
+   "mutating": true,
+   "text": "offer {cid} {kind} {terms}",
+   "args": {
+    "cid": {
+     "type": "cid"
+    },
+    "kind": {
+     "type": "enum",
+     "values": [
+      "ceasefire",
+      "trade",
+      "passage",
+      "aid",
+      "alliance"
+     ]
+    },
+    "terms": {
+     "type": "text",
+     "maxlen": 120,
+     "required": false
+    }
+   },
+   "rate_per_s": 2,
+   "status": "designed"
+  },
+  "comms.say": {
+   "name": "comms.say",
+   "consoles": [
+    "communications"
+   ],
+   "mutating": true,
+   "text": "say {hail} {option}",
+   "args": {
+    "hail": {
+     "type": "int",
+     "min": 1
+    },
+    "option": {
+     "type": "id"
+    }
+   },
+   "rate_per_s": 2,
+   "status": "designed",
+   "doc": "choose one of the dialogue options offered in Comms.Hails"
+  },
+  "comms.tune": {
+   "name": "comms.tune",
+   "consoles": [
+    "communications"
+   ],
+   "mutating": true,
+   "text": "tune {freq}",
+   "args": {
+    "freq": {
+     "type": "number",
+     "min": 0,
+     "max": 1000
+    }
+   },
+   "rate_per_s": 2,
+   "status": "designed"
+  },
+  "console.man": {
+   "name": "console.man",
+   "consoles": [],
+   "mutating": true,
+   "text": "man {console}",
+   "args": {
+    "console": {
+     "type": "enum",
+     "values": [
+      "command",
+      "navigation",
+      "tactical",
+      "operations",
+      "engineering",
+      "science",
+      "communications",
+      "medical",
+      "security"
+     ]
+    }
+   },
+   "rate_per_s": 1,
+   "status": "designed",
+   "doc": "take a console; if the AI crew holds it, it hands over at once"
+  },
+  "console.unman": {
+   "name": "console.unman",
+   "consoles": [],
+   "mutating": true,
+   "text": "unman",
+   "args": {},
+   "rate_per_s": 1,
+   "status": "designed"
+  },
+  "contact.tag": {
+   "name": "contact.tag",
+   "consoles": [
+    "science",
+    "tactical",
+    "command"
+   ],
+   "mutating": true,
+   "text": "tag {cid} {tag}",
+   "args": {
+    "cid": {
+     "type": "cid"
+    },
+    "tag": {
+     "type": "enum",
+     "values": [
+      "friend",
+      "hostile",
+      "neutral",
+      "unknown",
+      "priority"
+     ]
+    }
+   },
+   "rate_per_s": 2,
+   "status": "designed"
+  },
+  "crew.assign": {
+   "name": "crew.assign",
+   "consoles": [
+    "command"
+   ],
+   "mutating": true,
+   "text": "assign {role} {player}",
+   "args": {
+    "player": {
+     "type": "id"
+    },
+    "role": {
+     "type": "enum",
+     "values": [
+      "captain",
+      "helm",
+      "tactical",
+      "operations",
+      "engineering",
+      "science",
+      "communications",
+      "medical",
+      "security"
+     ]
+    }
+   },
+   "rate_per_s": 1,
+   "status": "designed"
+  },
+  "crew.handoff": {
+   "name": "crew.handoff",
+   "consoles": [
+    "*"
+   ],
+   "mutating": true,
+   "text": "handoff {role} {player}",
+   "args": {
+    "player": {
+     "type": "id"
+    },
+    "role": {
+     "type": "enum",
+     "values": [
+      "captain",
+      "helm",
+      "tactical",
+      "operations",
+      "engineering",
+      "science",
+      "communications",
+      "medical",
+      "security"
+     ]
+    }
+   },
+   "rate_per_s": 1,
+   "status": "designed",
+   "doc": "the holder of a role hands it to another player"
+  },
+  "crew.relieve": {
+   "name": "crew.relieve",
+   "consoles": [
+    "command"
+   ],
+   "mutating": true,
+   "text": "relieve {role}",
+   "args": {
+    "role": {
+     "type": "enum",
+     "values": [
+      "captain",
+      "helm",
+      "tactical",
+      "operations",
+      "engineering",
+      "science",
+      "communications",
+      "medical",
+      "security"
+     ]
+    }
+   },
+   "rate_per_s": 1,
+   "status": "designed",
+   "doc": "relieve the human at a role; the AI crew takes it if its mode allows"
+  },
   "dmg.assign": {
    "name": "dmg.assign",
    "consoles": [
-    "operations"
+    "operations",
+    "engineering",
+    "room:engineering"
    ],
    "mutating": true,
    "text": "dmg assign {team}={system}",
    "args": {
     "system": {
-     "type": "string"
+     "type": "string",
+     "maxlen": 64
     },
     "team": {
-     "type": "int"
+     "type": "int",
+     "min": 1,
+     "max": 20
     }
-   }
+   },
+   "rate_per_s": 2,
+   "status": "live-verified",
+   "doc": "assign a damage-control team to a system"
+  },
+  "dock.doors": {
+   "name": "dock.doors",
+   "consoles": [
+    "operations"
+   ],
+   "mutating": true,
+   "text": "dd {state}",
+   "args": {
+    "state": {
+     "type": "enum",
+     "values": [
+      "open",
+      "close"
+     ]
+    }
+   },
+   "rate_per_s": 1,
+   "status": "live-verified"
+  },
+  "eng.aux": {
+   "name": "eng.aux",
+   "consoles": [
+    "operations",
+    "engineering"
+   ],
+   "mutating": true,
+   "text": "eng aux {value}",
+   "args": {
+    "value": {
+     "type": "string",
+     "maxlen": 16,
+     "pattern": "^(max|off|[0-9]+(\\.[0-9]+)?%?)$"
+    }
+   },
+   "rate_per_s": 2,
+   "status": "live-verified",
+   "doc": "impulse engines / secondary generators"
+  },
+  "eng.main": {
+   "name": "eng.main",
+   "consoles": [
+    "operations",
+    "engineering"
+   ],
+   "mutating": true,
+   "text": "eng main {value}",
+   "args": {
+    "value": {
+     "type": "string",
+     "maxlen": 16,
+     "pattern": "^(max|off|[0-9]+(\\.[0-9]+)?%?)$"
+    }
+   },
+   "rate_per_s": 2,
+   "status": "live-verified",
+   "doc": "primary generators"
+  },
+  "hatch.toggle": {
+   "name": "hatch.toggle",
+   "consoles": [
+    "operations"
+   ],
+   "mutating": true,
+   "text": "hatch",
+   "args": {},
+   "rate_per_s": 1,
+   "status": "live-verified"
+  },
+  "helm.dock": {
+   "name": "helm.dock",
+   "consoles": [
+    "navigation"
+   ],
+   "mutating": true,
+   "text": "dock {cid}",
+   "args": {
+    "cid": {
+     "type": "cid"
+    }
+   },
+   "rate_per_s": 1,
+   "status": "designed"
+  },
+  "helm.heading": {
+   "name": "helm.heading",
+   "consoles": [
+    "navigation"
+   ],
+   "mutating": true,
+   "text": "heading {az} {mark}",
+   "args": {
+    "az": {
+     "type": "number",
+     "min": 0,
+     "max": 360
+    },
+    "mark": {
+     "type": "number",
+     "min": -90,
+     "max": 90
+    }
+   },
+   "rate_per_s": 2,
+   "status": "designed"
+  },
+  "helm.speed": {
+   "name": "helm.speed",
+   "consoles": [
+    "navigation"
+   ],
+   "mutating": true,
+   "text": "speed {pct}",
+   "args": {
+    "pct": {
+     "type": "number",
+     "min": 0,
+     "max": 100
+    }
+   },
+   "rate_per_s": 2,
+   "status": "designed"
+  },
+  "helm.stick": {
+   "name": "helm.stick",
+   "consoles": [
+    "navigation"
+   ],
+   "mutating": true,
+   "class": "continuous",
+   "text": "(helm stick)",
+   "args": {
+    "pitch": {
+     "type": "number",
+     "min": -1,
+     "max": 1
+    },
+    "throttle": {
+     "type": "number",
+     "min": 0,
+     "max": 1
+    },
+    "yaw": {
+     "type": "number",
+     "min": -1,
+     "max": 1
+    }
+   },
+   "rate_per_s": 10,
+   "status": "designed",
+   "doc": "joystick; continuous"
+  },
+  "helm.stop": {
+   "name": "helm.stop",
+   "consoles": [
+    "navigation"
+   ],
+   "mutating": true,
+   "text": "stop",
+   "args": {},
+   "rate_per_s": 1,
+   "status": "designed"
+  },
+  "helm.undock": {
+   "name": "helm.undock",
+   "consoles": [
+    "navigation"
+   ],
+   "mutating": true,
+   "text": "undock",
+   "args": {},
+   "rate_per_s": 1,
+   "status": "designed"
+  },
+  "helm.warp": {
+   "name": "helm.warp",
+   "consoles": [
+    "navigation"
+   ],
+   "mutating": true,
+   "text": "warp {factor}",
+   "args": {
+    "factor": {
+     "type": "number",
+     "min": 0,
+     "max": 10
+    }
+   },
+   "rate_per_s": 2,
+   "status": "designed"
+  },
+  "marine.board": {
+   "name": "marine.board",
+   "consoles": [
+    "security",
+    "command"
+   ],
+   "mutating": true,
+   "text": "board contact {cid} {team}",
+   "args": {
+    "cid": {
+     "type": "cid"
+    },
+    "team": {
+     "type": "id"
+    }
+   },
+   "rate_per_s": 1,
+   "status": "designed",
+   "doc": "boarding action; needs the target's shields down and a tractor lock or docking"
+  },
+  "medical.assign": {
+   "name": "medical.assign",
+   "consoles": [
+    "medical",
+    "room:sickbay"
+   ],
+   "mutating": true,
+   "text": "treat {team} {casualty}",
+   "args": {
+    "casualty": {
+     "type": "id"
+    },
+    "team": {
+     "type": "id"
+    }
+   },
+   "rate_per_s": 2,
+   "status": "designed"
+  },
+  "medical.discharge": {
+   "name": "medical.discharge",
+   "consoles": [
+    "medical",
+    "room:sickbay"
+   ],
+   "mutating": true,
+   "text": "discharge {casualty}",
+   "args": {
+    "casualty": {
+     "type": "id"
+    }
+   },
+   "rate_per_s": 2,
+   "status": "designed"
+  },
+  "medical.quarantine": {
+   "name": "medical.quarantine",
+   "consoles": [
+    "medical",
+    "security",
+    "room:sickbay"
+   ],
+   "mutating": true,
+   "text": "quarantine {deck} {state}",
+   "args": {
+    "deck": {
+     "type": "id"
+    },
+    "state": {
+     "type": "enum",
+     "values": [
+      "on",
+      "off"
+     ]
+    }
+   },
+   "rate_per_s": 2,
+   "status": "designed"
+  },
+  "medical.triage": {
+   "name": "medical.triage",
+   "consoles": [
+    "medical",
+    "room:sickbay"
+   ],
+   "mutating": true,
+   "text": "triage {casualty} {priority}",
+   "args": {
+    "casualty": {
+     "type": "id"
+    },
+    "priority": {
+     "type": "enum",
+     "values": [
+      "low",
+      "normal",
+      "urgent"
+     ]
+    }
+   },
+   "rate_per_s": 2,
+   "status": "designed"
+  },
+  "mission.track": {
+   "name": "mission.track",
+   "consoles": [
+    "command"
+   ],
+   "mutating": true,
+   "text": "track {id}",
+   "args": {
+    "id": {
+     "type": "id"
+    }
+   },
+   "rate_per_s": 1,
+   "status": "designed"
+  },
+  "nav.cancel": {
+   "name": "nav.cancel",
+   "consoles": [
+    "navigation",
+    "command"
+   ],
+   "mutating": true,
+   "text": "course cancel",
+   "args": {},
+   "rate_per_s": 1,
+   "status": "designed"
+  },
+  "nav.engage": {
+   "name": "nav.engage",
+   "consoles": [
+    "navigation"
+   ],
+   "mutating": true,
+   "text": "engage {mode}",
+   "args": {
+    "mode": {
+     "type": "enum",
+     "values": [
+      "impulse",
+      "warp"
+     ]
+    }
+   },
+   "rate_per_s": 1,
+   "status": "designed"
+  },
+  "nav.plot": {
+   "name": "nav.plot",
+   "consoles": [
+    "navigation",
+    "command"
+   ],
+   "mutating": true,
+   "text": "plot {legs}",
+   "args": {
+    "legs": {
+     "type": "list",
+     "items": {
+      "type": "id"
+     },
+     "maxitems": 8
+    }
+   },
+   "rate_per_s": 2,
+   "status": "designed",
+   "doc": "plot a course through waypoint ids"
+  },
+  "nav.plot_to": {
+   "name": "nav.plot_to",
+   "consoles": [
+    "navigation",
+    "command"
+   ],
+   "mutating": true,
+   "text": "plot to {cid}",
+   "args": {
+    "cid": {
+     "type": "cid"
+    }
+   },
+   "rate_per_s": 2,
+   "status": "designed"
+  },
+  "nav.waypoint_add": {
+   "name": "nav.waypoint_add",
+   "consoles": [
+    "navigation",
+    "command",
+    "science"
+   ],
+   "mutating": true,
+   "text": "waypoint add {name} {pos}",
+   "args": {
+    "name": {
+     "type": "id"
+    },
+    "pos": {
+     "type": "pos"
+    }
+   },
+   "rate_per_s": 2,
+   "status": "designed",
+   "doc": "mark a point in the sector"
+  },
+  "nav.waypoint_remove": {
+   "name": "nav.waypoint_remove",
+   "consoles": [
+    "navigation",
+    "command",
+    "science"
+   ],
+   "mutating": true,
+   "text": "waypoint remove {id}",
+   "args": {
+    "id": {
+     "type": "id"
+    }
+   },
+   "rate_per_s": 2,
+   "status": "designed"
+  },
+  "order.ack": {
+   "name": "order.ack",
+   "consoles": [
+    "*"
+   ],
+   "mutating": true,
+   "text": "ack {id}",
+   "args": {
+    "id": {
+     "type": "int",
+     "min": 1
+    }
+   },
+   "rate_per_s": 2,
+   "status": "designed"
+  },
+  "order.cancel": {
+   "name": "order.cancel",
+   "consoles": [
+    "*"
+   ],
+   "mutating": true,
+   "text": "order cancel {id}",
+   "args": {
+    "id": {
+     "type": "int",
+     "min": 1
+    }
+   },
+   "rate_per_s": 2,
+   "status": "designed",
+   "doc": "the issuer of an order, or the sender of a request, withdraws it (anyone else: not_permitted)"
+  },
+  "order.done": {
+   "name": "order.done",
+   "consoles": [
+    "*"
+   ],
+   "mutating": true,
+   "text": "done {id}",
+   "args": {
+    "id": {
+     "type": "int",
+     "min": 1
+    }
+   },
+   "rate_per_s": 2,
+   "status": "designed"
+  },
+  "order.issue": {
+   "name": "order.issue",
+   "consoles": [
+    "command"
+   ],
+   "mutating": true,
+   "text": "order {to}/{priority}={text}",
+   "args": {
+    "expires_s": {
+     "type": "int",
+     "min": 10,
+     "max": 3600,
+     "required": false
+    },
+    "priority": {
+     "type": "enum",
+     "values": [
+      "routine",
+      "priority",
+      "urgent",
+      "flash"
+     ],
+     "required": false
+    },
+    "text": {
+     "type": "text",
+     "maxlen": 160
+    },
+    "to": {
+     "type": "enum",
+     "values": [
+      "all",
+      "captain",
+      "helm",
+      "tactical",
+      "operations",
+      "engineering",
+      "science",
+      "communications",
+      "medical",
+      "security"
+     ]
+    }
+   },
+   "rate_per_s": 2,
+   "status": "designed",
+   "doc": "an order appears on the recipient's screen and in Ship.Orders"
+  },
+  "order.reject": {
+   "name": "order.reject",
+   "consoles": [
+    "*"
+   ],
+   "mutating": true,
+   "text": "reject {id} {reason}",
+   "args": {
+    "id": {
+     "type": "int",
+     "min": 1
+    },
+    "reason": {
+     "type": "text",
+     "maxlen": 80,
+     "required": false
+    }
+   },
+   "rate_per_s": 2,
+   "status": "designed"
+  },
+  "power.preset": {
+   "name": "power.preset",
+   "consoles": [
+    "engineering",
+    "room:engineering"
+   ],
+   "mutating": true,
+   "text": "preset {preset}",
+   "args": {
+    "preset": {
+     "type": "enum",
+     "values": [
+      "balanced",
+      "combat",
+      "cruise",
+      "stealth",
+      "emergency"
+     ]
+    }
+   },
+   "rate_per_s": 1,
+   "status": "designed"
+  },
+  "power.reroute": {
+   "name": "power.reroute",
+   "consoles": [
+    "engineering",
+    "room:engineering"
+   ],
+   "mutating": true,
+   "text": "reroute {from_group} {to_group} {pct}",
+   "args": {
+    "from_group": {
+     "type": "string",
+     "maxlen": 64
+    },
+    "pct": {
+     "type": "number",
+     "min": 1,
+     "max": 100
+    },
+    "to_group": {
+     "type": "string",
+     "maxlen": 64
+    }
+   },
+   "rate_per_s": 2,
+   "status": "designed",
+   "doc": "move a share of power from one group to another (the server performs two `power` settings atomically)"
+  },
+  "power.set": {
+   "name": "power.set",
+   "consoles": [
+    "operations",
+    "engineering",
+    "room:engineering"
+   ],
+   "mutating": true,
+   "text": "power {target}={value}",
+   "args": {
+    "target": {
+     "type": "string",
+     "maxlen": 64
+    },
+    "value": {
+     "type": "string",
+     "maxlen": 16,
+     "pattern": "^(max|off|[0-9]+(\\.[0-9]+)?%?)$"
+    }
+   },
+   "rate_per_s": 4,
+   "status": "live-verified",
+   "doc": "set a power group or component: max, off, N% or an amount"
+  },
+  "repair.priority": {
+   "name": "repair.priority",
+   "consoles": [
+    "engineering",
+    "room:engineering"
+   ],
+   "mutating": true,
+   "text": "priority {system} {level}",
+   "args": {
+    "level": {
+     "type": "int",
+     "min": 1,
+     "max": 5
+    },
+    "system": {
+     "type": "string",
+     "maxlen": 64
+    }
+   },
+   "rate_per_s": 2,
+   "status": "designed",
+   "doc": "tell damage-control teams which system matters most"
+  },
+  "request.accept": {
+   "name": "request.accept",
+   "consoles": [
+    "*"
+   ],
+   "mutating": true,
+   "text": "accept {id}",
+   "args": {
+    "id": {
+     "type": "int",
+     "min": 1
+    }
+   },
+   "rate_per_s": 2,
+   "status": "designed",
+   "doc": "the recipient accepts a request"
+  },
+  "request.deny": {
+   "name": "request.deny",
+   "consoles": [
+    "*"
+   ],
+   "mutating": true,
+   "text": "deny {id} {reason}",
+   "args": {
+    "id": {
+     "type": "int",
+     "min": 1
+    },
+    "reason": {
+     "type": "text",
+     "maxlen": 80,
+     "required": false
+    }
+   },
+   "rate_per_s": 2,
+   "status": "designed"
+  },
+  "request.send": {
+   "name": "request.send",
+   "consoles": [
+    "*"
+   ],
+   "mutating": true,
+   "text": "request {to}/{kind}={text}",
+   "args": {
+    "cid": {
+     "type": "cid",
+     "required": false
+    },
+    "group": {
+     "type": "string",
+     "maxlen": 64,
+     "required": false
+    },
+    "kind": {
+     "type": "enum",
+     "values": [
+      "viewscreen",
+      "power",
+      "target",
+      "hail",
+      "repair",
+      "course",
+      "alert",
+      "medical",
+      "security",
+      "other"
+     ]
+    },
+    "pct": {
+     "type": "number",
+     "min": 0,
+     "max": 100,
+     "required": false
+    },
+    "text": {
+     "type": "text",
+     "maxlen": 160
+    },
+    "to": {
+     "type": "enum",
+     "values": [
+      "captain",
+      "helm",
+      "tactical",
+      "operations",
+      "engineering",
+      "science",
+      "communications",
+      "medical",
+      "security"
+     ]
+    }
+   },
+   "rate_per_s": 1,
+   "status": "designed",
+   "doc": "ask another role for something (tactical asks engineering for power, science asks the captain for the viewscreen)"
+  },
+  "scan.dock": {
+   "name": "scan.dock",
+   "consoles": [
+    "operations",
+    "science"
+   ],
+   "mutating": false,
+   "text": "dockscan {cid}",
+   "args": {
+    "cid": {
+     "type": "cid"
+    }
+   },
+   "rate_per_s": 1,
+   "status": "live-verified"
+  },
+  "scan.internal": {
+   "name": "scan.internal",
+   "consoles": [
+    "operations",
+    "science"
+   ],
+   "mutating": false,
+   "text": "internal {cid}",
+   "args": {
+    "cid": {
+     "type": "cid"
+    }
+   },
+   "rate_per_s": 1,
+   "status": "live-verified"
+  },
+  "scan.lrs": {
+   "name": "scan.lrs",
+   "consoles": [
+    "operations",
+    "science"
+   ],
+   "mutating": false,
+   "text": "lrs",
+   "args": {},
+   "rate_per_s": 1,
+   "status": "live-verified"
+  },
+  "scan.passive": {
+   "name": "scan.passive",
+   "consoles": [
+    "operations",
+    "science"
+   ],
+   "mutating": false,
+   "text": "passive {cid}",
+   "args": {
+    "cid": {
+     "type": "cid"
+    }
+   },
+   "rate_per_s": 1,
+   "status": "live-verified"
+  },
+  "scan.srs": {
+   "name": "scan.srs",
+   "consoles": [
+    "operations",
+    "science"
+   ],
+   "mutating": false,
+   "text": "srs",
+   "args": {},
+   "rate_per_s": 1,
+   "status": "live-verified"
+  },
+  "scan.transporter": {
+   "name": "scan.transporter",
+   "consoles": [
+    "operations",
+    "science",
+    "security",
+    "room:transporter"
+   ],
+   "mutating": false,
+   "text": "tscan {cid}",
+   "args": {
+    "cid": {
+     "type": "cid"
+    }
+   },
+   "rate_per_s": 1,
+   "status": "designed"
+  },
+  "science.analyze": {
+   "name": "science.analyze",
+   "consoles": [
+    "science"
+   ],
+   "mutating": true,
+   "text": "analyze {cid} {kind}",
+   "args": {
+    "cid": {
+     "type": "cid"
+    },
+    "kind": {
+     "type": "enum",
+     "values": [
+      "hull",
+      "shields",
+      "weapons",
+      "crew",
+      "cargo",
+      "anomaly"
+     ]
+    }
+   },
+   "rate_per_s": 2,
+   "status": "designed",
+   "doc": "start an analysis; progress and findings appear in Space.Analysis"
+  },
+  "science.cancel": {
+   "name": "science.cancel",
+   "consoles": [
+    "science"
+   ],
+   "mutating": true,
+   "text": "analyze cancel {cid}",
+   "args": {
+    "cid": {
+     "type": "cid"
+    }
+   },
+   "rate_per_s": 2,
+   "status": "designed"
+  },
+  "security.arm": {
+   "name": "security.arm",
+   "consoles": [
+    "security"
+   ],
+   "mutating": true,
+   "text": "arm team {team} {level}",
+   "args": {
+    "level": {
+     "type": "enum",
+     "values": [
+      "standby",
+      "armed",
+      "stun"
+     ]
+    },
+    "team": {
+     "type": "id"
+    }
+   },
+   "rate_per_s": 2,
+   "status": "designed"
+  },
+  "security.deploy": {
+   "name": "security.deploy",
+   "consoles": [
+    "security"
+   ],
+   "mutating": true,
+   "text": "deploy {team} {deck} {order}",
+   "args": {
+    "deck": {
+     "type": "id"
+    },
+    "order": {
+     "type": "enum",
+     "values": [
+      "guard",
+      "patrol",
+      "intercept",
+      "repel",
+      "escort"
+     ]
+    },
+    "team": {
+     "type": "id"
+    }
+   },
+   "rate_per_s": 2,
+   "status": "designed"
+  },
+  "security.lockdown": {
+   "name": "security.lockdown",
+   "consoles": [
+    "security",
+    "command",
+    "room:brig"
+   ],
+   "mutating": true,
+   "text": "lockdown {state}",
+   "args": {
+    "state": {
+     "type": "enum",
+     "values": [
+      "on",
+      "off"
+     ]
+    }
+   },
+   "rate_per_s": 1,
+   "status": "designed"
+  },
+  "security.seal": {
+   "name": "security.seal",
+   "consoles": [
+    "security",
+    "room:brig"
+   ],
+   "mutating": true,
+   "text": "seal {deck} {state}",
+   "args": {
+    "deck": {
+     "type": "id"
+    },
+    "state": {
+     "type": "enum",
+     "values": [
+      "seal",
+      "open"
+     ]
+    }
+   },
+   "rate_per_s": 2,
+   "status": "designed"
+  },
+  "sensors.mode": {
+   "name": "sensors.mode",
+   "consoles": [
+    "science"
+   ],
+   "mutating": true,
+   "text": "sensors {mode}",
+   "args": {
+    "mode": {
+     "type": "enum",
+     "values": [
+      "wide",
+      "focused",
+      "passive"
+     ]
+    }
+   },
+   "rate_per_s": 1,
+   "status": "designed"
+  },
+  "shield.drop": {
+   "name": "shield.drop",
+   "consoles": [
+    "tactical"
+   ],
+   "mutating": true,
+   "text": "shields down",
+   "args": {},
+   "rate_per_s": 1,
+   "status": "designed"
+  },
+  "shield.raise": {
+   "name": "shield.raise",
+   "consoles": [
+    "tactical"
+   ],
+   "mutating": true,
+   "text": "shields up",
+   "args": {},
+   "rate_per_s": 1,
+   "status": "designed"
+  },
+  "shield.set": {
+   "name": "shield.set",
+   "consoles": [
+    "tactical",
+    "engineering"
+   ],
+   "mutating": true,
+   "text": "shield {facing} {pct}",
+   "args": {
+    "facing": {
+     "type": "enum",
+     "values": [
+      "fore",
+      "aft",
+      "port",
+      "starboard",
+      "dorsal",
+      "ventral",
+      "all"
+     ]
+    },
+    "pct": {
+     "type": "number",
+     "min": 0,
+     "max": 100
+    }
+   },
+   "rate_per_s": 2,
+   "status": "designed",
+   "doc": "share of shield power for a facing"
+  },
+  "ship.ai": {
+   "name": "ship.ai",
+   "consoles": [],
+   "mutating": true,
+   "text": "ai {state}",
+   "args": {
+    "state": {
+     "type": "enum",
+     "values": [
+      "on",
+      "off"
+     ]
+    }
+   },
+   "rate_per_s": 0.5,
+   "status": "designed"
+  },
+  "ship.board": {
+   "name": "ship.board",
+   "consoles": [],
+   "mutating": true,
+   "text": "board {ship}",
+   "args": {
+    "ship": {
+     "type": "string",
+     "maxlen": 64
+    }
+   },
+   "rate_per_s": 0.5,
+   "status": "designed"
+  },
+  "stance.set": {
+   "name": "stance.set",
+   "consoles": [
+    "command"
+   ],
+   "mutating": true,
+   "text": "stance {stance}",
+   "args": {
+    "stance": {
+     "type": "enum",
+     "values": [
+      "defensive",
+      "balanced",
+      "aggressive",
+      "evasive",
+      "stealth"
+     ]
+    }
+   },
+   "rate_per_s": 1,
+   "status": "designed"
+  },
+  "target.clear": {
+   "name": "target.clear",
+   "consoles": [
+    "command",
+    "tactical"
+   ],
+   "mutating": true,
+   "text": "designate clear",
+   "args": {},
+   "rate_per_s": 1,
+   "status": "designed"
+  },
+  "target.designate": {
+   "name": "target.designate",
+   "consoles": [
+    "command",
+    "tactical",
+    "science"
+   ],
+   "mutating": true,
+   "text": "designate {cid}",
+   "args": {
+    "cid": {
+     "type": "cid"
+    },
+    "note": {
+     "type": "text",
+     "maxlen": 80,
+     "required": false
+    }
+   },
+   "rate_per_s": 2,
+   "status": "designed"
+  },
+  "target.exploit": {
+   "name": "target.exploit",
+   "consoles": [
+    "tactical"
+   ],
+   "mutating": true,
+   "text": "exploit {cid} {weakness}",
+   "args": {
+    "cid": {
+     "type": "cid"
+    },
+    "weakness": {
+     "type": "id"
+    }
+   },
+   "rate_per_s": 2,
+   "status": "designed",
+   "doc": "aim at a weakness science found (Space.Analysis)"
+  },
+  "target.lock": {
+   "name": "target.lock",
+   "consoles": [
+    "tactical"
+   ],
+   "mutating": true,
+   "text": "lock {cid}",
+   "args": {
+    "cid": {
+     "type": "cid"
+    }
+   },
+   "rate_per_s": 2,
+   "status": "designed",
+   "doc": "weapons lock on a contact (the real component command Lock)"
+  },
+  "torpedo.load": {
+   "name": "torpedo.load",
+   "consoles": [
+    "tactical"
+   ],
+   "mutating": true,
+   "text": "load {tube} {type}",
+   "args": {
+    "tube": {
+     "type": "int",
+     "min": 1,
+     "max": 16
+    },
+    "type": {
+     "type": "id"
+    }
+   },
+   "rate_per_s": 2,
+   "status": "designed",
+   "doc": "load a torpedo type (std, heavy, probe)"
+  },
+  "torpedo.unload": {
+   "name": "torpedo.unload",
+   "consoles": [
+    "tactical"
+   ],
+   "mutating": true,
+   "text": "unload {tube}",
+   "args": {
+    "tube": {
+     "type": "int",
+     "min": 1,
+     "max": 16
+    }
+   },
+   "rate_per_s": 2,
+   "status": "designed"
+  },
+  "tractor.dest": {
+   "name": "tractor.dest",
+   "consoles": [
+    "operations"
+   ],
+   "mutating": true,
+   "text": "tractor dest {room}",
+   "args": {
+    "room": {
+     "type": "string",
+     "maxlen": 32
+    }
+   },
+   "rate_per_s": 2,
+   "status": "live-verified"
+  },
+  "tractor.engage": {
+   "name": "tractor.engage",
+   "consoles": [
+    "operations"
+   ],
+   "mutating": true,
+   "text": "tractor engage",
+   "args": {},
+   "rate_per_s": 1,
+   "status": "live-verified"
+  },
+  "tractor.lock": {
+   "name": "tractor.lock",
+   "consoles": [
+    "operations"
+   ],
+   "mutating": true,
+   "text": "tractor lock {cid}",
+   "args": {
+    "cid": {
+     "type": "cid"
+    }
+   },
+   "rate_per_s": 2,
+   "status": "live-verified"
+  },
+  "tractor.reset": {
+   "name": "tractor.reset",
+   "consoles": [
+    "operations"
+   ],
+   "mutating": true,
+   "text": "tractor reset",
+   "args": {},
+   "rate_per_s": 1,
+   "status": "live-verified"
+  },
+  "transporter.abort": {
+   "name": "transporter.abort",
+   "consoles": [
+    "operations",
+    "room:transporter"
+   ],
+   "mutating": true,
+   "text": "transporter abort",
+   "args": {},
+   "rate_per_s": 1,
+   "status": "designed",
+   "doc": "abort a cycle in progress (risks the pattern)"
+  },
+  "transporter.assign": {
+   "name": "transporter.assign",
+   "consoles": [
+    "operations",
+    "room:transporter"
+   ],
+   "mutating": true,
+   "text": "transporter assign {pad} {team}",
+   "args": {
+    "pad": {
+     "type": "int",
+     "min": 1,
+     "max": 8
+    },
+    "team": {
+     "type": "id",
+     "required": false
+    }
+   },
+   "rate_per_s": 2,
+   "status": "designed",
+   "doc": "put a team on a pad (omit team to clear the pad)"
+  },
+  "transporter.energize": {
+   "name": "transporter.energize",
+   "consoles": [
+    "operations",
+    "room:transporter"
+   ],
+   "mutating": true,
+   "text": "transporter energize {direction} {cid}",
+   "args": {
+    "cid": {
+     "type": "cid",
+     "required": false
+    },
+    "direction": {
+     "type": "enum",
+     "values": [
+      "down",
+      "up",
+      "swap"
+     ]
+    }
+   },
+   "rate_per_s": 1,
+   "status": "designed",
+   "doc": "begin the cycle; needs a held lock, shields down at the destination, range and power"
+  },
+  "transporter.lock": {
+   "name": "transporter.lock",
+   "consoles": [
+    "operations",
+    "room:transporter"
+   ],
+   "mutating": true,
+   "text": "transporter lock {cid}",
+   "args": {
+    "cid": {
+     "type": "cid",
+     "required": false
+    }
+   },
+   "rate_per_s": 1,
+   "status": "designed",
+   "doc": "acquire or refresh the pattern lock; with cid it selects that destination first"
+  },
+  "transporter.recall": {
+   "name": "transporter.recall",
+   "consoles": [
+    "operations",
+    "room:transporter",
+    "security",
+    "command"
+   ],
+   "mutating": true,
+   "text": "transporter recall {team}",
+   "args": {
+    "team": {
+     "type": "id"
+    }
+   },
+   "rate_per_s": 1,
+   "status": "designed",
+   "doc": "emergency extraction of an away team"
+  },
+  "transporter.select": {
+   "name": "transporter.select",
+   "consoles": [
+    "operations",
+    "room:transporter"
+   ],
+   "mutating": true,
+   "text": "transporter select {cid}",
+   "args": {
+    "cid": {
+     "type": "cid"
+    }
+   },
+   "rate_per_s": 2,
+   "status": "designed",
+   "doc": "choose the destination from the in-range list"
+  },
+  "transporter.tune": {
+   "name": "transporter.tune",
+   "consoles": [
+    "operations",
+    "room:transporter"
+   ],
+   "mutating": true,
+   "class": "continuous",
+   "text": "transporter tune {param} {value}",
+   "args": {
+    "param": {
+     "type": "enum",
+     "values": [
+      "power",
+      "pattern"
+     ]
+    },
+    "value": {
+     "type": "number",
+     "min": 0,
+     "max": 100
+    }
+   },
+   "rate_per_s": 10,
+   "status": "designed",
+   "doc": "sliders: power allocation and pattern-integrity bias (more integrity is slower)"
+  },
+  "viewscreen.set": {
+   "name": "viewscreen.set",
+   "consoles": [
+    "command"
+   ],
+   "mutating": true,
+   "text": "viewscreen {mode} {cid}",
+   "args": {
+    "cid": {
+     "type": "cid",
+     "required": false
+    },
+    "mode": {
+     "type": "enum",
+     "values": [
+      "forward",
+      "target",
+      "tactical",
+      "sector",
+      "hail",
+      "ship"
+     ]
+    }
+   },
+   "rate_per_s": 1,
+   "status": "designed"
+  },
+  "weapon.arm": {
+   "name": "weapon.arm",
+   "consoles": [
+    "tactical"
+   ],
+   "mutating": true,
+   "text": "arm {mount} {state}",
+   "args": {
+    "mount": {
+     "type": "string",
+     "maxlen": 64
+    },
+    "state": {
+     "type": "enum",
+     "values": [
+      "arm",
+      "safe"
+     ]
+    }
+   },
+   "rate_per_s": 2,
+   "status": "designed"
+  },
+  "weapon.fire": {
+   "name": "weapon.fire",
+   "consoles": [
+    "tactical"
+   ],
+   "mutating": true,
+   "text": "fire {mount}",
+   "args": {
+    "mount": {
+     "type": "string",
+     "maxlen": 64
+    }
+   },
+   "rate_per_s": 3,
+   "status": "designed",
+   "doc": "fire a mount, or `all`"
+  },
+  "weapon.mode": {
+   "name": "weapon.mode",
+   "consoles": [
+    "tactical"
+   ],
+   "mutating": true,
+   "text": "mode {mount} {mode}",
+   "args": {
+    "mode": {
+     "type": "enum",
+     "values": [
+      "single",
+      "burst",
+      "sweep"
+     ]
+    },
+    "mount": {
+     "type": "string",
+     "maxlen": 64
+    }
+   },
+   "rate_per_s": 2,
+   "status": "designed"
+  },
+  "weapon.torpedo": {
+   "name": "weapon.torpedo",
+   "consoles": [
+    "tactical"
+   ],
+   "mutating": true,
+   "text": "launch {tube}",
+   "args": {
+    "tube": {
+     "type": "int",
+     "min": 1,
+     "max": 16
+    }
+   },
+   "rate_per_s": 2,
+   "status": "designed",
+   "doc": "launch a torpedo tube"
   }
  },
  "subs": [
   {
-   "pkg": "Space.Power",
+   "pkg": "Comms.Hails",
    "source": "console",
    "ok": true
   },
   {
-   "pkg": "Space.Power.Group",
+   "pkg": "Comms.Treaties",
+   "source": "console",
+   "ok": true
+  },
+  {
+   "pkg": "Crew.Away",
+   "source": "console",
+   "ok": true
+  },
+  {
+   "pkg": "Crew.Medical",
+   "source": "console",
+   "ok": true
+  },
+  {
+   "pkg": "Crew.Roster",
+   "source": "console",
+   "ok": true
+  },
+  {
+   "pkg": "Crew.Security",
+   "source": "console",
+   "ok": true
+  },
+  {
+   "pkg": "Mission.Objectives",
+   "source": "console",
+   "ok": true
+  },
+  {
+   "pkg": "Ship.Cargo",
+   "source": "console",
+   "ok": true
+  },
+  {
+   "pkg": "Ship.Log",
+   "source": "console",
+   "ok": true
+  },
+  {
+   "pkg": "Ship.Orders",
+   "source": "console",
+   "ok": true
+  },
+  {
+   "pkg": "Ship.Target",
+   "source": "console",
+   "ok": true
+  },
+  {
+   "pkg": "Ship.Viewscreen",
+   "source": "console",
+   "ok": true
+  },
+  {
+   "pkg": "Space.Analysis",
+   "source": "console",
+   "ok": true
+  },
+  {
+   "pkg": "Space.Comms",
+   "source": "console",
+   "ok": true
+  },
+  {
+   "pkg": "Space.Contacts",
    "source": "console",
    "ok": true
   },
@@ -144,7 +4113,12 @@
    "ok": true
   },
   {
-   "pkg": "Space.Contacts",
+   "pkg": "Space.Fuel",
+   "source": "console",
+   "ok": true
+  },
+  {
+   "pkg": "Space.Map",
    "source": "console",
    "ok": true
   },
@@ -154,7 +4128,17 @@
    "ok": true
   },
   {
-   "pkg": "Space.Weapons",
+   "pkg": "Space.Ops.Stat",
+   "source": "console",
+   "ok": true
+  },
+  {
+   "pkg": "Space.Power",
+   "source": "console",
+   "ok": true
+  },
+  {
+   "pkg": "Space.Power.Group",
    "source": "console",
    "ok": true
   },
@@ -164,7 +4148,7 @@
    "ok": true
   },
   {
-   "pkg": "Space.Ops.Stat",
+   "pkg": "Space.Ship.Status",
    "source": "console",
    "ok": true
   },
@@ -174,12 +4158,473 @@
    "ok": true
   },
   {
-   "pkg": "Space.Ship.Status",
+   "pkg": "Space.Transporter",
+   "source": "console",
+   "ok": true
+  },
+  {
+   "pkg": "Space.Weapons",
    "source": "console",
    "ok": true
   }
  ],
  "docs": {
+  "Comms.Hails": {
+   "frequency": 412.5,
+   "hails": {
+    "5": {
+     "attitude": 25,
+     "cid": 17,
+     "deadline_s": 90,
+     "faction": "Federation",
+     "id": 5,
+     "lines": {
+      "1": {
+       "from": "them",
+       "text": "Marauder, state your intentions."
+      },
+      "2": {
+       "from": "us",
+       "text": "Passing through. We mean no harm."
+      }
+     },
+     "name": "UFP40EA1",
+     "options": {
+      "o1": {
+       "enabled": true,
+       "kind": "offer",
+       "text": "Request safe passage"
+      },
+      "o2": {
+       "enabled": true,
+       "kind": "offer",
+       "text": "Offer trade"
+      },
+      "o3": {
+       "enabled": true,
+       "kind": "threat",
+       "text": "Warn them off"
+      }
+     },
+     "portrait": {
+      "model": "face",
+      "mood": "friendly",
+      "params": {
+       "seed": 12,
+       "tint": "#8fa3ff"
+      }
+     },
+     "state": "negotiating"
+    }
+   }
+  },
+  "Comms.Treaties": {
+   "treaties": {
+    "2": {
+     "expires_t": 1794681300000,
+     "id": 2,
+     "kind": "passage",
+     "since_t": 1794670500000,
+     "state": "active",
+     "terms": "Free passage through the 40 Eridani system",
+     "with": "Federation"
+    }
+   }
+  },
+  "Crew.Away": {
+   "teams": {
+    "alpha": {
+     "health_pct": 100,
+     "location": {
+      "cid": 11,
+      "name": "AST5716"
+     },
+     "members": 3,
+     "name": "Away Team Alpha",
+     "order": "explore",
+     "report": "Surface scan under way",
+     "state": "away"
+    }
+   }
+  },
+  "Crew.Medical": {
+   "casualties": {
+    "k1": {
+     "deck": "deck1",
+     "eta_s": 120,
+     "injury": "serious",
+     "name": "Ens. Pell",
+     "role": "operations",
+     "state": "treating",
+     "team": "med1"
+    },
+    "k2": {
+     "deck": "deck3",
+     "eta_s": 0,
+     "injury": "minor",
+     "name": "Cpl. Voss",
+     "role": "security",
+     "state": "untreated"
+    }
+   },
+   "penalty": {
+    "operations": 0.1
+   },
+   "quarantine": {
+    "deck4": false
+   },
+   "sickbay": {
+    "beds": 6,
+    "used": 2
+   },
+   "teams": {
+    "med1": {
+     "assign": "k1",
+     "size": 3,
+     "state": "busy"
+    },
+    "med2": {
+     "size": 2,
+     "state": "ready"
+    }
+   }
+  },
+  "Crew.Roster": {
+   "crew": {
+    "c1": {
+     "deck": "deck2",
+     "efficiency": 0.9,
+     "name": "Lt. Okonkwo",
+     "role": "engineering",
+     "status": "ok"
+    },
+    "c2": {
+     "deck": "deck1",
+     "efficiency": 0.6,
+     "name": "Ens. Pell",
+     "role": "operations",
+     "status": "injured"
+    }
+   },
+   "roles": {
+    "captain": {
+     "ai": false,
+     "ai_mode": "off",
+     "console": "command",
+     "efficiency": 1,
+     "holder": "Mara",
+     "status": "ok"
+    },
+    "communications": {
+     "ai": true,
+     "ai_mode": "auto",
+     "console": "communications",
+     "efficiency": 0.8,
+     "status": "ok"
+    },
+    "engineering": {
+     "ai": true,
+     "ai_mode": "auto",
+     "console": "engineering",
+     "efficiency": 0.8,
+     "status": "ok"
+    },
+    "helm": {
+     "ai": true,
+     "ai_mode": "auto",
+     "console": "navigation",
+     "efficiency": 0.85,
+     "status": "ok"
+    },
+    "medical": {
+     "ai": true,
+     "ai_mode": "auto",
+     "console": "medical",
+     "efficiency": 0.8,
+     "status": "ok"
+    },
+    "operations": {
+     "ai": false,
+     "ai_mode": "auto",
+     "console": "operations",
+     "efficiency": 0.9,
+     "holder": "Dov",
+     "status": "degraded"
+    },
+    "science": {
+     "ai": true,
+     "ai_mode": "advise",
+     "console": "science",
+     "efficiency": 0.8,
+     "status": "ok"
+    },
+    "security": {
+     "ai": false,
+     "ai_mode": "off",
+     "console": "security",
+     "efficiency": 0,
+     "status": "vacant"
+    },
+    "tactical": {
+     "ai": false,
+     "ai_mode": "advise",
+     "console": "tactical",
+     "efficiency": 1,
+     "holder": "Ilex",
+     "status": "ok"
+    }
+   },
+   "totals": {
+    "aboard": 24,
+    "away": 0,
+    "dead": 0,
+    "injured": 2
+   }
+  },
+  "Crew.Security": {
+   "cells": {
+    "cell1": {
+     "state": "empty"
+    },
+    "cell2": {
+     "occupant": "Raider captain",
+     "state": "occupied"
+    }
+   },
+   "decks": {
+    "deck1": {
+     "atmosphere": "ok",
+     "integrity": 100,
+     "intruders": 0,
+     "name": "Bridge deck",
+     "sealed": false
+    },
+    "deck2": {
+     "atmosphere": "ok",
+     "integrity": 92,
+     "intruders": 0,
+     "name": "Engineering",
+     "sealed": false
+    },
+    "deck3": {
+     "atmosphere": "ok",
+     "integrity": 70,
+     "intruders": 3,
+     "name": "Crew quarters",
+     "sealed": true
+    },
+    "deck4": {
+     "atmosphere": "ok",
+     "integrity": 100,
+     "intruders": 0,
+     "name": "Cargo",
+     "sealed": false
+    }
+   },
+   "intruders": {
+    "i1": {
+     "armed": true,
+     "count": 3,
+     "deck": "deck3",
+     "state": "engaged"
+    }
+   },
+   "lockdown": false,
+   "teams": {
+    "sec1": {
+     "arm": "armed",
+     "deck": "deck3",
+     "name": "Security Alpha",
+     "order": "repel",
+     "size": 4,
+     "state": "engaged"
+    },
+    "sec2": {
+     "arm": "standby",
+     "name": "Security Bravo",
+     "order": "guard",
+     "size": 4,
+     "state": "standby"
+    }
+   }
+  },
+  "Mission.Objectives": {
+   "mission": {
+    "briefing": "Recover the beacon from the asteroid AST5716 and return.",
+    "id": "m-salvage",
+    "title": "Salvage run"
+   },
+   "objectives": {
+    "o1": {
+     "id": "o1",
+     "optional": false,
+     "state": "done",
+     "text": "Fly to the asteroid and match speed",
+     "title": "Reach AST5716"
+    },
+    "o2": {
+     "id": "o2",
+     "optional": false,
+     "progress": {
+      "cur": 1,
+      "max": 3
+     },
+     "state": "active",
+     "text": "Send an away team",
+     "title": "Recover the beacon",
+     "waypoint": "wp1"
+    },
+    "o3": {
+     "id": "o3",
+     "optional": true,
+     "state": "active",
+     "text": "Stay under Yellow alert",
+     "title": "Avoid detection"
+    }
+   },
+   "tracked": "o2"
+  },
+  "Ship.Cargo": {
+   "bays": {
+    "bay1": {
+     "capacity": 2000,
+     "items": {
+      "probe": {
+       "kind": "equipment",
+       "mass": 60,
+       "name": "Sensor probes",
+       "qty": 6
+      },
+      "rations": {
+       "kind": "supply",
+       "mass": 150,
+       "name": "Rations",
+       "qty": 300
+      }
+     },
+     "name": "Main bay",
+     "used": 740
+    },
+    "bay2": {
+     "capacity": 800,
+     "items": {},
+     "name": "Aft bay",
+     "used": 0
+    }
+   },
+   "jettison_ok": true
+  },
+  "Ship.Log": {
+   "entries": {
+    "1": {
+     "id": 1,
+     "kind": "system",
+     "severity": "info",
+     "t": 1794674040000,
+     "text": "Red alert cleared"
+    },
+    "2": {
+     "from": "captain",
+     "id": 2,
+     "kind": "order",
+     "severity": "info",
+     "t": 1794674100000,
+     "text": "Captain to tactical: hold fire until they cross the line"
+    },
+    "3": {
+     "from": "tactical",
+     "id": 3,
+     "kind": "request",
+     "severity": "info",
+     "t": 1794674105000,
+     "text": "Tactical asks engineering for 60% power to Weapons"
+    }
+   }
+  },
+  "Ship.Orders": {
+   "orders": {
+    "12": {
+     "expires_t": 1794674400000,
+     "from": "captain",
+     "id": 12,
+     "kind": "order",
+     "priority": "urgent",
+     "state": "acked",
+     "t": 1794674100000,
+     "text": "Hold fire until they cross the line",
+     "to": "tactical"
+    },
+    "13": {
+     "from": "tactical",
+     "group": "Weapons",
+     "id": 13,
+     "kind": "request",
+     "pct": 60,
+     "priority": "priority",
+     "req_kind": "power",
+     "state": "issued",
+     "t": 1794674105000,
+     "text": "Weapons need more power",
+     "to": "engineering"
+    }
+   },
+   "stance": "balanced"
+  },
+  "Ship.Target": {
+   "designated": {
+    "by": "science",
+    "cid": 17,
+    "note": "Port shield is thin",
+    "t": 1794674100000
+   },
+   "secondary": {
+    "11": {
+     "by": "tactical"
+    }
+   }
+  },
+  "Ship.Viewscreen": {
+   "by": "captain",
+   "cid": 17,
+   "mode": "target"
+  },
+  "Space.Analysis": {
+   "analyses": {
+    "17": {
+     "by": "science",
+     "cid": 17,
+     "findings": {
+      "cargo": "mining equipment",
+      "class": "Marauder",
+      "crew": 18,
+      "hull_pct": 100,
+      "shield_freq": 412.5,
+      "threat": 3.5,
+      "weak_facing": "port",
+      "weaknesses": {
+       "w1": {
+        "bonus": 0.3,
+        "effect": "Shield drops 30% faster on the port facing",
+        "system": "port_shield_emitter"
+       }
+      }
+     },
+     "kind": "shields",
+     "progress": 100,
+     "state": "done"
+    }
+   }
+  },
+  "Space.Comms": {
+   "channels": {
+    "1": {
+     "active": true,
+     "freq": 1.2,
+     "name": "Hailing"
+    }
+   },
+   "transmitting": false
+  },
   "Space.Contacts": {
    "contacts": {
     "11": {
@@ -321,6 +4766,84 @@
     "5": {
      "assign": "Hull",
      "crew": 10
+    }
+   }
+  },
+  "Space.Fuel": {
+   "tanks": {
+    "Antimatter": {
+     "cur": 299334,
+     "max": 300000,
+     "unit": "kg"
+    },
+    "Deuterium": {
+     "cur": 498814,
+     "max": 500000,
+     "unit": "kg"
+    }
+   }
+  },
+  "Space.Map": {
+   "bodies": {
+    "ast5716": {
+     "id": "ast5716",
+     "kind": "asteroids",
+     "name": "AST5716",
+     "pos_m": [
+      1000000000,
+      1000000000,
+      1000000000
+     ],
+     "radius_m": 400
+    },
+    "star-a": {
+     "id": "star-a",
+     "kind": "star",
+     "name": "40 Eridani A",
+     "pos_m": [
+      1100000000,
+      900000000,
+      1000000000
+     ],
+     "radius_m": 700000000
+    },
+    "vulcan": {
+     "id": "vulcan",
+     "kind": "planet",
+     "name": "Vulcan",
+     "pos_m": [
+      300000000,
+      1200000000,
+      1000000000
+     ],
+     "radius_m": 6500000
+    }
+   },
+   "course": {
+    "dist_m": 82000000,
+    "engaged": true,
+    "eta_s": 540,
+    "leg": 0,
+    "legs": [
+     "wp1"
+    ],
+    "mode": "impulse"
+   },
+   "sector": {
+    "id": "40-eridani",
+    "name": "40 Eridani",
+    "size_m": 2000000000
+   },
+   "waypoints": {
+    "wp1": {
+     "by": "science",
+     "id": "wp1",
+     "name": "Beacon site",
+     "pos_m": [
+      1000000000,
+      1000000000,
+      1000000000
+     ]
     }
    }
   },
@@ -524,6 +5047,106 @@
    "integrity_pct": 100,
    "power_pct": 100
   },
+  "Space.Transporter": {
+   "buffer": {
+    "integrity": 0.96,
+    "level": 0.7
+   },
+   "cooldown_s": 0,
+   "destinations": {
+    "11": {
+     "cid": 11,
+     "distance_m": 797.8,
+     "distance_text": "797.8m",
+     "in_range": true,
+     "lock_quality": 0.82,
+     "name": "AST5716",
+     "reasons": [],
+     "status": "ready"
+    },
+    "15": {
+     "cid": 15,
+     "distance_m": 775968000,
+     "in_range": false,
+     "lock_quality": 0,
+     "name": "UFPTRukh",
+     "reason_text": "out of range; their shields are up",
+     "reasons": [
+      "range",
+      "shields"
+     ],
+     "status": "blocked"
+    },
+    "17": {
+     "cid": 17,
+     "distance_m": 163000000000,
+     "in_range": false,
+     "lock_quality": 0,
+     "name": "UFP40EA1",
+     "reasons": [
+      "range"
+     ],
+     "status": "blocked"
+    }
+   },
+   "lock": {
+    "dest": 11,
+    "quality": 0.82,
+    "state": "held"
+   },
+   "pads": {
+    "1": {
+     "label": "Pad 1",
+     "occupants": {
+      "a1": {
+       "kind": "crew",
+       "name": "Lt. Okonkwo",
+       "role": "engineering"
+      },
+      "a2": {
+       "kind": "crew",
+       "name": "Ens. Pell",
+       "role": "operations"
+      }
+     },
+     "state": "occupied"
+    },
+    "2": {
+     "label": "Pad 2",
+     "occupants": {},
+     "state": "empty"
+    },
+    "3": {
+     "label": "Pad 3",
+     "occupants": {},
+     "state": "empty"
+    },
+    "4": {
+     "label": "Pad 4",
+     "occupants": {},
+     "state": "empty"
+    }
+   },
+   "power": {
+    "allocated_pct": 40,
+    "available_w": 6000000,
+    "draw_w": 2400000
+   },
+   "progress": {
+    "eta_s": 0,
+    "pct": 0,
+    "phase": "idle"
+   },
+   "range_m": 40000,
+   "selected": {
+    "cid": 11
+   },
+   "state": "ready",
+   "tune": {
+    "pattern_pct": 65,
+    "power_pct": 40
+   }
+  },
   "Space.Weapons": {
    "mounts": {
     "Aft_Phaser_1": {
@@ -556,9 +5179,25 @@
   }
  },
  "seqs": {
+  "Comms.Hails": 1,
+  "Comms.Treaties": 1,
+  "Crew.Away": 1,
+  "Crew.Medical": 1,
+  "Crew.Roster": 1,
+  "Crew.Security": 1,
+  "Mission.Objectives": 1,
+  "Ship.Cargo": 1,
+  "Ship.Log": 1,
+  "Ship.Orders": 1,
+  "Ship.Target": 1,
+  "Ship.Viewscreen": 1,
+  "Space.Analysis": 1,
+  "Space.Comms": 1,
   "Space.Contacts": 1,
   "Space.Damage.Stat": 1,
   "Space.Damage.Teams": 1,
+  "Space.Fuel": 1,
+  "Space.Map": 1,
   "Space.Nav": 1,
   "Space.Ops.Stat": 1,
   "Space.Power": 1,
@@ -566,6 +5205,7 @@
   "Space.Shields": 1,
   "Space.Ship.Status": 1,
   "Space.Tractor": 1,
+  "Space.Transporter": 1,
   "Space.Weapons": 1
  },
  "alert": "green",
@@ -602,7 +5242,7 @@
    "radius": 4,
    "stroke": 1
   },
-  "packKey": "19bac4f407ef0aef05f3412738b653f90a14dad0713d2b9c785be6c47ce2cf55/tng",
+  "packKey": "37557cee004bf107669aeefa57ba14e235f762797ebc9b4c69b95c68155e2a57/tng",
   "root": {
    "path": "0",
    "widget": "label",
@@ -640,7 +5280,7 @@
       {
        "path": "0.1.0",
        "id": "scope",
-       "widget": "radar",
+       "widget": "scope",
        "props": {
         "contacts": {
          "11": {
