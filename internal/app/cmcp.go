@@ -23,6 +23,7 @@ func (s *Service) cmcpHello() cs.Config {
 		Widgets: map[string]int{"joystick": 1, "scope": 1, "lights": 1}, // only the optional ones; core widgets are never listed
 		Themes:  config.CmcpThemes, Theme: st.ConsoleTheme,
 		Audio: &msg.Audio{Play: !st.SoundMuted && st.SoundVolume > 0, Formats: []string{"wav", "ogg", "mp3"}, Recipes: true, Voices: 16},
+		Input: &msg.Input{Mouse: true, Keyboard: true}, // gamepad/touch only when implemented
 		Packs: &msg.HelloPacks{Formats: []int{1}, Inline: true, HTTPS: true},
 	}
 }

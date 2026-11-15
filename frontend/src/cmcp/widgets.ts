@@ -183,6 +183,9 @@ const groupPicker: Draw = (p, ctx, out) => {
   });
 };
 
+/** a pack's mnemonic letter works as Alt+letter in the graphical client (the text pane and input keep every plain key) */
+const mnemonic = (k: unknown): string | undefined => (typeof k === 'string' && /^[a-zA-Z0-9]$/.test(k) ? `alt+${k.toLowerCase()}` : undefined);
+
 const button: Draw = (p, ctx, out) => {
   const pr = p.node.props, id = p.node.path;
   const on = p.node.enabled && !ctx.readonly;
@@ -190,7 +193,7 @@ const button: Draw = (p, ctx, out) => {
   const r: Rect = { x: p.rect.x + 2, y: p.rect.y + 2, w: p.rect.w - 4, h: Math.min(p.rect.h - 4, 52) };
   out.push({
     id: `${id}.b`, type: 'button',
-    props: { x: r.x, y: r.y, w: r.w, h: r.h, text: str(pr.text).toUpperCase(), fill: on ? col : tok(ctx, 'color.panel'), color: on ? tok(ctx, 'color.bg') : tok(ctx, 'color.dim'), size: 18, weight: '700', font: font(ctx, true), r: radius(ctx) * 1.5, glow: on ? 0.12 : 0, opacity: on ? 1 : 0.7, align: 'center' },
+    props: { x: r.x, y: r.y, w: r.w, h: r.h, key: mnemonic(pr.key), text: str(pr.text).toUpperCase() + (pr.key ? `  [${str(pr.key).toUpperCase()}]` : ''), fill: on ? col : tok(ctx, 'color.panel'), color: on ? tok(ctx, 'color.bg') : tok(ctx, 'color.dim'), size: 18, weight: '700', font: font(ctx, true), r: radius(ctx) * 1.5, glow: on ? 0.12 : 0, opacity: on ? 1 : 0.7, align: 'center' },
     events: on ? ['click'] : [], target: on ? { path: p.node.path, event: 'click' } : undefined,
   });
 };
