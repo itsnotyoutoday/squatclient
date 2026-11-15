@@ -119,6 +119,7 @@ func (s *Service) SaveSettings(in config.Settings) error {
 	s.eng.SetCaps(capsFor(s.cfg.Settings()))
 	s.eng.SetAutoReconnectSquatters(s.cfg.Settings().AutoReconnectSquatters)
 	s.eng.SetShowGagged(s.cfg.Settings().ShowGagged)
+	s.applyCmcpSettings()
 	s.syncWorlds()
 	return nil
 }

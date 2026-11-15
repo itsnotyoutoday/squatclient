@@ -1,0 +1,90 @@
+package app
+
+import (
+	"encoding/json"
+	"fmt"
+
+	"github.com/itsnotyoutoday/cmcp/msg"
+	cs "github.com/itsnotyoutoday/cmcp/session"
+	"github.com/itsnotyoutoday/squatClientDaemon/pkg/engine"
+	"github.com/itsnotyoutoday/squatclient/internal/config"
+)
+
+// CMCP in the app (cmcp/spec): the engine owns one protocol session per game session and evaluates screens with the
+// shared core; the Service turns its events into the "cmcp" / "cmcp-notes" window events and exposes the actions.
+
+// cmcpHello describes this client to a game (Cobra.Hello, spec 2.3): a gpu renderer implementing the core widgets,
+// the themes above, Web Audio with recipes, packs by inline chunks and HTTPS.
+func (s *Service) cmcpHello() cs.Config {
+	st := s.cfg.Settings()
+	return cs.Config{
+		Name: "SquatClient", Version: s.version(), Kind: "gui", MaxBody: 65536,
+		Render: &msg.Render{Kind: "gpu", FPS: 60},
+		Themes: config.CmcpThemes, Theme: st.ConsoleTheme,
+		Audio: &msg.Audio{Play: !st.SoundMuted && st.SoundVolume > 0, Formats: []string{"wav", "ogg", "mp3"}, Recipes: true, Voices: 16},
+		Packs: &msg.HelloPacks{Formats: []int{1}, Inline: true, HTTPS: true},
+	}
+}
+
+func (s *Service) version() string { return "dev" }
+
+// applyCmcpSettings (re)configures the engine from the settings; called at start and after SaveSettings.
+func (s *Service) applyCmcpSettings() {
+	st := s.cfg.Settings()
+	if st.Cmcp {
+		s.eng.SetCmcp(s.cmcpHello)
+	} else {
+		s.eng.SetCmcp(nil)
+	}
+	s.eng.SetCmcpRender(engine.CmcpRender{Theme: st.ConsoleTheme, UseShipTheme: st.UseShipTheme, Tokens: CmcpThemeTokens})
+}
+
+type cmcpNotesPayload struct {
+	Session string            `json:"session"`
+	Notes   []engine.CmcpNote `json:"notes"`
+}
+
+// CmcpState returns a session's CMCP model (with the current screen tree), for a window that mounts late.
+func (s *Service) CmcpState(session string) (*engine.CmcpUI, error) { return s.eng.CmcpUI(session) }
+
+// CmcpEvent reports a widget event (click, select, assign, ...) of the current screen.
+func (s *Service) CmcpEvent(session, path, event, valueJSON string) (engine.CmcpEventResult, error) {
+	var v any
+	if valueJSON != "" {
+		if err := json.Unmarshal([]byte(valueJSON), &v); err != nil {
+			return engine.CmcpEventResult{}, fmt.Errorf("the widget value is not valid JSON: %w", err)
+		}
+	}
+	return s.eng.CmcpEvent(session, path, event, v)
+}
+
+// CmcpCommand sends a verb of the game's catalogue directly (argsJSON is an object).
+func (s *Service) CmcpCommand(session, name, argsJSON string) (engine.CmcpTicket, error) {
+	var a map[string]any
+	if argsJSON != "" {
+		if err := json.Unmarshal([]byte(argsJSON), &a); err != nil {
+			return engine.CmcpTicket{}, fmt.Errorf("the arguments are not a JSON object: %w", err)
+		}
+	}
+	return s.eng.CmcpCommand(session, name, a)
+}
+
+// CmcpAcquire sets the extra packages an owner (a widget or panel) needs; subscriptions are reference counted.
+func (s *Service) CmcpAcquire(session, owner, subsJSON string) error {
+	var subs []msg.SubSpec
+	if subsJSON != "" {
+		if err := json.Unmarshal([]byte(subsJSON), &subs); err != nil {
+			return fmt.Errorf("the subscriptions are not valid JSON: %w", err)
+		}
+	}
+	return s.eng.CmcpAcquire(session, owner, subs)
+}
+
+// CmcpRelease drops everything an owner acquired.
+func (s *Service) CmcpRelease(session, owner string) error { return s.eng.CmcpRelease(session, owner) }
+
+// CmcpSprite returns a sprite of the session's current pack with the theme's tokens resolved (JSON).
+func (s *Service) CmcpSprite(session, sprite string) (string, error) {
+	b, err := s.eng.CmcpSprite(session, sprite)
+	return string(b), err
+}

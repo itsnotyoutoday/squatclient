@@ -123,6 +123,7 @@ func New(o Options) (*Service, error) {
 		eo.Notify = s.notify // /gfx, /canvas and the window commands of lib/squat arrive here
 	}
 	s.eng = engine.New(eo)
+	s.applyCmcpSettings()
 	s.eng.SetAutoReconnectSquatters(o.Config.Settings().AutoReconnectSquatters)
 	s.eng.SetShowGagged(o.Config.Settings().ShowGagged)
 	s.syncWorlds()
@@ -364,6 +365,12 @@ func (s *Service) deliver(batch []engine.Event) {
 			if ev.Data != nil {
 				s.emit("data", ev.Data)
 			}
+		case engine.EvCmcp:
+			if ev.Cmcp != nil {
+				s.emit("cmcp", ev.Cmcp)
+			}
+		case engine.EvCmcpNote:
+			s.emit("cmcp-notes", cmcpNotesPayload{Session: ev.Session, Notes: ev.CmcpNotes})
 		case engine.EvTFKeys:
 			var seqs []string
 			if ev.Text != "" {
