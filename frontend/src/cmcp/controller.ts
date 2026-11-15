@@ -5,10 +5,10 @@ import { findTextport, place, type Placed } from './layout';
 import { skinFor } from './skins';
 import { layoutSkinned } from './skinlayout';
 import type { Pal, Skin } from './skins/types';
-import { col, frameShapes, navShapes, templateVars } from './skinframe';
+import { col, fitText, frameShapes, navShapes, templateVars } from './skinframe';
 export type AlertRecolour = 'full' | 'edge' | 'off';
 import { skinFromTheme } from './skins/pack';
-import { setActiveCmcp, usePane, useScreenHelp, useThemeInUse } from './pane';
+import { setActiveCmcp, useAmbient, usePane, useScreenHelp, useThemeInUse } from './pane';
 import { useSettings } from '../state/stores';
 import { diffOps, PORT_ID, SCENE, sceneOp, type Ease } from './ops';
 import { drawSprite, type SpriteView } from './sprite';
@@ -63,6 +63,10 @@ interface SessionState {
   lastW?: number;
   skinned: boolean;
   noticeId?: string;
+  page?: number;
+  pageFor?: string;
+  pageCount?: number;
+  narrowSaid?: boolean;
   vp?: string;
   pulse?: CmcpPulse;
   viewState: 'compact' | 'balanced' | 'large' | 'expanded' | 'off' | 'default';
@@ -85,7 +89,7 @@ export class CmcpController {
     void this.engine.cmcpReducedMotion(this.reduceMotion).catch(() => undefined);
     const offs = [
       this.engine.on('cmcp', (ui) => this.onUi(ui)),
-      this.engine.on('cmcp-pulse', (p) => { const s = this.sess.get(p.session); if (s) { s.pulse = p; if (s.tree && s.open) this.render(s); } }),
+      this.engine.on('cmcp-pulse', (p) => { useAmbient.getState().set(p.session, p.ambient ? { edge: p.ambient.edge, hueBg: p.ambient.hueBg } : undefined); const s = this.sess.get(p.session); if (s) { s.pulse = p; if (s.tree && s.open) this.render(s); } }),
       this.engine.on('cmcp-notes', (p) => { this.onNotes?.(p.session, p.notes); this.noteErrors(p.notes); this.effects(p.session, p.notes); }),
       this.engine.on('session-removed', (p) => this.sess.delete(p.id)),
     ];
@@ -174,6 +178,20 @@ export class CmcpController {
     const cur = String(((s.ui.status ?? s.ui.docs?.['Space.Ship.Status'] ?? {}) as Record<string, unknown>).alert ?? s.ui.alert ?? 'green');
     const next = cur === 'green' ? 'yellow' : cur === 'yellow' ? 'red' : 'green';
     void this.engine.cmcpCommand(session, 'alert.set', { level: next }).catch((e: unknown) => this.onError?.(String(e).replace(/^Error: /, '')));
+  }
+  /** The X of the console window: Cobra.Context.Close for the active context (reason user). The screen stays until the game's update (the pop, or
+   * Cobra.Console null) takes it away; a refusal or a missing answer arrives as a notice from the core. */
+  requestClose(session: string): void {
+    void this.engine.cmcpClose(session, 'user').catch((e: unknown) => this.onError?.(String(e).replace(/^Error: /, '')));
+  }
+
+  /** the widget column's pages (screens too big for one readable column): Alt+PageUp / Alt+PageDown or the pager buttons */
+  turnPage(session: string, d: number): boolean {
+    const s = this.sess.get(session);
+    if (!s?.tree || !s.pageCount || s.pageCount < 2) return false;
+    s.page = (((s.page ?? 0) + d) % s.pageCount + s.pageCount) % s.pageCount;
+    this.render(s);
+    return true;
   }
   logState(session: string): boolean { return this.sess.get(session)?.viewState === 'expanded'; }
 
@@ -485,11 +503,15 @@ export class CmcpController {
     const fontPx = useSettings.getState().settings.fontSize || 14;
     // the core decides textport_layout and the cap for the viewport the engine is told about (it is told again when the size or the font changes)
     if (k > 0) {
-      const vp = `${Math.round(lg!.w)}|${k.toFixed(4)}|${fontPx}`;
-      if (s.vp !== vp) { s.vp = vp; void this.engine.cmcpViewport(s.id, lg!.w, k, fontPx).catch(() => undefined); }
+      const vp = `${Math.round(lg!.w)}|${fontPx}`;
+      // (the font is in CSS px, so one device px per mono px: the cap is max_cols columns of the real pane font)
+      if (s.vp !== vp) { s.vp = vp; void this.engine.cmcpViewport(s.id, lg!.w, 1, fontPx).catch(() => undefined); }
     }
     const maxPortW = k > 0 ? ((t.portCapPx && t.portCapPx > 0 ? t.portCapPx : (skin.maxCols ?? 80) * 0.6 * fontPx) + 28) / k : Infinity;
-    const L = layoutSkinned(t.root, skin, screenName, s.log, t.view?.portDefault ?? 'balanced', maxPortW, t.layout === 'side');
+    if (s.pageFor !== t.screen) { s.pageFor = t.screen; s.page = 0; } // the pages of a screen start at the first
+    const L = layoutSkinned(t.root, skin, screenName, s.log, t.view?.portDefault ?? 'balanced', maxPortW, t.layout === 'side', s.page);
+    s.pageCount = L?.pages?.count ?? 0;
+    if (L?.narrow && L.mode === 'side' && !s.narrowSaid) { s.narrowSaid = true; this.onHint?.('This window is narrow for the game\'s 80-column text: widen it, or set Settings > Console text position to "Under the widgets".'); }
     if (!L) return;
     const { root, port } = L;
     s.layoutMode = L.mode;
@@ -500,7 +522,7 @@ export class CmcpController {
     useOverlays.getState().set(s.id, W, H, []); // typed entry overlays follow the 1200-unit layout; not placed in skinned mode yet
     const prims: Prim[] = [];
     prims.push({ id: PORT_ID, type: 'rect', props: { x: port[0], y: port[1], w: port[2], h: port[3], fill: '#00000000' } });
-    prims.push(...frameShapes(skin.frame, pal, vars, 'fr.'));
+    prims.push(...frameShapes(skin.frame, pal, vars, 'fr.', skin.font.family));
     prims.push({ id: 'cw', type: 'group', props: { x: 0, y: 0, scaleX: L.scale / K, scaleY: L.scale / K, opacity: s.log ? 0 : 1, visible: true } });
     for (const p of content) prims.push({ ...p, parent: p.parent ?? 'cw' });
     if (s.vsRect) prims.push({ id: 'fxclip', type: 'group', parent: 'cw', props: { x: 0, y: 0, clip: [s.vsRect.x, s.vsRect.y, s.vsRect.w, s.vsRect.h], z: 9000 } });
@@ -509,13 +531,23 @@ export class CmcpController {
     if (s.log) prims.push({ id: 'logsum', type: 'text', props: { x: port[0] + 4, y: port[1] - 22, text: `${label}   ${vars.ship}   HULL ${vars.hull}%   CORE ${vars.core}%   ALERT ${vars.alert}`, size: 22, fill: col('x', pal), baseline: 'middle', weight: '700', font: skin.font.family } });
     const menu = s.ui?.screens ?? [];
     prims.push(...navShapes(skin, pal, cur, 'nv.', (id) => { const o = menu.find((x) => x.id === id); return { available: !!o && o.available, hint: o?.hintCmd }; }));
+    // a screen too big for one readable widget column is paged: the pager sits at the top of the column (Alt+PageUp / Alt+PageDown too)
+    if (L.pages && L.pager) {
+      const [px, py, pw, ph] = L.pager, pb = skin.log.button, bw = Math.min(64, pw / 4);
+      const style = { y: py, w: bw, h: ph, r: pb.r ?? ph / 2, fill: col(pb.role, pal), color: col(pb.color, pal), size: pb.size * (skin.font.tscale ?? 1) * 0.9, weight: skin.font.weight, align: 'center' as const, font: skin.font.family, glow: 0.04 };
+      prims.push({ id: 'pg.prev', type: 'button', events: ['click'], target: { path: '', event: '', special: 'page', dir: -1 }, props: { ...style, x: px, text: '<' } });
+      prims.push({ id: 'pg.next', type: 'button', events: ['click'], target: { path: '', event: '', special: 'page', dir: 1 }, props: { ...style, x: px + pw - bw, text: '>' } });
+      prims.push({ id: 'pg.txt', type: 'text', props: { x: px + pw / 2, y: py + ph / 2, text: `PAGE ${L.pages.index + 1} / ${L.pages.count}   (Alt+PgUp / PgDn)`, size: 20 * (skin.font.tscale ?? 1), fill: col('k', pal), align: 'center', baseline: 'middle', weight: '700', font: skin.font.family } });
+    }
     const lb = skin.log.button;
-    prims.push({ id: 'logbtn', type: 'button', events: ['click'], target: { path: '', event: '', special: 'log' }, props: { x: lb.x, y: lb.y, w: lb.w, h: lb.h, r: lb.r ?? lb.h / 2, fill: col(lb.role, pal), text: s.log ? skin.log.shrink : skin.log.expand, color: col(lb.color, pal), size: lb.size * (skin.font.tscale ?? 1), weight: skin.font.weight, align: lb.align ?? 'center', padX: lb.padX ?? 16, font: skin.font.family, key: 'alt+l', glow: 0.04 } });
+    const lf = fitText(s.log ? skin.log.shrink : skin.log.expand, lb.size * (skin.font.tscale ?? 1), lb.w - 2 * (lb.padX ?? 16) - Math.abs(lb.skewX ?? 0), skin.font.family, skin.font.weight);
+    prims.push({ id: 'logbtn', type: 'button', events: ['click'], target: { path: '', event: '', special: 'log' }, props: { x: lb.x, y: lb.y, w: lb.w, h: lb.h, r: lb.r ?? lb.h / 2, fill: col(lb.role, pal), text: lf.text, color: col(lb.color, pal), size: lf.size, weight: skin.font.weight, align: lb.align ?? 'center', padX: lb.padX ?? 16, font: skin.font.family, key: 'alt+l', glow: 0.04 } });
     // the alert pill: click cycles green / yellow / red and sends alert.set (the typed form `alert red` is echoed by the engine); dim when this
     // console may not set it or the screen is read-only
     const ab = skin.alert ?? { ...skin.off.button, y: skin.off.button.y + 56, role: 'x' as const };
+    const af = fitText(`ALERT ${vars.alert}`, ab.size * (skin.font.tscale ?? 1), ab.w - 2 * (ab.padX ?? 16) - Math.abs(ab.skewX ?? 0), skin.font.family, skin.font.weight);
     const can = (s.ui?.commands ?? []).includes('alert.set') && !(s.ui?.readonly ?? false);
-    prims.push({ id: 'alertbtn', type: 'button', events: ['click'], target: { path: '', event: '', special: 'alert' }, props: { x: ab.x, y: ab.y, w: ab.w, h: ab.h, r: ab.r ?? ab.h / 2, fill: col(alert ? 'r' : ab.role, edgePal), text: `ALERT ${vars.alert}`, color: col(ab.color ?? '#000000', pal), size: ab.size * (skin.font.tscale ?? 1), weight: skin.font.weight, align: ab.align ?? 'center', font: skin.font.family, key: 'alt+a', glow: can ? 0.1 : 0, opacity: can ? 1 : 0.5 } });
+    prims.push({ id: 'alertbtn', type: 'button', events: ['click'], target: { path: '', event: '', special: 'alert' }, props: { x: ab.x, y: ab.y, w: ab.w, h: ab.h, r: ab.r ?? ab.h / 2, fill: col(alert ? 'r' : ab.role, edgePal), text: af.text, color: col(ab.color ?? '#000000', pal), size: af.size, weight: skin.font.weight, align: ab.align ?? 'center', font: skin.font.family, key: 'alt+a', glow: can ? 0.1 : 0, opacity: can ? 1 : 0.5 } });
     if (s.menu.open) { // the focused screen menu over the nav column: every screen, the highlighted one ringed and inverted, locked ones dim
       const items = this.menuList(s);
       const nb = skin.nav.button, rowH = 30, x = nb.x, y = nb.y, w = Math.max(nb.w, 190);
@@ -527,7 +559,8 @@ export class CmcpController {
       });
     }
     const ob = skin.off.button;
-    prims.push({ id: 'offbtn', type: 'button', events: ['click'], target: { path: '', event: '', special: 'off' }, props: { x: ob.x, y: ob.y, w: ob.w, h: ob.h, r: ob.r ?? ob.h / 2, fill: col(ob.role, pal), text: skin.off.label, color: col(ob.color, pal), size: ob.size * (skin.font.tscale ?? 1), weight: skin.font.weight, align: ob.align ?? 'center', font: skin.font.family, key: 'alt+s', glow: 0.04 } });
+    const of = fitText(skin.off.label, ob.size * (skin.font.tscale ?? 1), ob.w - 2 * (ob.padX ?? 16) - Math.abs(ob.skewX ?? 0), skin.font.family, skin.font.weight);
+    prims.push({ id: 'offbtn', type: 'button', events: ['click'], target: { path: '', event: '', special: 'off' }, props: { x: ob.x, y: ob.y, w: ob.w, h: ob.h, r: ob.r ?? ob.h / 2, fill: col(ob.role, pal), text: of.text, color: col(ob.color, pal), size: of.size, weight: skin.font.weight, align: ob.align ?? 'center', font: skin.font.family, key: 'alt+s', glow: 0.04 } });
     prims.forEach((p, i) => { p.props = { ...p.props, z: i }; });
     // the notice line: one pill at the top edge of the scene, styled by the skin, clear of the text port, the input bar and the nav column
     const nt = s.ui?.notice;
@@ -575,11 +608,12 @@ export class CmcpController {
   handleGfxEvent(session: string, e: GfxEventOut): boolean {
     if (e.scene !== SCENE) return false;
     const s = this.state(session);
-    if (e.id === '#scene' && e.event === 'close') { s.dismissed = s.key; s.open = false; s.prev = new Map(); s.targets = new Map(); this.rtFor(session).apply([{ op: 'clear', scene: SCENE }, { op: 'scene', scene: SCENE, open: false }]); return true; }
+    if (e.id === '#scene' && e.event === 'close') { this.requestClose(session); return true; } // the X: ask the game; it decides (a manned console is unmanned and popped), nothing is hidden here
     const tg = s.targets.get(e.id);
     if (!tg) return true;
     if (tg.special === 'alert') { this.cycleAlert(session); return true; }
     if (tg.special === 'log') { this.toggleLog(session); return true; }
+    if (tg.special === 'page') { this.turnPage(session, tg.dir ?? 1); return true; }
     if (tg.special === 'off') { this.toggleOff(session); return true; }
     if (tg.special === 'nav' && tg.screen) { // the console-switch column: another screen of this console, shown locally
       void this.engine.cmcpShowScreen(session, tg.screen).catch((err: unknown) => this.onError?.(`${tg.screen!.replace('std.', '')}: ${String(err).replace(/^Error: /, '')}`));

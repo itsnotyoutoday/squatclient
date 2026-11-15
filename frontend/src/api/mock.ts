@@ -668,6 +668,9 @@ export class MockEngine implements EngineAPI {
     if (this.settings.soundMuted) return 'global';
     return this.worldMuted[session] ? 'world' : '';
   }
+  async cmcpClose(session: string, reason: 'user' | 'client'): Promise<void> {
+    this.cmcpCall('cmcpClose', session, reason);
+  }
   async cmcpReducedMotion(on: boolean): Promise<void> {
     this.cmcpCall('cmcpReducedMotion', String(on));
   }
@@ -987,8 +990,10 @@ export class MockEngine implements EngineAPI {
     }
     this.appendLine(sd, chatterLine(sd.tick++), 'game');
   }
-  async resize(_sessionId: string, _cols: number, _rows: number): Promise<void> {
-    return;
+  /** the sizes the pane reported (NAWS), for tests */
+  resizes: { session: string; cols: number; rows: number }[] = [];
+  async resize(sessionId: string, cols: number, rows: number): Promise<void> {
+    this.resizes.push({ session: sessionId, cols, rows });
   }
   async scrollback(sessionId: string, opts: { beforeSeq?: number; limit: number }): Promise<Line[]> {
     const sd = this.must(sessionId);

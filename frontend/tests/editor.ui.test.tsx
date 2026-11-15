@@ -607,9 +607,8 @@ describe('failure modes', () => {
     engine.game.latencyMs = 40;
     await typeCommand('/edit #15');
     await screen.findByRole('tab', { name: /Sealed Vault|#15/ });
-    expect(
-      await screen.findByText(/not allowed to see #15/, undefined, { timeout: 3000 }),
-    ).toBeInTheDocument();
+    // the tab banner and the overview header both say it (one or both are up when the first poll lands)
+    expect((await screen.findAllByText(/not allowed to see #15/, undefined, { timeout: 15000 })).length).toBeGreaterThan(0);
     engine.game.latencyMs = 0;
     // the tab banner and the overview header both offer Retry
     expect(screen.getAllByRole('button', { name: 'Retry' }).length).toBeGreaterThan(0);

@@ -144,6 +144,9 @@ func (a *App) shutdown(context.Context) {
 // beforeClose remembers the window geometry; it never prevents closing.
 func (a *App) beforeClose(ctx context.Context) bool {
 	a.saveWindow(ctx)
+	if svc, err := a.service(); err == nil {
+		svc.CmcpClientClosing() // the games learn the window closes (Cobra.Context.Close, reason client)
+	}
 	return false
 }
 

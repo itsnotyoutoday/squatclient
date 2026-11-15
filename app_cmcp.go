@@ -161,3 +161,12 @@ func (a *App) SoundMuteState(session string) (string, error) {
 	}
 	return s.MuteState(session), nil
 }
+
+// CmcpClose asks the game to close the session's active context (the X of the console window). The screen is not hidden here: the game decides.
+func (a *App) CmcpClose(session, reason string) error {
+	s, err := a.service()
+	if err != nil {
+		return err
+	}
+	return s.CmcpClose(session, reason)
+}

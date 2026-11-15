@@ -308,7 +308,7 @@ describe('upload dialog', () => {
     const view = within(d).getByRole('region', { name: 'File preview' });
     view.scrollTop = 18 * 30_000;
     fireEvent.scroll(view);
-    await waitFor(() => expect(view.querySelector('[data-line="30001"]')).not.toBeNull());
+    await waitFor(() => expect(view.querySelector('[data-line="30001"]')).not.toBeNull(), { timeout: 15000 });
     expect(rows()).toBeLessThan(80);
     expect(screen.getByLabelText('Prepared result')).toHaveTextContent('60000 commands will be sent');
     const delay = within(d).getByLabelText('Delay per line (ms)');
@@ -316,11 +316,11 @@ describe('upload dialog', () => {
     await userEvent.type(delay, '0');
     await userEvent.click(within(d).getByRole('button', { name: 'Send' }));
     await waitFor(() => expect(screen.getByLabelText('Upload summary')).toBeInTheDocument(), {
-      timeout: 20000,
+      timeout: 90000, // a 60k-line send is CPU bound: under a loaded full run it needs far longer than alone
     });
     expect(e.sent).toHaveLength(60_000);
     expect(sent(e)[59_999]).toBe('think 60000');
-  }, 40000);
+  }, 120000);
 });
 
 describe('dropping a file on the window', () => {

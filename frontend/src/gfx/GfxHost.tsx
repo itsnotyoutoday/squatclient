@@ -285,6 +285,9 @@ export function GfxProvider({ engine, children }: { engine: EngineAPI; children:
         e.preventDefault();
         return;
       }
+      if (e.altKey && !e.ctrlKey && (e.code === 'PageDown' || e.code === 'PageUp') && fg && usePane.getState().by[fg]?.has) { // the widget column's pages
+        if (cmcp.current?.turnPage(fg, e.code === 'PageDown' ? 1 : -1)) { e.preventDefault(); e.stopPropagation(); return; }
+      }
       if (e.altKey && !e.ctrlKey && (e.key === ']' || e.key === '[') && fg && usePane.getState().by[fg]?.has) {
         getActiveCmcp()?.cycleScreen(fg, e.key === ']' ? 1 : -1);
         e.preventDefault();

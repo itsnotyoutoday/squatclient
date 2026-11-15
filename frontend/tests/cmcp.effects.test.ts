@@ -84,11 +84,17 @@ describe('viewscreen effects stay inside the viewscreen', () => {
 });
 
 describe('the ship name in the frame', () => {
-  it('falls back from the console ship to the Welcome ship, the ship status and the class, never "UNKNOWN SHIP"', () => {
+  it('falls back from the console ship to the ship status, the Welcome ship (not its login-time "No ship") and the class, never "UNKNOWN SHIP"', () => {
     const ui = fx('sensors');
     ui.ship = { id: 's1', epoch: 1 } as CmcpUI['ship'];
-    ui.welcome = { ship: { name: 'SS Welcome Name' } };
+    ui.docs = {};
+    ui.status = undefined;
+    ui.welcome = { ship: { id: 's1', name: 'SS Welcome Name' } };
     expect(templateVars(ui, 'SENSORS').ship).toBe('SS WELCOME NAME');
+    ui.welcome = { ship: { id: 'none', name: 'No ship' } }; // the ship the player had at login: none
+    ui.status = { name: 'ACS Resolute' } as never;
+    expect(templateVars(ui, 'SENSORS').ship).toBe('ACS RESOLUTE');
+    ui.status = undefined;
     ui.welcome = {};
     ui.docs = { ...ui.docs, 'Space.Ship.Status': { name: 'SS Status Name' } };
     expect(templateVars(ui, 'SENSORS').ship).toBe('SS STATUS NAME');
@@ -97,5 +103,15 @@ describe('the ship name in the frame', () => {
     expect(templateVars(ui, 'SENSORS').ship).toBe('BIRD OF PREY');
     ui.ship = undefined;
     expect(templateVars(ui, 'SENSORS').ship).not.toContain('UNKNOWN');
+  });
+});
+
+describe('the game name in the frame', () => {
+  it('shows the game, never the server software ("Evennia")', () => {
+    const ui = fx('sensors');
+    ui.server = { server: 'Evennia', game: 'CMCP Testgame' } as CmcpUI['server'];
+    expect(templateVars(ui, 'X').game).toBe('CMCP TESTGAME');
+    ui.server = { server: 'Evennia' } as CmcpUI['server'];
+    expect(templateVars(ui, 'X').game).toBe('');
   });
 });

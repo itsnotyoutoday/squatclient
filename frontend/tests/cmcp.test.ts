@@ -174,15 +174,27 @@ describe('the controller', () => {
     const { ctl } = setup();
     expect(ctl.handleGfxEvent('s1', { scene: 'lcars', id: 'x', event: 'click', x: 0, y: 0 })).toBe(false);
   });
-  it('a dismissed screen stays away until the engine changes it', () => {
+  it('the X asks the game to close the context (Cobra.Context.Close) and does not hide the screen; the game\'s update does', () => {
     const { engine, ctl, rtFor } = setup();
     const ui = { ...fx('damage'), session: 's1' };
     engine.pushCmcp(ui);
-    ctl.handleGfxEvent('s1', { scene: SCENE, id: '#scene', event: 'close', x: 0, y: 0 });
-    engine.pushCmcp({ ...ui, rev: ui.rev + 1 });
-    expect(rtFor('s1').slot(SCENE).scene.cfg.open).toBe(false);
-    engine.pushCmcp({ ...fx('power'), session: 's1', rev: ui.rev + 2 });
+    expect(ctl.handleGfxEvent('s1', { scene: SCENE, id: '#scene', event: 'close', x: 0, y: 0 })).toBe(true);
+    expect(engine.cmcpCalls.at(-1)).toMatchObject({ fn: 'cmcpClose', session: 's1', args: ['user'] });
+    engine.pushCmcp({ ...ui, rev: ui.rev + 1 }); // the game has not answered: the screen is still there
     expect(rtFor('s1').slot(SCENE).scene.cfg.open).toBe(true);
+    // the game popped the context (Cobra.Console null): no tree, the scene goes away
+    engine.pushCmcp({ ...ui, rev: ui.rev + 2, tree: null, console: undefined });
+    expect(rtFor('s1').slot(SCENE).scene.cfg.open).toBe(false);
+  });
+  it('a failed close request is reported', async () => {
+    const { engine, ctl } = setup();
+    const errors: string[] = [];
+    ctl.onError = (t) => errors.push(t);
+    engine.pushCmcp({ ...fx('damage'), session: 's1' });
+    engine.cmcpClose = (): Promise<void> => Promise.reject(new Error('Error: session: closing too fast'));
+    ctl.requestClose('s1');
+    await new Promise((r) => setTimeout(r, 10));
+    expect(errors.some((e) => /closing too fast/.test(e))).toBe(true);
   });
   it('reports a failed command with the game hint', () => {
     const { engine, ctl } = setup();

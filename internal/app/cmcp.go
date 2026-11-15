@@ -3,6 +3,7 @@ package app
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/itsnotyoutoday/cmcp/msg"
 	cs "github.com/itsnotyoutoday/cmcp/session"
@@ -149,3 +150,12 @@ func (s *Service) CmcpPinScreen(session string, pin bool) error {
 func (s *Service) CmcpViewport(session string, widthPx, scale, monoPx float64) error {
 	return s.eng.CmcpViewport(session, widthPx, scale, monoPx)
 }
+
+// CmcpClientClosing tells every connected game that the client window is closing (Cobra.Context.Close with reason "client"); the game decides.
+func (s *Service) CmcpClientClosing() {
+	s.eng.CmcpCloseAll()
+	time.Sleep(150 * time.Millisecond) // let the frames leave before the connections go
+}
+
+// CmcpClose asks the game to close the session's active context.
+func (s *Service) CmcpClose(session, reason string) error { return s.eng.CmcpClose(session, reason) }

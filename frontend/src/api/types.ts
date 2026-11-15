@@ -674,6 +674,8 @@ export interface EngineAPI {
   cmcpPackConsent(session: string, packId: string, allow: boolean): Promise<void>;
   cmcpThemeDoc(session: string, themeId: string): Promise<Record<string, unknown>>;
   cmcpReducedMotion(on: boolean): Promise<void>;
+  /** ask the game to close the active context (the X of the console window); the game decides, nothing is hidden here */
+  cmcpClose(session: string, reason: 'user' | 'client'): Promise<void>;
   /** mute or unmute one session's world (persisted on a saved world, else for this connection) */
   setWorldSoundMuted(session: string, muted: boolean): Promise<void>;
   /** what mutes a session: 'global', 'world' or '' */

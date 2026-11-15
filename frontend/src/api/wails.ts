@@ -199,6 +199,7 @@ export class WailsEngine implements EngineAPI {
   cmcpViewport = (session: string, widthPx: number, scale: number, monoPx: number) => call<void>('CmcpViewport', session, widthPx, scale, monoPx);
   setWorldSoundMuted = (session: string, muted: boolean) => call<void>('SetWorldSoundMuted', session, muted);
   soundMuteState = (session: string) => call<'' | 'global' | 'world'>('SoundMuteState', session);
+  cmcpClose = (session: string, reason: 'user' | 'client') => call<void>('CmcpClose', session, reason);
   cmcpReducedMotion = (on: boolean) => call<void>('CmcpReducedMotion', on);
   cmcpThemeDoc = (session: string, themeId: string) => call<Record<string, unknown>>('CmcpThemeDoc', session, themeId);
   cmcpPackConsent = (session: string, packId: string, allow: boolean) => call<void>('CmcpPackConsent', session, packId, allow);

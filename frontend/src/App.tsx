@@ -28,6 +28,7 @@ import { AwayDialog } from './components/dialogs/AwayDialog';
 import HistoryBrowser from './components/history/HistoryBrowser';
 import { UploadHost } from './components/upload/UploadDialog';
 import { PackConsentHost } from './components/dialogs/PackConsentDialog';
+import { AlertAmbientOverlay } from './components/AlertAmbientOverlay';
 import { ScreenHelpHost } from './components/dialogs/ScreenHelpDialog';
 import { useGlobalKeys } from './global-keys';
 import { insertIntoInput, openHelp } from './help/command';
@@ -229,6 +230,7 @@ export function App({ engine }: { engine: EngineAPI }) {
         <UploadHost />
         <PackConsentHost />
         <ScreenHelpHost />
+        <AlertAmbientOverlay />
       </div>
       </GfxProvider>
     </ControllerContext.Provider>

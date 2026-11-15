@@ -1703,3 +1703,6 @@ h3.lay-panel-title {
 .statusbar button.seg.soundbtn { background: transparent; border: 0; padding: 0 6px; color: inherit; cursor: pointer; }
 .statusbar button.seg.soundbtn.globalmuted { opacity: 0.55; }
 .statusbar button.seg.soundbtn:focus-visible, .soundbtn:focus-visible { outline: 2px solid var(--accent, #4aa3ff); outline-offset: 1px; }
+
+/* the ship-wide alert look when no console screen is up: an edge and a soft glow around the window, never over text or input */
+.alert-ambient { position: fixed; inset: 0; pointer-events: none; z-index: 40; transition: box-shadow 0.06s linear; }

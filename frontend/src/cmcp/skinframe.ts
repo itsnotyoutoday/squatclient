@@ -2,6 +2,65 @@ import type { CmcpUI } from './types';
 import type { Prim } from './widgets';
 import type { Colour, Pal, Role, Shape, Skin, TextMap } from './skins/types';
 
+/** Text must fit the shape it sits in. The width of a string at a size is measured with the real font where a canvas exists (the app), else
+ * estimated; a text too wide for its box shrinks (down to FIT_FLOOR of its size) and, when that is not enough, ends with an ellipsis. */
+export const FIT_FLOOR = 0.55;
+let mctx: CanvasRenderingContext2D | null | undefined;
+export function measureText(text: string, size: number, font = 'sans-serif', weight = '700'): number {
+  if (mctx === undefined) {
+    try { mctx = typeof document !== 'undefined' ? document.createElement('canvas').getContext('2d') : null; } catch { mctx = null; }
+  }
+  if (mctx) {
+    mctx.font = `${weight} ${size}px ${font}`;
+    const w = mctx.measureText(text).width;
+    if (w > 0) return w;
+  }
+  return text.length * size * 0.55; // a safe estimate for the condensed and the wide faces alike
+}
+export function fitText(text: string, size: number, maxW: number, font?: string, weight?: string, floor = FIT_FLOOR): { text: string; size: number } {
+  if (maxW <= 0 || measureText(text, size, font, weight) <= maxW) return { text, size };
+  const s = Math.max(size * floor, (size * maxW) / measureText(text, size, font, weight));
+  if (measureText(text, s, font, weight) <= maxW) return { text, size: Math.round(s * 10) / 10 };
+  let t = text;
+  while (t.length > 1 && measureText(t + '\u2026', s, font, weight) > maxW) t = t.slice(0, -1);
+  return { text: t + '\u2026', size: Math.round(s * 10) / 10 };
+}
+
+type R4 = [number, number, number, number];
+const boxOf = (s: Shape): R4 | null => {
+  if (s.t === 'rect') return [s.x, s.y, s.w, s.h];
+  if (s.t === 'polygon') { const xs = s.points.filter((_, i) => i % 2 === 0), ys = s.points.filter((_, i) => i % 2 === 1); return [Math.min(...xs), Math.min(...ys), Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)]; }
+  return null;
+};
+const containers = new WeakMap<Shape[], (R4 | null)[]>();
+/** the smallest filled shape a text anchors in: the box its text must fit (cached per frame) */
+export function textBoxes(shapes: Shape[]): (R4 | null)[] {
+  let c = containers.get(shapes);
+  if (c) return c;
+  c = shapes.map((t) => {
+    if (t.t !== 'text') return null;
+    let best: R4 | null = null;
+    for (const o of shapes) {
+      if (o === t || o.t === 'text' || ('fill' in o && (o.fill === undefined || o.fill === 'none'))) continue;
+      const b = boxOf(o);
+      if (b && t.x >= b[0] && t.x <= b[0] + b[2] && t.y >= b[1] && t.y <= b[1] + b[3] && (!best || b[2] * b[3] < best[2] * best[3])) best = b;
+    }
+    return best;
+  });
+  containers.set(shapes, c);
+  return c;
+}
+/** the width a text may use at its anchor: inside its shape (with a margin), else up to the scene edge */
+export function textRoom(t: Extract<Shape, { t: 'text' }>, box: R4 | null): number {
+  const m = 8, al = t.align ?? 'left';
+  if (box) {
+    if (al === 'center') return 2 * Math.min(t.x - box[0], box[0] + box[2] - t.x) - 2 * m;
+    if (al === 'right') return t.x - box[0] - m;
+    return box[0] + box[2] - t.x - m;
+  }
+  return al === 'center' ? 2 * Math.min(t.x, 1600 - t.x) - 2 * m : al === 'right' ? t.x - m : 1600 - t.x - m;
+}
+
 const ROLES = new Set(['p', 's', 't', 'q', 'x', 'r', 'k', 'bg']);
 /** palette role or literal colour */
 export const col = (c: Colour | string | undefined, pal: Pal): string => (c === undefined ? '#00000000' : c === 'none' ? '#00000000' : ROLES.has(c) ? pal[c as Role] : c);
@@ -20,9 +79,11 @@ export function templateVars(ui: CmcpUI, modeLabel: string): Record<string, stri
   const pct = hull.max ? Math.round(((hull.cur ?? 0) / hull.max) * 100) : 0;
   const alert = String(st.alert ?? ui.alert ?? 'green');
   return {
-    ship: (ui.ship?.name || ui.welcome?.ship?.name || String(st.name ?? '') || ui.ship?.class || ui.ship?.id || 'UNNAMED SHIP').toUpperCase(),
-    class: (ui.ship?.class || ui.welcome?.ship?.class || String(st.class ?? '')).toUpperCase(),
-    game: (ui.server?.game ?? ui.server?.server ?? '').toUpperCase(),
+    // the ship now: the console's own ship, then the live status, then the welcome's (which names the ship at login: "No ship" when none)
+    ship: (ui.ship?.name || String(st.name ?? '') || (ui.welcome?.ship && ui.welcome.ship.id !== 'none' ? ui.welcome.ship.name : '') || ui.ship?.class || ui.ship?.id || 'UNNAMED SHIP').toUpperCase(),
+    class: (ui.ship?.class || String(st.class ?? '') || (ui.welcome?.ship && ui.welcome.ship.id !== 'none' ? ui.welcome.ship.class : '') || '').toUpperCase(),
+    // the game's own name only: the server software's name (server.server) is never shown
+    game: (ui.server?.game ?? '').toUpperCase(),
     mode: modeLabel.toUpperCase(),
     title: (ui.console?.name ?? ui.title ?? '').toUpperCase(),
     hull: String(pct),
@@ -51,7 +112,8 @@ const pick = (t: string | TextMap, v: Record<string, string>): string => {
 };
 
 /** The skin's static decoration as scene primitives (back to front). Every shape's colours are palette roles, so a palette swap recolours it. */
-export function frameShapes(shapes: Shape[], pal: Pal, vars: Record<string, string>, idp: string): Prim[] {
+export function frameShapes(shapes: Shape[], pal: Pal, vars: Record<string, string>, idp: string, font?: string): Prim[] {
+  const boxes = textBoxes(shapes);
   return shapes.map((s, i): Prim => {
     const id = `${idp}${s.id ?? i}`;
     const base: Record<string, unknown> = {};
@@ -66,7 +128,7 @@ export function frameShapes(shapes: Shape[], pal: Pal, vars: Record<string, stri
       case 'circle': return { id, type: 'circle', props: { ...base, x: s.x, y: s.y, r: s.r, fill: col(s.fill, pal), stroke: s.stroke ? col(s.stroke, pal) : undefined, strokeWidth: s.sw } };
       case 'arc': return { id, type: 'arc', props: { ...base, x: s.x, y: s.y, r0: s.r0, r1: s.r1, a0: s.a0, a1: s.a1, fill: col(s.fill, pal) } };
       case 'line': return { id, type: 'line', props: { ...base, x1: s.x1, y1: s.y1, x2: s.x2, y2: s.y2, stroke: col(s.stroke, pal), strokeWidth: s.sw ?? 2 } };
-      case 'text': return { id, type: 'text', props: { ...base, x: s.x, y: s.y, text: fill(pick(s.text, vars), vars), size: s.size, fill: col(s.fill ?? 'k', pal), align: s.align ?? 'left', baseline: 'middle', weight: s.weight ?? '700' } };
+      case 'text': { const ft = fitText(fill(pick(s.text, vars), vars), s.size, textRoom(s, boxes[i]), font, s.weight ?? '700'); return { id, type: 'text', props: { ...base, x: s.x, y: s.y, text: ft.text, size: ft.size, fill: col(s.fill ?? 'k', pal), align: s.align ?? 'left', baseline: 'middle', weight: s.weight ?? '700' } }; }
     }
   });
 }
@@ -78,9 +140,10 @@ export function navShapes(skin: Skin, pal: Pal, current: number, idp: string, av
   const shown = skin.nav.items.map((it, i) => ({ it, i })).filter(({ it }) => !avail || it.screens.some((sc) => avail(`std.${sc}`).available));
   const curShown = shown.findIndex(({ i }) => i === current);
   shown.forEach(({ it, i: orig }, i) => {
+    const nf = fitText(it.label, b.size * (skin.font.tscale ?? 1), b.w - 2 * (b.padX ?? 16) - Math.abs(b.skewX ?? 0), skin.font.family, skin.font.weight);
     out.push({
       id: `${idp}nav${i}`, type: 'button', events: ['click'], target: { path: '', event: '', special: 'nav', screen: `std.${it.screens.find((sc) => !avail || avail(`std.${sc}`).available) ?? it.screens[0]}` },
-      props: { x: b.x + i * (b.dx ?? 0), y: b.y + i * (b.dy ?? 0), w: b.w, h: b.h, r: b.r ?? b.h / 2, fill: col(it.role, pal), text: it.label, color: col(b.color, pal), size: b.size * (skin.font.tscale ?? 1), weight: skin.font.weight,
+      props: { x: b.x + i * (b.dx ?? 0), y: b.y + i * (b.dy ?? 0), w: b.w, h: b.h, r: b.r ?? b.h / 2, fill: col(it.role, pal), text: nf.text, color: col(b.color, pal), size: nf.size, weight: skin.font.weight,
         align: b.align ?? 'center', padX: b.padX ?? 16, font: skin.font.family, glow: 0.04, key: `alt+${i + 1}`, skewX: b.skewX ?? 0, stroke: b.stroke ? col(b.stroke, pal) : undefined, strokeWidth: b.sw, opacity: orig === current ? 1 : 0.85 },
     });
   });

@@ -26,3 +26,11 @@ export const useThemeInUse = create<ThemeInUse>((set, get) => ({
   theme: '', source: '', version: '',
   set: (theme, source, version) => { const g = get(); if (g.theme !== theme || g.source !== source || g.version !== version) set({ theme, source, version }); },
 }));
+
+/** The ship-wide alert ambience per session (6.17.1), for the plain text UI: when no CMCP screen is up (a room, the dock) the app draws only
+ * the edge and a soft glow around the window, never over the text or the input line. */
+interface AmbientState { by: Record<string, { edge: string; hueBg?: string } | undefined>; set(session: string, a: { edge: string; hueBg?: string } | undefined): void }
+export const useAmbient = create<AmbientState>((set) => ({
+  by: {},
+  set: (session, a) => set((st) => (JSON.stringify(st.by[session]) === JSON.stringify(a) ? st : { by: { ...st.by, [session]: a } })),
+}));

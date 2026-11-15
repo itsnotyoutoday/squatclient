@@ -35,10 +35,12 @@ for (const f of files) {
     if (spr) eng.cmcpSprites.set('marauder', spr);
     u.session = id;
     u.tree.session = id;
+    window.__rev = (window.__rev || 1000) + 1; // each dump comes from a different run: a newer revision than the last one pushed, or the model drops it as stale
+    u.rev = window.__rev;
     w.sessions.getState().setFg(id);
     eng.pushCmcp(u);
   }, ui, sprite);
-  await sleep(1300);
+  await sleep(1800);
   const g = await page.evaluate(() => {
     const r = (el) => { if (!el) return null; const b = el.getBoundingClientRect(); return [Math.round(b.x), Math.round(b.y), Math.round(b.width), Math.round(b.height)]; };
     const out = document.querySelector('.lay-output');
@@ -47,6 +49,19 @@ for (const f of files) {
   const tag = f.replace(/^live-|\.json$/g, '');
   check(g.ported && g.scenes.includes('cmcp'), `${tag}: ${ui.tree.screen} (${ui.tree.theme}, ${ui.tree.layout}) scene open with a text port`, JSON.stringify(g));
   check(!!g.output && g.output[2] * g.output[3] >= vw * vh * 0.1, `${tag}: the text pane has room`, JSON.stringify(g.output));
+  // the pane's width in columns (the app's mono font is 14 px, 0.6 em advance) must be the max_cols the theme asks for (80), and the size the pane
+  // reports to the server (NAWS) must agree with it
+  await sleep(1000); // the pane reports its size (NAWS) after a 250 ms debounce
+  const m = await page.evaluate(() => {
+    const e = window.__squat.ui.getState().engine, id = window.__squat.sessions.getState().order[0];
+    const el = document.querySelector('.lay-output .virtual-list, .lay-output [data-output], .lay-output');
+    const r = el.getBoundingClientRect();
+    const last = [...(e.resizes ?? [])].reverse().find((x) => x.session === id);
+    return { w: r.width, cols: last?.cols ?? null };
+  });
+  const paneCols = (m.w - 28) / 8.4;
+  check(paneCols >= 79.5 || ui.tree.layout === 'side' && ui.tree.portCapPx === 0, `${tag}: the pane is ${Math.round(m.w)} px = ${paneCols.toFixed(1)} columns (max_cols 80), NAWS reported ${m.cols}`, `${paneCols}`);
+  if (m.cols !== null) check(Math.abs(m.cols - (m.w - 12) / 8.4) <= 3, `${tag}: the reported columns (${m.cols}) agree with the pane`, `${m.cols} vs ${(m.w - 12) / 8.4}`);
   const file = path.join(out, `${tag}-${vw}x${vh}.png`);
   await page.screenshot({ path: file });
   console.log('  ' + file);
