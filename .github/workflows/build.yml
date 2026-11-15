@@ -46,6 +46,11 @@ jobs:
           repository: ${{ env.DAEMON_REPO }}
           ref: ${{ env.DAEMON_REF }}
           path: squatClientDaemon
+      - uses: actions/checkout@v4
+        with:
+          repository: itsnotyoutoday/cmcp
+          ref: main
+          path: cmcp
       - uses: actions/setup-go@v5
         with:
           go-version-file: squatClient/go.mod
@@ -102,6 +107,11 @@ jobs:
           repository: ${{ env.DAEMON_REPO }}
           ref: ${{ env.DAEMON_REF }}
           path: squatClientDaemon
+      - uses: actions/checkout@v4
+        with:
+          repository: itsnotyoutoday/cmcp
+          ref: main
+          path: cmcp
       - uses: actions/setup-go@v5
         with:
           go-version-file: squatClient/go.mod
