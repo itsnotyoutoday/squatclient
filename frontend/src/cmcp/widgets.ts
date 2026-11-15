@@ -362,7 +362,7 @@ const radar: Draw = (p, ctx, out) => {
     const R = Math.max(20, Math.min(r0.w, r0.h - 22) / 2 - 2), cx = r0.x + r0.w / 2, cy = r0.y + (r0.h - 22) / 2;
     out.push({ id: `${id}.ring`, type: 'arc', props: { x: cx, y: cy, r0: R - 7, r1: R, a0: 0, a1: 360, fill: pal[sk.ring], glow: 0.35 } });
     out.push({ id: `${id}.dish`, type: 'radar', bind: { sweep: 'mod(time() * 80, 360)' }, props: { x: cx, y: cy, r: R - 10, trail: 110, rings: sk.rings, color: pal[sk.color], bg: sk.bg, glow: 0.7, contacts: radarContacts(pr) } });
-    out.push(text(`${id}.cap`, cx, r0.y + r0.h - 8, p.node.widget === 'scope' ? 'TACTICAL SCOPE' : 'TACTICAL SENSOR ARRAY', 17, pal[ctx.skin.widgets.head], { align: 'center', font: font(ctx, true), weight: '700' }));
+    out.push(text(`${id}.cap`, cx, r0.y + r0.h - 8, p.node.widget === 'scope' ? 'TACTICAL SCOPE' : 'TACTICAL SENSOR ARRAY', Math.min(17, r0.w / 15), pal[ctx.skin.widgets.head], { align: 'center', font: font(ctx, true), weight: '700' }));
     const sel0 = pr.selected === undefined || pr.selected === null ? null : String(pr.selected);
     void sel0;
     return;
@@ -502,7 +502,7 @@ const viewscreen: Draw = (p, ctx, out) => {
   if (ctx.skin) {
     const hd = (p.node.props.heading ?? {}) as Record<string, unknown>;
     out.push(text(`${id}.hd`, r.x + 14, r.y + 16, 'FORWARD VIEWSCREEN', 17, ctx.pal![ctx.skin.widgets.head], { font: font(ctx, true), weight: '700' }));
-    out.push(text(`${id}.hh`, r.x + r.w - 14, r.y + 16, `HEADING ${String(Math.round(num(hd.az))).padStart(3, '0')} MARK ${String(Math.round(num(hd.mark))).padStart(3, '0')}`, 16, ctx.pal![ctx.skin.widgets.text], { align: 'right', font: font(ctx, true), weight: '700' }));
+    if (r.w > 380) out.push(text(`${id}.hh`, r.x + r.w - 14, r.y + 16, `HEADING ${String(Math.round(num(hd.az))).padStart(3, '0')} MARK ${String(Math.round(num(hd.mark))).padStart(3, '0')}`, 16, ctx.pal![ctx.skin.widgets.text], { align: 'right', font: font(ctx, true), weight: '700' }));
   } else out.push(text(`${id}.hd`, r.x + 10, r.y + 14, 'VIEWSCREEN', 12, tok(ctx, 'color.dim'), { font: font(ctx, true), weight: '700', letterSpacing: 1 }));
 };
 

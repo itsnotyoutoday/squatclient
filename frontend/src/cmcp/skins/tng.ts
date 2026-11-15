@@ -1,4 +1,5 @@
 import type { Skin, Shape } from './types';
+import { sensorsArrangement } from './arrange';
 
 const strips = (y: number, roles: Skin['nav']['items'][number]['role'][]): Shape[] => {
   const xs: [number, number][] = [[354, 300], [660, 170], [836, 430], [1272, 112], [1390, 190]];
@@ -53,8 +54,5 @@ export const tng: Skin = {
     radar: { kind: 'dish', ring: 'p', color: 'x', bg: '#03110a', rings: 4 },
     viewscreen: { r: 18, width: 5, role: 'p' },
   },
-  arrange: {
-    // viewscreen band on the left, buttons under it, the contact list in the middle, a modest radar dish on the right
-    sensors: { 'viewscreen#0': [240, 90, 640, 258], 'container-of:button#0': [240, 356, 640, 38], 'table#0': [900, 90, 380, 304], 'radar#0': [1300, 90, 280, 304] },
-  },
+  arrange: { sensors: sensorsArrangement([240, 84, 1340, 316]) },
 };

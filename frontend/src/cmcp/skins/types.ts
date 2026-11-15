@@ -20,6 +20,7 @@ export type Shape =
   | (Common & { t: 'text'; x: number; y: number; text: string; size: number; fill?: Colour; align?: 'left' | 'center' | 'right'; weight?: string });
 
 export interface NavItem { label: string; role: Role; screens: string[] }
+export type Button = ButtonSkin;
 export interface ButtonSkin { x: number; y: number; w: number; h: number; dx?: number; dy?: number; r?: number | number[]; size: number; align?: 'left' | 'center' | 'right'; padX?: number; color?: Colour; skewX?: number; stroke?: Colour; sw?: number }
 
 export interface Skin {
