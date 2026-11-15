@@ -224,6 +224,17 @@ consoles, closing and reopening (the end state is mirrored with a `set`). Policy
 `/lcars size 45` gives a 45% strip above the text instead (no port, no toggle), `/lcars full` the framed console,
 `/lcars stop` closes it, and `/lcars` reopens a closed console every time.
 
+## Per session
+
+Graphics belong to the session that opened them. `/lcars` or `/gfx open` in one session creates a scene for that session only;
+another session has none until it asks for its own. Each session keeps its own scene state (the LOG toggle, theme, console,
+simulation, objects), the same scene ids can exist in several sessions at once, and only the foreground session draws and
+animates; the others keep their state and cost nothing. Closing a session discards its scenes. Calm is the one global setting.
+
+On the wire every op carries `"session"`, and the window addresses pointer events as `"<session>/<scene>"`. The `_gfx` and
+`_canvas` bridge macros pass the world (`/notify @gfx|<world>|<command>`) so a command runs in the session that issued it, and
+the Lua module keeps its scenes, handlers, timers and simulation per world.
+
 ## Themes and the calm setting
 
 `/lcars [theme]` is the single entry point. `/lcars themes` lists them, `/lcars tour` cycles through all of them every 12 seconds

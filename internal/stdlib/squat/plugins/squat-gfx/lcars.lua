@@ -43,6 +43,46 @@ local DUR = 0.55
 local expanded = false
 local dock, size, usePort = "full", nil, true
 local curTheme = "tng"
+local tourTimer
+
+-- Everything above (the scene, theme, simulation, timers, LOG state ...) belongs to ONE SESSION. The code below uses these
+-- upvalues directly, so each entry point (a command, a click, a timer tick, a GMCP message) runs inside with(world, fn), which
+-- loads that session's state into them first and stores it back afterwards. The calm setting alone is global.
+local states, depth, cw = {}, 0, ""
+local function load(st)
+  sc, themed, consoles, current, alert, timerId, sim, closed, expanded = st.sc, st.themed or {}, st.consoles or {}, st.current or "sens", st.alert or "off", st.timerId, st.sim, st.closed ~= false, st.expanded or false
+  dock, size, usePort, curTheme, tourTimer, S = st.dock or "full", st.size, st.usePort ~= false, st.curTheme or "tng", st.tourTimer, st.S
+end
+local function store(world)
+  states[world] = {sc = sc, themed = themed, consoles = consoles, current = current, alert = alert, timerId = timerId, sim = sim, closed = closed, expanded = expanded,
+    dock = dock, size = size, usePort = usePort, curTheme = curTheme, tourTimer = tourTimer, S = S}
+end
+local function with(world, fn, ...)
+  world = world or ""
+  if depth > 0 and cw == world then return fn(...) end   -- already inside this session
+  local prev, nested = cw, depth > 0
+  if nested then store(prev) end   -- another session's code is running: keep its state while we borrow the upvalues
+  load(states[world] or {})
+  cw = world
+  gfx.setWorld(world)
+  depth = depth + 1
+  local ok, err = pcall(fn, ...)
+  depth = depth - 1
+  store(world)
+  cw = prev
+  gfx.setWorld(prev)
+  if nested then load(states[prev]) end
+  if not ok then error(err, 0) end
+end
+-- squat.after / timers run later, in the session that scheduled them
+local function after(sec, fn)
+  local w = cw
+  squat.after(sec, function() with(w, fn) end)
+end
+local function every(sec, fn)
+  local w = cw
+  return squat.timer{every = sec, fn = function() with(w, fn) end}
+end
 local calm = tonumber(squat.var.get("lcars_calm", 0)) or 0
 
 local function lighten(hex)
@@ -479,7 +519,7 @@ local function layout(ex, instant)
       local final = {x = pr[1] - pad, y = pr[2] - pad, w = pr[3] + 2 * pad, h = pr[4] + 2 * pad}
       mv(o, final, instant)
       if not instant then -- the Go side mirrors only what is set, so record the end state (for reopen)
-        squat.after(DUR + 0.1, function() if sc and not closed then o:set(final) end end)
+        after(DUR + 0.1, function() if sc and not closed then o:set(final) end end)
       end
     end
   end
@@ -496,12 +536,12 @@ local function layout(ex, instant)
         mi:set{visible = true}
         mv(m, {opacity = 0}, instant)
         mv(mi, {opacity = 1}, instant)
-        if instant then m:set{visible = false} else squat.after(DUR, function() if expanded then m:set{visible = false} end end) end
+        if instant then m:set{visible = false} else after(DUR, function() if expanded then m:set{visible = false} end end) end
       else
         m:set{visible = true}
         mv(m, {opacity = 1}, instant)
         mv(mi, {opacity = 0}, instant)
-        if instant then mi:set{visible = false} else squat.after(DUR, function() if not expanded then mi:set{visible = false} end end) end
+        if instant then mi:set{visible = false} else after(DUR, function() if not expanded then mi:set{visible = false} end end) end
       end
     end
   end
@@ -538,7 +578,7 @@ function L.show(name)
     elseif n == current then
       g:animate{opacity = 0, dur = 0.25}
       local old = g
-      squat.after(0.3, function() if current ~= n then old:hide() end end)
+      after(0.3, function() if current ~= n then old:hide() end end)
     end
   end
   current = name
@@ -578,10 +618,9 @@ function L.start(console, alertState, themeName)
   current = nil
   L.show(console or "sens")
   if alertState == "red" or alert == "red" then L.alert("red") end
-  timerId = squat.timer{every = 1, fn = tick}
+  timerId = every(1, tick)
 end
 
-local tourTimer
 function L.endTour()
   if tourTimer then squat.cancel(tourTimer) tourTimer = nil end
 end
@@ -596,7 +635,12 @@ end
 function L.setCalm(v)
   calm = math.max(0, math.min(1, v))
   squat.var.set("lcars_calm", calm)
-  if sc then sc:open{calm = calm} end
+  local here = cw
+  for w, st in pairs(states) do -- the one global setting: every session's scene follows
+    if w == here then if sc then sc:open{calm = calm} end
+    else with(w, function() if sc then sc:open{calm = calm} end end) end
+  end
+  if states[here] == nil and sc then sc:open{calm = calm} end
 end
 
 function L.tour()
@@ -607,12 +651,12 @@ function L.tour()
     L.start(current or "sens", nil, themeOrder[i])
   end
   nextTheme()
-  tourTimer = squat.timer{every = 12, fn = function() if closed then L.endTour() else nextTheme() end end}
+  tourTimer = every(12, function() if closed then L.endTour() else nextTheme() end end)
 end
 
 local ALIASES = {picard = "bridge", calm_theme = "soft"}
 
-function L.command(m)
+local function command(m)
   local raw = (m[1] or "")
   if raw:match("^%s*stop") == nil and raw:match("^%s*off") == nil then
     if not gfx.ensure() then return end   -- an explicit command starts fresh: clears any earlier give-up
@@ -646,24 +690,28 @@ function L.command(m)
     if sc and consoles[first == "" and "sens" or first] then
       closed = false
       sc:open{dock = dock, size = size, portNode = usePort and "textport" or "none", open = true, calm = calm}   -- reopens after the close button / Escape / /lcars stop
-      if not timerId then timerId = squat.timer{every = 1, fn = tick} end
+      if not timerId then timerId = every(1, tick) end
       L.show(first == "" and "sens" or first)
     else L.start(first ~= "" and first or "sens") end
   else squat.echo("usage: /lcars [theme|sens|eng|tac|ship|themes|tour|calm N|full|size N|log|alert red|off|stop]") end
 end
 
+function L.command(m) with(m.world, command, m) end
+
 -- A game's GMCP feeds the same display: Ship.Status {Power = {Warp = 55, ...}, Fuel = {...}} becomes sh_* variables.
 squat.on("gmcp", function(m)
-  if m.package ~= "Ship.Status" or type(m.data) ~= "table" or not sim then return end
-  local v = {}
-  for k, val in pairs(m.data) do
-    if type(val) == "number" then v["sh_" .. k] = val end
-  end
-  gfx.vars(v)
+  with(m.world, function()
+    if m.package ~= "Ship.Status" or type(m.data) ~= "table" or not sim then return end
+    local v = {}
+    for k, val in pairs(m.data) do
+      if type(val) == "number" then v["sh_" .. k] = val end
+    end
+    gfx.vars(v)
+  end)
 end)
 
 squat.alias{match = "^/lcars(?: (.*))?$", regex = true, fn = L.command}
-squat.alias{match = "^/lock (\\d)$", regex = true, fn = function(m) if sim then L.lock(tonumber(m[1])) end end}
+squat.alias{match = "^/lock (\\d)$", regex = true, fn = function(m) with(m.world, function() if sim then L.lock(tonumber(m[1])) end end) end}
 
 -- ------------------------------------------------------------------ themes
 local function register(t)
@@ -726,5 +774,7 @@ for _, name in ipairs{"theme_soft", "theme_romulan", "theme_klingon", "theme_tos
   local ok, err = pcall(function() require(name)(E) end)
   if not ok then squat.log("lcars: theme " .. name .. " failed to load: " .. tostring(err), "warn") end
 end
+
+gfx.wrap = function(world, fn) with(world, fn) end   -- clicks and window events run in the session that owns the scene
 
 return L

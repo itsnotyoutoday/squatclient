@@ -15,7 +15,9 @@
 
 local M = {}
 
-local handlers = {}   -- "scene\0id\0event" -> {obj, fn}
+local handlers = {}   -- "world\0scene\0id\0event" -> {obj, fn}
+local curWorld = ""  -- the session the running code belongs to (lcars.lua sets it); scenes, handlers and failure counts are per session
+function M.setWorld(w) curWorld = w or "" end
 local nextId = 0
 
 -- ------------------------------------------------------------------ encoding
@@ -91,11 +93,12 @@ local function props(t, skip)
   return table.concat(out, " ")
 end
 
-local failures, disabled, gaveUp = 0, false, false
+local fails = {}   -- world -> {failures, disabled, gaveUp}
+local function fs() local f = fails[curWorld]; if not f then f = {0, false, false}; fails[curWorld] = f end return f end
 
 -- The failure limit only exists to stop a flood from a broken setup. An explicit user command (/lcars, /gfxdemo) starts
 -- fresh: reset() clears it.
-function M.reset() failures, disabled, gaveUp = 0, false, false end
+function M.reset() fails[curWorld] = {0, false, false} end
 
 -- Makes sure the TF side (gfx.tf: the /gfx and /canvas wrappers) is loaded. It is part of SquatClient's standard
 -- library, but SQUATCLIENT_TFLIB (another library) or a startup file may have replaced that. Call it from user commands.
@@ -103,7 +106,7 @@ function M.ensure()
   M.reset()
   local ok = squat.tf("/require -q gfx.tf")
   if not ok then
-    disabled = true
+    fs()[2] = true
     squat.echo("gfx: the graphics commands are not available (gfx.tf could not be loaded). Is SQUATCLIENT_TFLIB set to another library?")
     return false
   end
@@ -111,18 +114,19 @@ function M.ensure()
 end
 
 local function run(line)
-  if disabled then return false end
+  local f = fs()
+  if f[2] then return false end
   local ok, err = squat.tf(line)
   if ok then
-    failures = 0
+    f[1] = 0
     return true
   end
-  failures = failures + 1
+  f[1] = f[1] + 1
   squat.log("gfx: " .. tostring(err) .. " (" .. line .. ")", "warn")
-  if failures >= 5 then -- a broken setup must not flood the log and the window with hundreds of errors
-    disabled = true
-    if not gaveUp then
-      gaveUp = true
+  if f[1] >= 5 then -- a broken setup must not flood the log and the window with hundreds of errors
+    f[2] = true
+    if not f[3] then
+      f[3] = true
       squat.echo("gfx: too many failed graphics commands, giving up until the next /lcars or /gfxdemo (see the log).")
     end
   end
@@ -135,7 +139,7 @@ Obj.__index = Obj
 
 local function select(scene) return run("/gfx scene " .. scene.id) end
 
-local function key(o, ev) return o.scene.id .. "\0" .. o.id .. "\0" .. ev end
+local function key(o, ev) return o.scene.world .. "\0" .. o.scene.id .. "\0" .. o.id .. "\0" .. ev end
 
 function Obj:set(t)
   select(self.scene)
@@ -245,7 +249,7 @@ function Scene:close() run("/gfx close " .. self.id) end
 -- scene:on_close(fn): the window closed the scene (close button, Escape); fn() runs
 function Scene:on_close(fn)
   select(self)
-  handlers[self.id .. "\0#scene\0close"] = {obj = self, fn = function() fn() end}
+  handlers[self.world .. "\0" .. self.id .. "\0#scene\0close"] = {obj = self, fn = function() fn() end}
   run("/gfx on #scene close /_gfxev " .. self.id .. " #scene close $x $y")
 end
 function Scene:clear() select(self); run("/gfx clear " .. self.id); self.objects = {} end
@@ -271,14 +275,15 @@ function Scene:timeline(name, opt, steps)
 end
 function Scene:play(name) select(self); run("/gfx play " .. name) end
 
-local scenes = {}
+local scenes = {}   -- world \0 id -> scene
 
 -- gfx.scene(id [, {w=, h=, bg=, dock=, margin={t,r,b,l}, fit=, bloom=}]): creates (or returns) a scene and opens it
 function M.scene(id, opt)
-  local s = scenes[id]
+  local k = curWorld .. "\0" .. id
+  local s = scenes[k]
   if not s then
-    s = setmetatable({id = id, objects = {}}, Scene)
-    scenes[id] = s
+    s = setmetatable({id = id, objects = {}, world = curWorld}, Scene)
+    scenes[k] = s
   end
   if opt then
     local o = {}
@@ -320,9 +325,11 @@ function M.font(name, file, weight) run("/gfx font " .. name .. " " .. file .. (
 function M.install()
   M.ensure_on_use = true
   squat.alias{match = "^/_gfxev (\\S+) (\\S+) (\\S+) (-?\\d+) (-?\\d+)$", regex = true, priority = 1000, fn = function(m)
-    local h = handlers[m[1] .. "\0" .. m[2] .. "\0" .. m[3]]
+    local tail = "\0" .. m[1] .. "\0" .. m[2] .. "\0" .. m[3]
+    local h = handlers[(m.world or "") .. tail] or handlers["" .. tail]   -- plugins that do not tell us their session (setWorld) get any
     if not h then return false end   -- not ours: another plugin's copy of this module may own the object
-    h.fn(h.obj, {event = m[3], x = tonumber(m[4]), y = tonumber(m[5])})
+    local function call() h.fn(h.obj, {event = m[3], x = tonumber(m[4]), y = tonumber(m[5])}) end
+    if M.wrap then M.wrap(m.world, call) else call() end   -- run in the session that owns the scene
   end}
 end
 

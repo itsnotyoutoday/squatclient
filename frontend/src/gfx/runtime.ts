@@ -54,6 +54,8 @@ export class GfxRuntime {
   private images = new Map<string, HTMLImageElement>();
   /** the user asked the system for less motion: calm has a floor */
   reducedMotion = typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  /** a session in the background: its scenes keep their state but are neither simulated nor drawn */
+  paused = false;
   private raf = 0;
   private running = false;
   private last = 0;
@@ -228,6 +230,9 @@ export class GfxRuntime {
     this.raf = requestAnimationFrame(this.frame);
   }
 
+  /** resume the frame loop (a pane came on screen) */
+  wake(): void { this.start(); }
+
   stop(): void {
     this.running = false;
     if (this.raf) cancelAnimationFrame(this.raf);
@@ -238,6 +243,7 @@ export class GfxRuntime {
     const dt = Math.min(0.1, Math.max(0, (now - this.last) / 1000));
     this.last = now;
     let alive = false;
+    if (this.paused) { this.running = false; this.raf = 0; return; }
     for (const slot of this.slots.values()) {
       if (!slot.scene.cfg.open) continue;
       if (this.tick(slot, dt, now)) alive = true;

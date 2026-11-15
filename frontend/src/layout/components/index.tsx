@@ -40,7 +40,7 @@ export function App({ children }: Kids) {
 export function Mush() {
   const env = useLayoutEnv();
   const searchOpen = useUi((s) => s.searchOpen);
-  const store = useGfxPortStore();
+  const store = useGfxPortStore(env.sessionId);
   const out = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => env.register('mush'), [env]);
   // a scene's text port: the text follows the (animated) rectangle by direct style writes, every frame
@@ -60,7 +60,7 @@ export function Mush() {
   return (
     <div className="lay-mush">
       {searchOpen && <SearchBar sessionId={env.sessionId} />}
-      <GfxPane />
+      <GfxPane sessionId={env.sessionId} />
       <div className="lay-output" ref={out}>
         <OutputPane key={env.sessionId} sessionId={env.sessionId} />
       </div>

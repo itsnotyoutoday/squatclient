@@ -8,8 +8,8 @@
 /loaded gfx.tf
 
 /if (squat_gfx_native !~ "1") \
-    /def -i _gfx    = /notify @gfx|%*%; \
-    /def -i _canvas = /notify @canvas|%*%; \
+    /def -i _gfx    = /notify @gfx|${world_name}|%*%; \
+    /def -i _canvas = /notify @canvas|${world_name}|%*%; \
     /def -i _ui     = /notify @ui|%*%; \
 /endif
 

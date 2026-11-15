@@ -32,6 +32,7 @@ type luaHost struct {
 	tfLines []string
 	echoes  []string
 	failTF  bool
+	hubs    map[string]*gfx.Hub // per-session graphics, when a test runs several worlds
 }
 
 func (h *luaHost) Send(w, t string) error { return nil }
@@ -79,6 +80,9 @@ func (h *luaHost) RunTF(world, line string) error {
 	if cmd != "gfx" && cmd != "canvas" {
 		h.tfLines = append(h.tfLines, line) // /input, /echo ...: what a real client would hand to TinyFugue
 		return nil
+	}
+	if h.hubs != nil {
+		return h.hubs[world].Exec(cmd, rest)
 	}
 	return h.hub.Exec(cmd, rest)
 }
@@ -846,4 +850,115 @@ func TestCalmAppliesToEveryThemeAndIsRemembered(t *testing.T) {
 		t.Fatal(err)
 	}
 	f.errors(t)
+}
+
+// two worlds, each with its own hub, scenes and state: /lcars in one leaves the other without a scene
+func TestLcarsIsPerSession(t *testing.T) {
+	cfg := t.TempDir()
+	lib, err := Install(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := &luaHost{now: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC), dir: cfg, hubs: map[string]*gfx.Hub{}}
+	rt := lua.New(h, lua.Options{})
+	t.Cleanup(rt.Close)
+	h.rt = rt
+	ops := map[string]*[]gfx.Op{}
+	for _, w := range []string{"a", "b"} {
+		w := w
+		hub := gfx.New()
+		hub.FlushDelay = -1
+		hub.Dirs = []string{lib}
+		o := &[]gfx.Op{}
+		ops[w] = o
+		hub.Emit = func(x []gfx.Op) { *o = append(*o, x...) }
+		hub.Run = func(line string) error {
+			if !rt.OnInput(w, line) {
+				return fmt.Errorf("no alias took %q", line)
+			}
+			return nil
+		}
+		h.hubs[w] = hub
+	}
+	infos, err := rt.LoadPlugins()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, i := range infos {
+		if i.Err != "" {
+			t.Fatalf("plugin failed to load: %s", i.Err)
+		}
+	}
+	has := func(w, id string) bool {
+		for _, o := range h.hubs[w].Snapshot() {
+			if o["op"] == "create" && o["id"] == id {
+				return true
+			}
+		}
+		return false
+	}
+	portH := func(w string) float64 {
+		var v float64
+		for _, o := range h.hubs[w].Snapshot() {
+			if o["op"] == "create" && o["id"] == "textport" {
+				v, _ = o["props"].(map[string]any)["h"].(float64)
+			}
+		}
+		return v
+	}
+	rt.OnInput("a", "/lcars")
+	if !has("a", "textport") {
+		t.Fatal("a has no scene")
+	}
+	if len(h.hubs["b"].Scenes()) != 0 || len(*ops["b"]) != 0 {
+		t.Fatalf("b got a scene: %v", h.hubs["b"].Scenes())
+	}
+	// b picks its own theme and expands its LOG; a keeps its own
+	rt.OnInput("b", "/lcars klingon")
+	rt.OnInput("b", "/lcars log")
+	h.advance(2 * time.Second)
+	rt.OnInput("a", "/lcars romulan")
+	h.advance(2 * time.Second)
+	if portH("b") < 500 {
+		t.Fatalf("b's LOG is not expanded: %v", portH("b"))
+	}
+	if portH("a") >= 500 || portH("a") == 0 {
+		t.Fatalf("a's LOG followed b: %v", portH("a"))
+	}
+	// switching back and forth: nothing is shared, a click in a changes only a
+	if err := h.hubs["a"].Event("lcars", "logbtn", "click", 1, 1); err != nil {
+		t.Fatal(err)
+	}
+	h.advance(2 * time.Second)
+	if portH("a") < 500 || portH("b") < 500 {
+		t.Fatalf("a=%v b=%v", portH("a"), portH("b"))
+	}
+	if err := h.hubs["b"].Event("lcars", "logbtn", "click", 1, 1); err != nil {
+		t.Fatal(err)
+	}
+	h.advance(2 * time.Second)
+	if portH("b") >= 500 || portH("a") < 500 {
+		t.Fatalf("a=%v b=%v after collapsing b", portH("a"), portH("b"))
+	}
+	// the b scene was built with the klingon palette, a's with romulan: the two hubs hold different colours
+	colours := func(w string) string {
+		b, _ := json.Marshal(h.hubs[w].Snapshot())
+		return string(b)
+	}
+	if colours("a") == colours("b") {
+		t.Fatal("the two sessions drew the same scene")
+	}
+	// closing a's window reaches a only
+	if err := h.hubs["a"].Event("lcars", "#scene", "close", 0, 0); err != nil {
+		t.Fatal(err)
+	}
+	rt.OnInput("a", "/lcars")
+	if !has("a", "textport") || !has("b", "textport") {
+		t.Fatal("a reopen disturbed a session")
+	}
+	for _, l := range h.logs {
+		if strings.Contains(l, "error") {
+			t.Errorf("log: %s", l)
+		}
+	}
 }

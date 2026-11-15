@@ -1,7 +1,7 @@
-import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { EngineAPI } from '../api/types';
-import { useUi } from '../state/stores';
+import { useSessions, useUi } from '../state/stores';
 import { GfxRenderer } from './renderer';
 import { GfxRuntime } from './runtime';
 import { holeClip, planScene, portNodeOf, stripBasis, type Plan, type Rect } from './port';
@@ -24,12 +24,14 @@ export class PortStore {
   }
 }
 
-interface GfxCtx { rt: GfxRuntime; ver: number; store: PortStore }
+/** One session's graphics: its own runtime (scenes, variables) and its own text port. */
+export interface SessionGfx { rt: GfxRuntime; store: PortStore }
+interface GfxCtx { get(session: string): SessionGfx; peek(session: string): SessionGfx | undefined; ver: number }
 const GfxContext = createContext<GfxCtx | null>(null);
 
 /** The output area (the layout's text) subscribes to follow the port: it is moved by direct style writes, every frame. */
-export function useGfxPortStore(): PortStore | null {
-  return useContext(GfxContext)?.store ?? null;
+export function useGfxPortStore(session: string): PortStore | null {
+  return useContext(GfxContext)?.get(session).store ?? null;
 }
 
 /** The scene's text-port rectangle in scene units: the animated node named by `portNode`, else the static `port`. */
@@ -128,30 +130,69 @@ function parseKey(spec: string): { key: string; alt: boolean; ctrl: boolean; shi
   return { key: parts[parts.length - 1], alt: parts.includes('alt'), ctrl: parts.includes('ctrl'), shift: parts.includes('shift') };
 }
 
-/** Owns the graphics runtime for the window: feeds it the engine's "gfx", "gmcp" and "msdp" events. The scenes are
- * drawn by <GfxPane />, which the layout puts inside the output area. */
+/** Owns one graphics runtime per session: scenes belong to the session that opened them and are drawn only while that
+ * session is in the foreground. Feeds each runtime the engine's "gfx", "gmcp" and "msdp" events for its session. */
 export function GfxProvider({ engine, children }: { engine: EngineAPI; children: ReactNode }) {
-  const rt = useMemo(() => new GfxRuntime(), []);
-  const store = useMemo(() => new PortStore(), []);
+  const [all] = useState(() => new Map<string, SessionGfx>());
   const [ver, force] = useState(0); // scenes opened/closed/moved: consumers of the context must redraw
-  useEffect(() => {
+  const mk = useCallback((session: string): SessionGfx => {
+    const rt = new GfxRuntime();
+    rt.paused = true; // until its pane is on screen
     rt.onLayout = () => force((n) => n + 1);
-    rt.onEvent = (e) => void engine.gfxEvent(e.scene, e.id, e.event, e.x, e.y).catch(() => undefined);
+    rt.onEvent = (e) => void engine.gfxEvent(`${session}/${e.scene}`, e.id, e.event, e.x, e.y).catch(() => undefined);
     rt.onMessage = (lvl, text) => {
       (lvl === 'error' ? console.error : console.warn)(text);
       useUi.getState().toast(lvl === 'error' ? 'error' : 'warn', text);
     };
+    const g = { rt, store: new PortStore() };
+    all.set(session, g);
+    return g;
+  }, [engine, all]);
+  const get = useCallback((session: string): SessionGfx => all.get(session) ?? mk(session), [mk, all]);
+  const peek = useCallback((session: string) => all.get(session), [all]);
+  const drop = useCallback((session: string): void => {
+    const g = all.get(session);
+    if (!g) return;
+    g.rt.stop();
+    g.store.set(null);
+    all.delete(session);
+    force((n) => n + 1);
+  }, [all]);
+  useEffect(() => {
     const offs = [
-      engine.on('gfx', (ops) => rt.apply(ops)),
-      engine.on('gmcp', (p) => rt.setGmcp(p.package, p.data)),
-      engine.on('msdp', (p) => rt.setMsdp(p.vars)),
+      engine.on('gfx', (ops) => {
+        const by = new Map<string, typeof ops>();
+        for (const o of ops) {
+          const id = String(o.session ?? '');
+          if (!id) continue;
+          if (!by.has(id)) by.set(id, []);
+          by.get(id)!.push(o);
+        }
+        for (const [id, list] of by) get(id).rt.apply(list);
+      }),
+      engine.on('gmcp', (p) => get(p.session).rt.setGmcp(p.package, p.data)),
+      engine.on('msdp', (p) => get(p.session).rt.setMsdp(p.vars)),
+      engine.on('session-removed', (p) => drop(p.id)),
     ];
-    void engine.gfxSnapshot().then((ops) => { if (ops.length) rt.apply(ops); }).catch(() => undefined);
-    return () => { offs.forEach((o) => o()); rt.stop(); };
-  }, [rt, engine]);
-  // Escape hides the graphics when nothing else wants it; Alt+key shortcuts of objects (key="alt+l") click them
+    void engine.gfxSnapshot().then((ops) => {
+      const by = new Map<string, typeof ops>();
+      for (const o of ops) {
+        const id = String(o.session ?? '');
+        if (!id) continue;
+        if (!by.has(id)) by.set(id, []);
+        by.get(id)!.push(o);
+      }
+      for (const [id, list] of by) get(id).rt.apply(list);
+    }).catch(() => undefined);
+    return () => { offs.forEach((o) => o()); all.forEach((g) => g.rt.stop()); all.clear(); };
+  }, [engine, get, drop, all]);
+  // Escape hides the foreground session's graphics when nothing else wants it; Alt+key shortcuts of its objects click them
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
+      const fg = useSessions.getState().fg;
+      const g = fg ? peek(fg) : undefined;
+      if (!g) return;
+      const rt = g.rt;
       const a = document.activeElement as HTMLElement | null;
       const typing = !!a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.isContentEditable);
       if (e.key === 'Escape' && !e.defaultPrevented) {
@@ -179,20 +220,29 @@ export function GfxProvider({ engine, children }: { engine: EngineAPI; children:
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [rt]);
-  const value = useMemo(() => ({ rt, ver, store }), [rt, ver, store]);
+  }, [peek]);
+  const value = useMemo(() => ({ get, peek, ver }), [get, peek, ver]);
   return <GfxContext.Provider value={value}>{children}</GfxContext.Provider>;
 }
 
-/** The graphics of the open scenes, inside the output area: strips share it with the text output, a frame surrounds it. */
-export function GfxPane() {
+/** The graphics of one session's open scenes, inside its output area: strips share it with the text output, a frame
+ * surrounds it. Only the foreground session has a pane, so only its scenes are drawn and animated. */
+export function GfxPane({ sessionId }: { sessionId: string }) {
   const ctx = useContext(GfxContext);
-  if (!ctx) return null;
-  const { rt, store } = ctx;
-  const open = [...rt.slots.values()].filter((s) => s.scene.cfg.open);
+  const g = ctx?.get(sessionId);
+  const rt = g?.rt;
+  useEffect(() => {
+    if (!rt) return;
+    rt.paused = false;
+    rt.wake();
+    return () => { rt.paused = true; };
+  }, [rt]);
+  if (!g) return null;
+  const { store } = g;
+  const open = [...g.rt.slots.values()].filter((s) => s.scene.cfg.open);
   if (open.length === 0) return null;
   if (!GfxRenderer.supported()) {
     return <div className="gfx-msg" role="alert">Graphics need WebGL2, which this window does not provide.</div>;
   }
-  return <>{open.map((s) => <SceneCanvas key={s.scene.id} rt={rt} id={s.scene.id} store={store} />)}</>;
+  return <>{open.map((s) => <SceneCanvas key={s.scene.id} rt={g.rt} id={s.scene.id} store={store} />)}</>;
 }

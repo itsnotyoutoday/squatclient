@@ -61,7 +61,9 @@ type Service struct {
 	pair       pairing
 	hist       *historyStore
 	lay        *layouts.Manager
-	gfx        *gfx.Hub
+	gfxMu      sync.Mutex
+	gfxHubs    map[string]*gfx.Hub // one graphics hub per session (gfxbridge.go)
+	gfxDirs    []string
 	varMu      sync.Mutex
 	varPending map[string]any
 	layOnce    sync.Once
@@ -116,7 +118,7 @@ func New(o Options) (*Service, error) {
 	if eo.ConfigDir != "" {
 		gfxDirs = []string{filepath.Join(eo.ConfigDir, "lib", "squat"), eo.ConfigDir}
 	}
-	s.gfx = s.newGfx(gfxDirs...)
+	s.gfxDirs = gfxDirs
 	if eo.Notify == nil {
 		eo.Notify = s.notify // /gfx, /canvas and the window commands of lib/squat arrive here
 	}
@@ -317,6 +319,7 @@ func (s *Service) deliver(batch []engine.Event) {
 			}
 			pendStatus[ev.Session] = statusPayload{Session: ev.Session, Fields: f}
 		case engine.EvSessionRemoved:
+			s.dropGfx(ev.Session)        // a closed session's scenes go with it
 			delete(pendInfo, ev.Session) // never resurrect a removed session
 			delete(pendStatus, ev.Session)
 			s.emit("session-removed", map[string]string{"id": ev.Session})

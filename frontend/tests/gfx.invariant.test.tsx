@@ -53,19 +53,44 @@ describe('a failing renderer leaves the text and input usable', () => {
     render(
       <GfxProvider engine={engine}>
         <div className="lay-mush">
-          <GfxPane />
+          <GfxPane sessionId="s1" />
           <div data-testid="text" role="log">the game output</div>
         </div>
         <input aria-label="game input" />
       </GfxProvider>,
     );
     await act(async () => {
-      (engine as unknown as { emit(e: string, p: unknown): void }).emit?.('gfx', [{ op: 'scene', scene: 'x', open: true, dock: 'full' }, { op: 'create', scene: 'x', id: 'r', type: 'rect', props: { w: 5, h: 5 } }]);
+      (engine as unknown as { emit(e: string, p: unknown): void }).emit?.('gfx', [{ op: 'scene', session: 's1', scene: 'x', open: true, dock: 'full' }, { op: 'create', session: 's1', scene: 'x', id: 'r', type: 'rect', props: { w: 5, h: 5 } }]);
     });
     expect(screen.getByTestId('text')).toBeTruthy();
     expect(screen.getByLabelText('game input')).toBeTruthy();
     expect(document.querySelector('.gfx-scene')).toBeNull(); // closed after the failure, not left covering anything
     expect(errors).toHaveBeenCalled(); // the failure was reported, once the scene was mounted and failed
     errors.mockRestore();
+  });
+});
+
+describe('graphics are per session', () => {
+  afterEach(() => vi.restoreAllMocks());
+  const ops = [{ op: 'scene', session: 's2', scene: 'lcars', open: true, dock: 'full' }, { op: 'create', session: 's2', scene: 'lcars', id: 'r', type: 'rect', props: { w: 5, h: 5 } }];
+  const emit = (engine: MockEngine, e: string, p: unknown): void => (engine as unknown as { emit(e: string, p: unknown): void }).emit(e, p);
+  it('a scene of session s2 is not mounted by the pane of s1', async () => {
+    const { GfxProvider, GfxPane } = await import('../src/gfx/GfxHost');
+    const engine = new MockEngine();
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    render(<GfxProvider engine={engine}><GfxPane sessionId="s1" /></GfxProvider>);
+    await act(async () => { emit(engine, 'gfx', ops); });
+    expect(errors).not.toHaveBeenCalled(); // nothing tried to draw it (the mocked renderer fails when it does)
+  });
+  it('the pane of s2 mounts it, and a removed session loses its scene', async () => {
+    const { GfxProvider, GfxPane } = await import('../src/gfx/GfxHost');
+    const engine = new MockEngine();
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    render(<GfxProvider engine={engine}><GfxPane sessionId="s2" /></GfxProvider>);
+    await act(async () => { emit(engine, 'gfx', ops); });
+    expect(errors).toHaveBeenCalled();
+    errors.mockClear();
+    await act(async () => { emit(engine, 'session-removed', { id: 's2' }); emit(engine, 'gfx', [{ op: 'scene', session: 's2', scene: 'lcars', open: false }]); });
+    expect(document.querySelector('[data-scene="lcars"]')).toBeNull();
   });
 });

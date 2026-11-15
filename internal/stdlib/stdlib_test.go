@@ -153,13 +153,14 @@ func TestLibraryDefinesWhatItPromises(t *testing.T) {
 
 func TestGfxCommandsReachTheClient(t *testing.T) {
 	e, h, _ := start(t)
-	_ = e.Exec("", `/gfx rect hdr 0 0 300 40 fill=#ff9900`)
-	_ = e.Exec("", `/canvas px hdr 1 2 red`)
-	_ = e.Exec("", `/gfx text t 10 10 "A;B %x" size=12`)
+	e.SessionOpened("w", "example.org", 4000, false) // a session defines its world, so ${world_name} is its script name
+	_ = e.Exec("w", `/gfx rect hdr 0 0 300 40 fill=#ff9900`)
+	_ = e.Exec("w", `/canvas px hdr 1 2 red`)
+	_ = e.Exec("w", `/gfx text t 10 10 "A;B %x" size=12`)
 	_ = e.Exec("", `/worlds`)
 	_ = e.Exec("", `/settings`)
 	got := h.notices()
-	want := []string{`@gfx|rect hdr 0 0 300 40 fill=#ff9900`, `@canvas|px hdr 1 2 red`, `@gfx|text t 10 10 "A;B %x" size=12`, `@ui|worlds`, `@ui|settings`}
+	want := []string{`@gfx|w|rect hdr 0 0 300 40 fill=#ff9900`, `@canvas|w|px hdr 1 2 red`, `@gfx|w|text t 10 10 "A;B %x" size=12`, `@ui|worlds`, `@ui|settings`}
 	if fmt.Sprint(got) != fmt.Sprint(want) {
 		t.Fatalf("notifications\n got %q\nwant %q", got, want)
 	}
@@ -176,7 +177,7 @@ func TestGfxSyncPushesWatchedVariables(t *testing.T) {
 	}
 	_ = e.Exec("", "/gfx sync")
 	got := h.notices()
-	want := []string{"@gfx|_v lc_sd 47634.4", "@gfx|_v lc_n1 SHUTTLE 12"}
+	want := []string{"@gfx||_v lc_sd 47634.4", "@gfx||_v lc_n1 SHUTTLE 12"}
 	if fmt.Sprint(got) != fmt.Sprint(want) {
 		t.Fatalf("sync\n got %q\nwant %q\n%s", got, want, h.dump())
 	}
@@ -249,9 +250,11 @@ func TestGfxDemoScriptEndToEnd(t *testing.T) {
 	h.onNotify = func(title, body string) {
 		switch title {
 		case "@gfx":
-			hub.Handle("gfx", body)
+			_, cmd, _ := strings.Cut(body, "|") // "@gfx|<world>|<command>"
+			hub.Handle("gfx", cmd)
 		case "@canvas":
-			hub.Handle("canvas", body)
+			_, cmd, _ := strings.Cut(body, "|")
+			hub.Handle("canvas", cmd)
 		}
 	}
 	e = tfengine.New(h, tfengine.Options{StdLib: lib, LibDirs: []string{lib, cfg}, MaxTime: 10 * time.Second})

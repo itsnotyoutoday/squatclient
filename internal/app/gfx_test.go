@@ -99,8 +99,8 @@ func TestGfxCommandsFlowFromScriptsToTheWindow(t *testing.T) {
 		t.Fatalf("snapshot lacks objects: %v", snap)
 	}
 	// a click runs the attached command in the foreground session
-	f.until("handler registered", func() bool { return len(f.svc.gfx.Scenes()) == 2 })
-	if err := f.svc.GfxEvent("s", "a", "click", 7, 1); err != nil {
+	f.until("handler registered", func() bool { return len(f.svc.Gfx(id).Scenes()) == 2 })
+	if err := f.svc.GfxEvent(id+"/s", "a", "click", 7, 1); err != nil {
 		t.Fatal(err)
 	}
 	f.until("the click handler's echo", func() bool { return f.hasText("clicked a at 7") })
@@ -134,4 +134,60 @@ func TestWindowCommandsOpenDialogs(t *testing.T) {
 		}
 		return strings.Contains(strings.Join(got, ""), "settings") && strings.Contains(strings.Join(got, ""), "layouts")
 	})
+}
+
+func sessionsOf(ops []map[string]any) map[string]bool {
+	m := map[string]bool{}
+	for _, o := range ops {
+		if o["op"] == "create" {
+			if id, ok := o["session"].(string); ok {
+				m[id] = true
+			}
+		}
+	}
+	return m
+}
+
+func TestGfxIsPerSession(t *testing.T) {
+	f, _ := gfxFixture(t)
+	a := f.sessionForTF(t)
+	b := f.sessionForTF(t)
+	if err := f.svc.Input(a, "/gfx open s w=320 h=200"); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.svc.Input(a, "/gfx rect r 1 2 30 40 fill=#ff9900"); err != nil {
+		t.Fatal(err)
+	}
+	f.until("scene reaches the window tagged with its session", func() bool { return sessionsOf(f.gfxOps())[a] })
+	if sessionsOf(f.gfxOps())[b] || len(f.svc.Gfx(b).Scenes()) != 0 {
+		t.Fatalf("the other session has a scene: %v", f.svc.Gfx(b).Scenes())
+	}
+	snap := f.svc.GfxSnapshot()
+	if !sessionsOf(snap)[a] || sessionsOf(snap)[b] {
+		t.Fatalf("snapshot not per session: %v", snap)
+	}
+	// the other session draws its own scene with the same ids, separately
+	_ = f.svc.Input(b, "/gfx open s w=100 h=100")
+	_ = f.svc.Input(b, "/gfx rect r 1 2 3 4")
+	f.until("second session has its own scene", func() bool { return sessionsOf(f.gfxOps())[b] })
+	if err := f.svc.Input(b, "/gfx on r click /echo B clicked"); err != nil {
+		t.Fatal(err)
+	}
+	f.until("b has its scene", func() bool { return len(f.svc.Gfx(b).Scenes()) == 1 })
+	if len(f.svc.Gfx(a).Scenes()) != 1 {
+		t.Fatalf("a changed: %v", f.svc.Gfx(a).Scenes())
+	}
+	// a click addressed to b's scene runs in b
+	if err := f.svc.GfxEvent(b+"/s", "r", "click", 1, 1); err != nil {
+		t.Fatal(err)
+	}
+	f.until("b's handler ran in b", func() bool { return f.hasText("B clicked") })
+	// closing a session discards its scene
+	if err := f.svc.Dismiss(a); err != nil {
+		t.Fatal(err)
+	}
+	f.until("a's scene is gone", func() bool { return !sessionsOf(f.svc.GfxSnapshot())[a] })
+	if !sessionsOf(f.svc.GfxSnapshot())[b] {
+		t.Fatal("b lost its scene")
+	}
 }
