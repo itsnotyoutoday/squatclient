@@ -130,6 +130,7 @@ func New(o Options) (*Service, error) {
 	}
 	s.eng = engine.New(eo)
 	s.snd = newSoundSvc(s)
+	s.eng.SetCmcpLog(func(l string) { s.ClientLog(l) })
 	s.applyCmcpSettings()
 	s.eng.SetAutoReconnectSquatters(o.Config.Settings().AutoReconnectSquatters)
 	s.eng.SetShowGagged(o.Config.Settings().ShowGagged)

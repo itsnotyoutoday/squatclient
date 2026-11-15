@@ -27,14 +27,14 @@ func TestEffectiveMute(t *testing.T) {
 	lib := filepath.Join(t.TempDir(), "lib") // a local sound folder whose map names the alert (no game sound pack in this test)
 	writeFile(t, filepath.Join(lib, "a.mp3"), "x")
 	writeFile(t, filepath.Join(lib, "b.mp3"), "x")
-	writeFile(t, filepath.Join(lib, "era-maps", "tng.json"), `{"format":1,"id":"tng","events":{"red_alert":[{"file":"a.mp3","loop":true}],"phaser_fire":[{"file":"b.mp3"}]}}`)
+	writeFile(t, filepath.Join(lib, "era-maps", "tng.json"), `{"format":1,"id":"tng","events":{"impulse_loop":[{"file":"a.mp3","loop":true}],"phaser_fire":[{"file":"b.mp3"}]}}`)
 	cur := f.cfg.Settings()
 	cur.SoundFolder = lib
 	if err := f.svc.SaveSettings(cur); err != nil {
 		t.Fatal(err)
 	}
 	count := func() int { return len(f.events("cmcp-audio")) }
-	play := &msg.SoundPlay{Event: "red_alert", Key: "alert", Loop: true}
+	play := &msg.SoundPlay{Event: "impulse_loop", Key: "hum", Loop: true}
 
 	if got := f.svc.MuteState(si.ID); got != "" {
 		t.Fatalf("audible by default: %q", got)
@@ -57,7 +57,7 @@ func TestEffectiveMute(t *testing.T) {
 	}
 	before := count()
 	f.svc.playSound(si.ID, &msg.SoundPlay{Event: "phaser_fire"})
-	f.svc.playSound(si.ID, &msg.SoundPlay{Event: "red_alert", Key: "alert", Loop: true})
+	f.svc.playSound(si.ID, &msg.SoundPlay{Event: "impulse_loop", Key: "hum", Loop: true})
 	if count() != before {
 		t.Fatalf("a muted world plays nothing: %d -> %d", before, count())
 	}
@@ -89,7 +89,7 @@ func TestEffectiveMute(t *testing.T) {
 	}
 	plays := 0
 	for _, e := range f.events("cmcp-audio")[before:] {
-		if m, ok := e.Payload.(SoundMsg); ok && m.Op == "play" && m.Key == "alert" {
+		if m, ok := e.Payload.(SoundMsg); ok && m.Op == "play" && m.Key == "hum" {
 			plays++
 		}
 	}

@@ -130,7 +130,7 @@ export function frameShapes(shapes: Shape[], pal: Pal, vars: Record<string, stri
       case 'circle': return { id, type: 'circle', props: { ...base, x: s.x, y: s.y, r: s.r, fill: col(s.fill, pal), stroke: s.stroke ? col(s.stroke, pal) : undefined, strokeWidth: s.sw } };
       case 'arc': return { id, type: 'arc', props: { ...base, x: s.x, y: s.y, r0: s.r0, r1: s.r1, a0: s.a0, a1: s.a1, fill: col(s.fill, pal) } };
       case 'line': return { id, type: 'line', props: { ...base, x1: s.x1, y1: s.y1, x2: s.x2, y2: s.y2, stroke: col(s.stroke, pal), strokeWidth: s.sw ?? 2 } };
-      case 'text': { const ft = fitText(fill(pick(s.text, vars), vars), s.size, textRoom(s, boxes[i]), font, s.weight ?? '700'); return { id, type: 'text', props: { ...base, x: s.x, y: s.y, text: vars.room ? ft.text.replace(/\bCONSOLE\b/gi, 'ROOM') : ft.text, size: ft.size, fill: col(s.fill ?? 'k', pal), align: s.align ?? 'left', baseline: 'middle', weight: s.weight ?? '700' } }; }
+      case 'text': { const ft = fitText(vars.room ? fill(pick(s.text, vars), vars).replace(/\bCONSOLE\b/gi, 'ROOM') : fill(pick(s.text, vars), vars), s.size, textRoom(s, boxes[i]), font, s.weight ?? '700'); return { id, type: 'text', props: { ...base, x: s.x, y: s.y, text: ft.text, size: ft.size, fill: col(s.fill ?? 'k', pal), align: s.align ?? 'left', baseline: 'middle', weight: s.weight ?? '700' } }; }
     }
   });
 }

@@ -346,6 +346,10 @@ func (s *Service) playSound(session string, p *msg.SoundPlay) {
 	if ev == "" {
 		ev = p.Sound
 	}
+	if !s.eng.CmcpAboard(session) && (ev == "red_alert" || ev == "yellow_alert" || ev == "alert") {
+		s.soundLog("Sound.Play %q not played: the player is not aboard a ship", ev)
+		return // the red-alert loop belongs to a ship the player is on (the core keeps no alert-sound state)
+	}
 	if st := s.MuteState(session); st != "" {
 		s.soundLog("Sound.Play %q not played: muted (%s)", ev, st)
 		return // muted (globally or for this world): nothing is resolved and nothing plays
