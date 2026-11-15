@@ -259,6 +259,7 @@ export function SettingsDialog() {
             ))}
           </select>
         </Field>
+        {check('cmcpStartCollapsed', 'Start with the console screen switched off', '(the game text gets the whole area; Alt+S or the Console button brings the screen back)')}
         {check('useShipTheme', "Use the ship's theme and sound era", '(the console, the ship or the screen may suggest one)')}
         <Field label="Sound era" hint="Which set of sounds to use for your own recordings. Empty = what the game or the ship's theme suggests.">
           <select aria-label="Sound era" value={settings.soundEra} onChange={(e) => update({ soundEra: e.target.value })}>

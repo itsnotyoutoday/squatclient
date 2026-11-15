@@ -203,6 +203,8 @@ export interface Settings {
   soundFolder: string;
   soundVolume: number;
   soundMuted: boolean;
+  /** CMCP screens start switched off (the text has the whole area); Alt+S or the pane's button brings them back. */
+  cmcpStartCollapsed: boolean;
   soundCategoryVolumes?: Record<string, number>;
 }
 
@@ -900,4 +902,5 @@ export const DEFAULT_SETTINGS: Settings = {
   soundFolder: '',
   soundVolume: 70,
   soundMuted: false,
+  cmcpStartCollapsed: false,
 };

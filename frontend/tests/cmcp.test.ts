@@ -165,10 +165,10 @@ describe('the controller', () => {
     const ui = { ...fx('power'), session: 's1' };
     engine.pushCmcp(ui);
     const gp = flat(place(ui.tree!.root, { x: 0, y: 0, w: 1200, h: 675 })).find((p) => p.node.widget === 'group-picker')!.node;
-    const handled = ctl.handleGfxEvent('s1', { scene: SCENE, id: `${gp.path}.g6.hit`, event: 'click', x: 0, y: 0 });
+    const handled = ctl.handleGfxEvent('s1', { scene: SCENE, id: `${gp.path}.g1.hit`, event: 'click', x: 0, y: 0 });
     expect(handled).toBe(true);
     await Promise.resolve();
-    expect(engine.cmcpCalls.at(-1)).toMatchObject({ fn: 'cmcpEvent', session: 's1', args: [gp.path, 'select', 6] });
+    expect(engine.cmcpCalls.at(-1)).toMatchObject({ fn: 'cmcpEvent', session: 's1', args: [gp.path, 'select', 1] });
   });
   it('does not claim events of other scenes', () => {
     const { ctl } = setup();

@@ -1,11 +1,15 @@
 import type { CmcpNode, CmcpStackEntry, CmcpTree } from './types';
 import type { Overlay } from './overlays';
+import type { Pal, Skin } from './skins/types';
 import { findTextport, type Placed, type Rect } from './layout';
 
 /** One graphics object of the scene protocol (docs/GFX.md) plus what a pointer event on it means. */
 export interface Prim {
   id: string;
   type: string;
+  parent?: string;
+  /** property -> binding expression, re-evaluated by the renderer (the radar sweep follows time()) */
+  bind?: Record<string, string>;
   props: Record<string, unknown>;
   events?: string[];
   target?: Target;
@@ -17,6 +21,8 @@ export interface Target {
   value?: unknown | ((x: number, y: number) => unknown);
   /** widget-local state to write instead of/before sending (selection inside a widget) */
   local?: { key: string; value: unknown | ((x: number, y: number) => unknown) };
+  /** a control of the skin itself: the LOG toggle or the screen-off button */
+  special?: 'log' | 'off';
   /** ui key to mirror to the engine (the team picked in a team-assigner is $ui.team) */
   setUi?: { key: string; value: unknown };
 }
@@ -33,6 +39,9 @@ export interface Ctx {
   overlays?: Overlay[];
   /** pictures of contact art by `art|view|amount key` (drawn by the controller from the sprites the engine resolved) */
   viewImages?: Map<string, { name: string; w: number; h: number }>;
+  /** the theme's skin and the palette in force (normal or red alert); widgets follow them */
+  skin?: Skin;
+  pal?: Pal;
 }
 
 const tok = (ctx: Ctx, k: string, d = '#888888'): string => {
@@ -98,6 +107,11 @@ function chamfer(r: Rect, c: number): number[] {
 /** The frame of a widget group in the look of the theme (the Lua themes' families: tng LCARS, soft, klingon, romulan, tos, ferengi, ops).
  * Decoration only: it is drawn behind the content and never takes events. Returns the inner content rectangle. */
 function panel(p: Placed, ctx: Ctx, out: Prim[], id: string, title?: string): Rect {
+  if (ctx.skin) { // the skinned themes draw panels as bare text on black, the title in the panel-title role
+    const r0 = p.rect, pt = ctx.skin.widgets.panelTitle;
+    if (title) out.push(text(`${id}.t`, r0.x + 4, r0.y + 12, title.toUpperCase(), pt.size * 0.75, ctx.pal![pt.role], { font: font(ctx, true), weight: '700' }));
+    return { x: r0.x + 4, y: r0.y + (title ? 26 : 4), w: r0.w - 8, h: r0.h - (title ? 30 : 8) };
+  }
   const r = p.rect, th = ctx.tree.theme, acc = tok(ctx, 'color.accent'), pan = tok(ctx, 'color.panel'), dim = tok(ctx, 'color.dim'), a2 = tok(ctx, 'color.accent2');
   const head = (x: number, y: number, col: string, size = 14, o: Record<string, unknown> = {}): void => {
     if (title) out.push(text(`${id}.t`, x, y, title.toUpperCase(), size, col, { font: font(ctx, true), weight: '700', letterSpacing: 1, ...o }));
@@ -167,7 +181,8 @@ const label: Draw = (p, ctx, out) => {
   if (!t) return;
   const style = str(p.node.props.style);
   const big = style === 'title' || style === 'heading';
-  out.push(text(`${p.node.path}.t`, p.rect.x + 4, p.rect.y + p.rect.h / 2, t, big ? 24 : 18, style === 'dim' ? tok(ctx, 'color.dim') : big ? tok(ctx, 'color.accent') : tok(ctx, 'color.text'), { font: font(ctx, big), weight: big ? '700' : '500', maxWidth: p.rect.w - 8 }));
+  const head = ctx.skin && /^0\.0$/.test(p.node.path); // the screen's title line
+  out.push(text(`${p.node.path}.t`, p.rect.x + 4, p.rect.y + p.rect.h / 2, t, head ? 22 : big ? 24 : 18, head && ctx.skin ? ctx.pal![ctx.skin.widgets.head] : style === 'dim' ? tok(ctx, 'color.dim') : big ? tok(ctx, 'color.accent') : tok(ctx, 'color.text'), { font: font(ctx, big), weight: big ? '700' : '500', maxWidth: p.rect.w - 8 }));
 };
 
 const bar: Draw = (p, ctx, out) => {
@@ -261,11 +276,15 @@ const mnemonic = (k: unknown): string | undefined => (typeof k === 'string' && /
 const button: Draw = (p, ctx, out) => {
   const pr = p.node.props, id = p.node.path;
   const on = p.node.enabled && !ctx.readonly;
-  const col = on ? tone(ctx, pr.tone) : tok(ctx, 'color.dim');
-  const r: Rect = { x: p.rect.x + 2, y: p.rect.y + 2, w: p.rect.w - 4, h: Math.min(p.rect.h - 4, 52) };
+  let col = on ? tone(ctx, pr.tone) : tok(ctx, 'color.dim');
+  if (ctx.skin && on) { // buttons take the skin's role colours in turn along their row
+    const roles = ctx.skin.widgets.button.roles, idx = Number(id.split('.').pop()) || 0;
+    col = ctx.pal![pr.tone === 'alert' ? 'r' : roles[idx % roles.length]];
+  }
+  const r: Rect = { x: p.rect.x + 2, y: p.rect.y + 2, w: p.rect.w - 4, h: Math.min(p.rect.h - 4, ctx.skin ? ctx.skin.widgets.button.h * 0.75 : 52) };
   out.push({
     id: `${id}.b`, type: 'button',
-    props: { x: r.x, y: r.y, w: r.w, h: r.h, key: mnemonic(pr.key), text: str(pr.text).toUpperCase() + (pr.key ? `  [${str(pr.key).toUpperCase()}]` : ''), fill: on ? col : tok(ctx, 'color.panel'), color: on ? tok(ctx, 'color.bg') : tok(ctx, 'color.dim'), size: 18, weight: '700', font: font(ctx, true), r: radius(ctx) * 1.5, glow: on ? 0.12 : 0, opacity: on ? 1 : 0.7, align: 'center' },
+    props: { x: r.x, y: r.y, w: r.w, h: r.h, key: mnemonic(pr.key), text: str(pr.text).toUpperCase() + (pr.key ? `  [${str(pr.key).toUpperCase()}]` : ''), fill: on ? col : tok(ctx, 'color.panel'), color: on ? tok(ctx, 'color.bg') : tok(ctx, 'color.dim'), size: ctx.skin ? 15 : 18, weight: '700', font: font(ctx, true), r: ctx.skin ? (ctx.skin.sharp ? 0 : r.h / 2) : radius(ctx) * 1.5, glow: on ? 0.12 : 0, opacity: on ? 1 : 0.7, align: 'center' },
     events: on ? ['click'] : [], target: on ? { path: p.node.path, event: 'click' } : undefined,
   });
 };
@@ -324,9 +343,30 @@ const gauge: Draw = (p, ctx, out) => {
   if (pr.label) out.push(text(`${id}.l`, cx, cy + rad * 0.55, str(pr.label).toUpperCase(), 11, tok(ctx, 'color.dim'), { align: 'center', font: font(ctx) }));
 };
 
+/** the contacts of a radar object: id:bearing:range:type;... (range 0..100, type F friendly H hostile N neutral U unknown) */
+function radarContacts(pr: Record<string, unknown>): string {
+  const cs = entries(pr.contacts);
+  const range = num(pr.range_m, 0) || Math.max(1, ...cs.map(([, v]) => num(((v ?? {}) as Record<string, unknown>).distance_m, 0))) * 1.05;
+  return cs.map(([k, v]) => {
+    const o = (v ?? {}) as Record<string, unknown>, rel = (o.rel ?? o.bearing ?? {}) as Record<string, unknown>;
+    const t = o.iff === 'friend' ? 'F' : o.iff === 'hostile' ? 'H' : o.iff === 'neutral' ? 'N' : 'U';
+    return `${String(o.cid ?? k).replace(/\D/g, '') || k}:${Math.round(num(rel.az))}:${Math.round(100 * Math.sqrt(num(o.distance_m) / range))}:${t}`;
+  }).join(';');
+}
+
 /** plot of contacts around the ship: rel az (0 = ahead, clockwise) and distance */
 const radar: Draw = (p, ctx, out) => {
   const pr = p.node.props, id = p.node.path;
+  if (ctx.skin) { // the dish of the themes: a ring, the sweeping radar object, the sensor array caption
+    const sk = ctx.skin.widgets.radar, r0 = p.rect, pal = ctx.pal!;
+    const R = Math.max(20, Math.min(r0.w, r0.h - 22) / 2 - 2), cx = r0.x + r0.w / 2, cy = r0.y + (r0.h - 22) / 2;
+    out.push({ id: `${id}.ring`, type: 'arc', props: { x: cx, y: cy, r0: R - 7, r1: R, a0: 0, a1: 360, fill: pal[sk.ring], glow: 0.35 } });
+    out.push({ id: `${id}.dish`, type: 'radar', bind: { sweep: 'mod(time() * 80, 360)' }, props: { x: cx, y: cy, r: R - 10, trail: 110, rings: sk.rings, color: pal[sk.color], bg: sk.bg, glow: 0.7, contacts: radarContacts(pr) } });
+    out.push(text(`${id}.cap`, cx, r0.y + r0.h - 8, p.node.widget === 'scope' ? 'TACTICAL SCOPE' : 'TACTICAL SENSOR ARRAY', 17, pal[ctx.skin.widgets.head], { align: 'center', font: font(ctx, true), weight: '700' }));
+    const sel0 = pr.selected === undefined || pr.selected === null ? null : String(pr.selected);
+    void sel0;
+    return;
+  }
   const inner = panel(p, ctx, out, id, p.node.widget === 'scope' ? 'Scope' : 'Radar');
   const R = Math.max(10, Math.min(inner.w, inner.h) / 2 - 6), cx = inner.x + inner.w / 2, cy = inner.y + inner.h / 2;
   for (let i = 1; i <= 3; i++) out.push({ id: `${id}.ring${i}`, type: 'arc', props: { x: cx, y: cy, r0: (R * i) / 3 - 1, r1: (R * i) / 3, a0: 0, a1: 360, fill: tok(ctx, 'color.dim'), opacity: 0.5 } });
@@ -438,7 +478,8 @@ export function viewNeeds(n: CmcpNode): { art: string; view: string; amounts: { 
  * cross-faded with the next nearest when the scene says so), effects are added by the controller on top */
 const viewscreen: Draw = (p, ctx, out) => {
   const id = p.node.path, r = p.rect;
-  out.push(rect(`${id}.bg`, r, '#000000', { stroke: tok(ctx, 'color.accent'), strokeWidth: 2, r: radius(ctx) }));
+  const vsk = ctx.skin?.widgets.viewscreen;
+  out.push(rect(`${id}.bg`, r, ctx.skin ? '#030816' : '#000000', vsk ? { stroke: ctx.pal![vsk.role], strokeWidth: vsk.width * 0.75, r: vsk.r * 0.75, glow: 0.3 } : { stroke: tok(ctx, 'color.accent'), strokeWidth: 2, r: radius(ctx) }));
   const bd = (p.node.props.backdrop ?? {}) as Record<string, unknown>;
   if (bd.kind !== 'none') out.push({ id: `${id}.stars`, type: 'starfield', props: { x: r.x + 2, y: r.y + 2, w: r.w - 4, h: r.h - 4, count: Math.round(num(bd.density, 0.35) * 700), seed: num(bd.seed, 4711), size: 1.8, speed: ctx.reduceMotion ? 0 : 0.01 } });
   const items = Array.isArray(p.node.props.items) ? (p.node.props.items as ViewItem[]) : [];
@@ -458,10 +499,15 @@ const viewscreen: Draw = (p, ctx, out) => {
     }
     if (it.name && num(it.size) > 0.03) out.push(text(`${id}.i${i}.n`, x + w / 2 + 4, y, str(it.name), 11, tok(ctx, 'color.text'), { font: font(ctx) }));
   });
-  out.push(text(`${id}.hd`, r.x + 10, r.y + 14, 'VIEWSCREEN', 12, tok(ctx, 'color.dim'), { font: font(ctx, true), weight: '700', letterSpacing: 1 }));
+  if (ctx.skin) {
+    const hd = (p.node.props.heading ?? {}) as Record<string, unknown>;
+    out.push(text(`${id}.hd`, r.x + 14, r.y + 16, 'FORWARD VIEWSCREEN', 17, ctx.pal![ctx.skin.widgets.head], { font: font(ctx, true), weight: '700' }));
+    out.push(text(`${id}.hh`, r.x + r.w - 14, r.y + 16, `HEADING ${String(Math.round(num(hd.az))).padStart(3, '0')} MARK ${String(Math.round(num(hd.mark))).padStart(3, '0')}`, 16, ctx.pal![ctx.skin.widgets.text], { align: 'right', font: font(ctx, true), weight: '700' }));
+  } else out.push(text(`${id}.hd`, r.x + 10, r.y + 14, 'VIEWSCREEN', 12, tok(ctx, 'color.dim'), { font: font(ctx, true), weight: '700', letterSpacing: 1 }));
 };
 
 const textport: Draw = (p, ctx, out) => {
+  if (ctx.skin) return; // the skin's port frame is drawn with the frame
   // the hole itself is the scene's portNode; draw only a thin frame around it (never over it)
   const r = p.rect;
   out.push(rect(`${p.node.path}.frame`, { x: r.x - 2, y: r.y - 2, w: r.w + 4, h: r.h + 4 }, '#00000000', { stroke: tok(ctx, 'color.accent'), strokeWidth: 2, r: radius(ctx) }));

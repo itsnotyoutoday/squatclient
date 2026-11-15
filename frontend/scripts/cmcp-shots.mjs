@@ -15,7 +15,8 @@ fs.mkdirSync(out, { recursive: true });
 const chrome = process.env.CHROME_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const browser = await puppeteer.launch({ executablePath: chrome, headless: 'new', args: process.env.GFX_SOFTWARE ? ['--enable-unsafe-swiftshader', '--use-angle=swiftshader'] : ['--ignore-gpu-blocklist', '--use-angle=metal'] });
 const page = await browser.newPage();
-await page.setViewport({ width: 1300, height: 800 });
+const [vw, vh] = (process.env.CMCP_VIEWPORT || '1300x800').split('x').map(Number);
+await page.setViewport({ width: vw, height: vh });
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
 page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
@@ -86,9 +87,17 @@ for (const screen of screens) {
       await page.evaluate(() => { const e = window.__squat.ui.getState().engine; const id = window.__squat.sessions.getState().order[0]; e.pushCmcpNotes(id, [{ kind: 'event', event: { type: 'fire', data: { kind: 'phaser', from: 'self', to: 18 } } }, { kind: 'event', event: { type: 'hit', data: { cid: 'self', shield: true } } }, { kind: 'event', event: { type: 'destroyed', data: { cid: 17 } } }]); });
       await sleep(350);
     }
-    const file = path.join(out, `${screen}-${theme}.png`);
+    const tag = `${screen}-${theme}-${vw}x${vh}`;
+    const file = path.join(out, `${tag}.png`);
     await page.screenshot({ path: file });
     console.log('  ' + file);
+    if (process.env.CMCP_LOG) {
+      await page.keyboard.down('Alt'); await page.keyboard.press('KeyL'); await page.keyboard.up('Alt');
+      await sleep(900);
+      await page.screenshot({ path: path.join(out, `${tag}-log.png`) });
+      await page.keyboard.down('Alt'); await page.keyboard.press('KeyL'); await page.keyboard.up('Alt');
+      await sleep(900);
+    }
   }
 }
 check(errors.length === 0, 'no page errors', errors.slice(0, 3).join(' | '));

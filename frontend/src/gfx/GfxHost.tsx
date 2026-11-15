@@ -10,6 +10,7 @@ import { CmcpController } from '../cmcp/controller';
 import { CmcpAudio, WebAudioBackend } from '../cmcp/audio';
 import { collectPrompts } from '../cmcp/prompts';
 import { CmcpOverlays } from '../cmcp/OverlayLayer';
+import { getActiveCmcp, usePane } from '../cmcp/pane';
 
 /** The rectangle where the real game text sits while a scene has a text port (CSS px in the output area). Mutable on
  * purpose: an animated port (the console's LOG toggle) changes every frame and must not go through React renders. */
@@ -174,6 +175,7 @@ export function GfxProvider({ engine, children }: { engine: EngineAPI; children:
     const c = new CmcpController(engine, (id) => get(id).rt);
     c.onError = (text) => useUi.getState().toast('warn', text);
     c.onNotes = collectPrompts;
+    c.startCollapsed = () => useSettings.getState().settings.cmcpStartCollapsed;
     cmcp.current = c;
     const off = c.attach();
     // sound: the Go side resolved what to play; this plays it, for the session in front only
@@ -244,6 +246,11 @@ export function GfxProvider({ engine, children }: { engine: EngineAPI; children:
         e.preventDefault();
         return;
       }
+      if (e.altKey && !e.ctrlKey && e.key.toLowerCase() === 's' && fg && usePane.getState().by[fg]?.has) { // screen off / on: the text gets the area
+        getActiveCmcp()?.toggleOff(fg);
+        e.preventDefault();
+        return;
+      }
       if (!e.altKey && !e.ctrlKey) return;
       for (const s of rt.slots.values()) {
         if (!s.scene.cfg.open) continue;
@@ -278,10 +285,17 @@ export function GfxPane({ sessionId }: { sessionId: string }) {
     rt.wake();
     return () => { rt.paused = true; };
   }, [rt]);
+  const pane = usePane((st) => st.by[sessionId]);
   if (!g) return null;
   const { store } = g;
   const open = [...g.rt.slots.values()].filter((s) => s.scene.cfg.open);
-  if (open.length === 0) return null;
+  if (open.length === 0) {
+    return pane?.has && pane.off ? (
+      <button type="button" className="cmcp-reopen" aria-label="Show the console screen" title="Show the console screen (Alt+S)" onClick={() => getActiveCmcp()?.setOff(sessionId, false)}>
+        Console
+      </button>
+    ) : null;
+  }
   if (!GfxRenderer.supported()) {
     return <div className="gfx-msg" role="alert">Graphics need WebGL2, which this window does not provide.</div>;
   }

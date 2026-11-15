@@ -32,15 +32,23 @@ export function intrinsic(n: CmcpNode, axis: 'w' | 'h'): number {
 }
 
 /** Places a node tree in a rectangle. Children are stretched across the parent's cross axis. */
-export function place(n: CmcpNode, rect: Rect): Placed {
+export function place(n: CmcpNode, rect: Rect, ov?: Map<string, Rect>): Placed {
   const out: Placed = { node: n, rect, children: [] };
-  const kids = n.children ?? [];
-  if (kids.length === 0) return out;
+  const all = n.children ?? [];
+  if (all.length === 0) return out;
+  // children a skin pinned to a rectangle leave the flow; the rest share what is left
+  const pinned = all.filter((c) => ov?.has(c.path));
+  const kids = pinned.length ? all.filter((c) => !ov!.has(c.path)) : all;
+  const pin = (): void => {
+    for (const c of pinned) out.children.push(place(c, ov!.get(c.path)!, ov));
+  };
+  if (kids.length === 0) { pin(); return out; }
   const l = n.layout, pad = l.pad ?? 0, gap = l.gap ?? 0;
   const inner: Rect = { x: rect.x + pad, y: rect.y + pad, w: Math.max(0, rect.w - pad * 2), h: Math.max(0, rect.h - pad * 2) };
   const dir = l.dir || 'col';
   if (dir === 'stack') {
-    out.children = kids.map((c) => place(c, inner));
+    out.children = kids.map((c) => place(c, inner, ov));
+    pin();
     return out;
   }
   if (dir === 'grid') {
@@ -48,7 +56,8 @@ export function place(n: CmcpNode, rect: Rect): Placed {
     const used = kids.map((c, i) => ({ c, col: c.layout.col ?? i % cols, row: c.layout.row ?? Math.floor(i / cols), cs: c.layout.colspan ?? 1, rs: c.layout.rowspan ?? 1 }));
     const rows = Math.max(l.rows ?? 0, ...used.map((u) => u.row + u.rs));
     const cw = (inner.w - gap * (cols - 1)) / cols, ch = (inner.h - gap * (rows - 1)) / rows;
-    out.children = used.map((u) => place(u.c, { x: inner.x + u.col * (cw + gap), y: inner.y + u.row * (ch + gap), w: cw * u.cs + gap * (u.cs - 1), h: ch * u.rs + gap * (u.rs - 1) }));
+    out.children = used.map((u) => place(u.c, { x: inner.x + u.col * (cw + gap), y: inner.y + u.row * (ch + gap), w: cw * u.cs + gap * (u.cs - 1), h: ch * u.rs + gap * (u.rs - 1) }, ov));
+    pin();
     return out;
   }
   const horiz = isRow(l);
@@ -57,21 +66,22 @@ export function place(n: CmcpNode, rect: Rect): Placed {
   const fixed = kids.map((c) => (c.layout.hasSize && c.layout.size ? c.layout.size : (c.layout.weight ?? 0) > 0 ? 0 : intrinsic(c, axis)));
   const weights = kids.map((c) => (c.layout.hasSize && c.layout.size ? 0 : c.layout.weight ?? 0));
   const wsum = weights.reduce((a, b) => a + b, 0);
-  let free = total - fixed.reduce((a, b) => a + b, 0) - gap * (kids.length - 1);
+  const fsum = fixed.reduce((a, b) => a + b, 0), gaps = gap * (kids.length - 1);
   let sizes = fixed.slice();
-  if (wsum > 0) {
-    free = Math.max(0, free);
+  if (fsum + gaps > total + 0.5) { // not enough room for even the natural sizes: shrink them alike, never overlap
+    const k = Math.max(0, total - gaps) / Math.max(1, fsum);
+    sizes = fixed.map((f) => f * k);
+  } else if (wsum > 0) {
+    const free = Math.max(0, total - fsum - gaps);
     sizes = fixed.map((f, i) => f + (weights[i] / wsum) * free);
-  } else if (free < 0) {
-    const k = Math.max(0, (total - gap * (kids.length - 1))) / Math.max(1, fixed.reduce((a, b) => a + b, 0));
-    sizes = fixed.map((f) => f * k); // too small: shrink everything alike (the text pane keeps its own minimum elsewhere)
   }
   let pos = horiz ? inner.x : inner.y;
   out.children = kids.map((c, i) => {
     const r: Rect = horiz ? { x: pos, y: inner.y, w: sizes[i], h: inner.h } : { x: inner.x, y: pos, w: inner.w, h: sizes[i] };
     pos += sizes[i] + gap;
-    return place(c, r);
+    return place(c, r, ov);
   });
+  pin();
   return out;
 }
 
@@ -83,4 +93,26 @@ export function findTextport(p: Placed): Placed | null {
     if (f) return f;
   }
   return null;
+}
+
+/** Resolves a skin's arrangement selectors (`widget#n`, `container-of:widget#n`; n counts in document order) to node paths. */
+export function resolveArrange(root: CmcpNode, arr: Record<string, [number, number, number, number]> | undefined, k = 1): Map<string, Rect> {
+  const out = new Map<string, Rect>();
+  if (!arr) return out;
+  const seen: Record<string, number> = {};
+  const list: { n: CmcpNode; parent: CmcpNode | null; idx: number; kind: string }[] = [];
+  const walk = (n: CmcpNode, parent: CmcpNode | null): void => {
+    const idx = (seen[n.widget] = (seen[n.widget] ?? -1) + 1);
+    list.push({ n, parent, idx, kind: n.widget });
+    (n.children ?? []).forEach((c) => walk(c, n));
+  };
+  walk(root, null);
+  for (const [sel, r] of Object.entries(arr)) {
+    const m = /^(?:(container-of):)?([\w-]+)#(\d+)$/.exec(sel);
+    if (!m) continue;
+    const hit = list.find((e) => e.kind === m[2] && e.idx === Number(m[3]));
+    const target = m[1] ? hit?.parent : hit?.n;
+    if (target) out.set(target.path, { x: r[0] * k, y: r[1] * k, w: r[2] * k, h: r[3] * k });
+  }
+  return out;
 }

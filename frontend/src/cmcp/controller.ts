@@ -2,7 +2,12 @@ import type { EngineAPI, GfxOp } from '../api/types';
 import type { GfxEventOut } from '../gfx/types';
 import type { GfxRuntime } from '../gfx/runtime';
 import { findTextport, place, type Placed } from './layout';
-import { diffOps, PORT_ID, SCENE, sceneOp } from './ops';
+import { skinFor } from './skins';
+import { layoutSkinned } from './skinlayout';
+import type { Skin } from './skins/types';
+import { col, frameShapes, navShapes, templateVars } from './skinframe';
+import { setActiveCmcp, usePane } from './pane';
+import { diffOps, PORT_ID, SCENE, sceneOp, type Ease } from './ops';
 import { drawSprite, type SpriteView } from './sprite';
 import type { CmcpNode, CmcpNote, CmcpTree, CmcpUI } from './types';
 import { useOverlays } from './overlays';
@@ -41,6 +46,13 @@ interface SessionState {
   key: string;
   fonts: Set<string>;
   lastRev: number;
+  /** LOG expanded: remembered per session and across consoles */
+  log: boolean;
+  /** the player switched the screen off (data keeps streaming) */
+  off: boolean;
+  offSeen: boolean;
+  lastPal: string;
+  layoutMode: string;
 }
 
 /** Draws the Go engine's bound CMCP screen trees into each session's graphics runtime and sends widget events back.
@@ -56,13 +68,29 @@ export class CmcpController {
   }
 
   attach(): () => void {
+    setActiveCmcp(this);
     const offs = [
       this.engine.on('cmcp', (ui) => this.onUi(ui)),
       this.engine.on('cmcp-notes', (p) => { this.onNotes?.(p.session, p.notes); this.noteErrors(p.notes); this.effects(p.session, p.notes); }),
       this.engine.on('session-removed', (p) => this.sess.delete(p.id)),
     ];
-    return () => offs.forEach((o) => o());
+    return () => { offs.forEach((o) => o()); setActiveCmcp(null); };
   }
+
+  /** Hides or shows the whole CMCP screen (the data keeps streaming); the text view gets the full area back. */
+  setOff(session: string, off: boolean): void {
+    const s = this.sess.get(session);
+    if (!s) return;
+    s.off = off;
+    s.offSeen = true;
+    if (off) this.close(s, true);
+    else { s.dismissed = ''; s.key = ''; if (s.ui) this.onUi(s.ui); }
+    usePane.getState().set(session, !!s.tree, s.off);
+  }
+  toggleOff(session: string): void { const s = this.sess.get(session); if (s) this.setOff(session, !s.off); }
+  /** LOG: the text grows to about 80% of the height and the other panels fold into a summary strip, and back. */
+  toggleLog(session: string): void { const s = this.sess.get(session); if (!s) return; s.log = !s.log; this.render(s); }
+  logState(session: string): boolean { return this.sess.get(session)?.log ?? false; }
 
   /** For a window that mounts late: fetch the model of a session once. */
   async sync(session: string): Promise<void> {
@@ -73,7 +101,7 @@ export class CmcpController {
   state(session: string): SessionState {
     let s = this.sess.get(session);
     if (!s) {
-      s = { id: session, ui: null, tree: null, prev: new Map(), targets: new Map(), local: new Map(), history: new Map(), images: new Map(), spriteDocs: new Map(), spriteWanted: new Set(), spriteDrawn: new Map(), spriteN: 0, viewImages: new Map(), viewDocs: new Map(), viewWanted: new Set(), fxN: 0, vsRect: null, vsItems: {}, aspect: 9 / 16, open: false, dismissed: '', key: '', fonts: new Set(), lastRev: -1 };
+      s = { id: session, ui: null, tree: null, prev: new Map(), targets: new Map(), local: new Map(), history: new Map(), images: new Map(), spriteDocs: new Map(), spriteWanted: new Set(), spriteDrawn: new Map(), spriteN: 0, viewImages: new Map(), viewDocs: new Map(), viewWanted: new Set(), fxN: 0, vsRect: null, vsItems: {}, aspect: 9 / 16, open: false, dismissed: '', key: '', fonts: new Set(), lastRev: -1, log: false, off: false, offSeen: false, lastPal: '', layoutMode: 'stack' };
       this.sess.set(session, s);
       const rt = this.rtFor(session);
       const prev = rt.onResize;
@@ -86,6 +114,9 @@ export class CmcpController {
     }
     return s;
   }
+
+  /** the setting 'start collapsed' (set by the provider from the settings store) */
+  startCollapsed: () => boolean = () => false;
 
   private noteErrors(notes: CmcpNote[]): void {
     for (const n of notes) {
@@ -102,7 +133,9 @@ export class CmcpController {
     s.lastRev = ui.rev;
     s.ui = ui;
     const t = ui.tree;
-    if (!t) { this.close(s); s.tree = null; return; }
+    if (!t) { this.close(s); s.tree = null; usePane.getState().set(s.id, false, s.off); return; }
+    if (!s.offSeen) { s.offSeen = true; s.off = this.startCollapsed(); }
+    usePane.getState().set(s.id, true, s.off);
     const key = `${t.screen}|${t.packKey}|${t.generation}`;
     if (key !== s.key) { // another screen, pack, theme or ship: start from a clean scene
       this.reset(s);
@@ -199,20 +232,22 @@ export class CmcpController {
     s.targets = new Map();
   }
 
-  private close(s: SessionState): void {
+  private close(s: SessionState, keepKey = false): void {
     useOverlays.getState().clear(s.id);
     if (!s.open) return;
     this.rtFor(s.id).apply([{ op: 'clear', scene: SCENE }, { op: 'scene', scene: SCENE, open: false }]);
     s.open = false;
     s.prev = new Map();
     s.targets = new Map();
-    s.key = '';
+    if (!keepKey) s.key = '';
   }
 
   /** Builds the primitives for the current tree and applies the difference. */
   render(s: SessionState): void {
     const t = s.tree;
-    if (!t || s.dismissed === s.key) return;
+    if (!t || s.dismissed === s.key || s.off) return;
+    const skin = skinFor(t.theme);
+    if (skin) { this.renderSkinned(s, t, skin); return; }
     const W = BASE_W, H = Math.round(BASE_W * s.aspect);
     const stack = s.ui?.stack ?? [];
     const strip = stack.length > 1 ? 26 : 0; // the context strip: only when more than one context is held
@@ -291,6 +326,59 @@ export class CmcpController {
     }
   }
 
+  /** Draws a screen in a theme's skin: the theme's frame, nav column and status strip, the game text in its own big framed port (LOG
+   * toggles it), the screen's widgets laid out in the band around the port. All geometry is the skin's (1600 x 900 scene units);
+   * the widgets are laid out in the 1200-unit base and drawn inside a group scaled by 4/3. */
+  private renderSkinned(s: SessionState, t: CmcpTree, skin: Skin): void {
+    const W = 1600, H = 900, K = 0.75;
+    const alert = (s.ui?.alert ?? String(((s.ui?.docs?.['Space.Ship.Status'] ?? {}) as Record<string, unknown>).alert ?? '')) === 'red';
+    const pal = alert ? skin.pal.red : skin.pal.normal;
+    const screenName = t.screen.split(/[./]/).pop() ?? '';
+    const cur = skin.nav.items.findIndex((i) => i.screens.includes(screenName));
+    const label = cur >= 0 ? skin.nav.items[cur].label : (t.title || screenName);
+    const vars = templateVars(s.ui!, label);
+    const L = layoutSkinned(t.root, skin, screenName, s.log);
+    if (!L) return;
+    const { root, port } = L;
+    s.layoutMode = L.mode;
+    const tokens: Record<string, string | number> = { ...t.tokens, 'color.bg': pal.bg, 'color.panel': skin.widgets.bar.track, 'color.text': pal[skin.widgets.text], 'color.dim': pal.t, 'color.accent': pal.p, 'color.accent2': pal.q, 'color.warn': pal.x, 'color.alert': pal.r, 'font.body': skin.font.family, 'font.title': skin.font.family, radius: skin.sharp ? 0 : 6 };
+    const ctx: Ctx = { tree: { ...t, tokens }, local: s.local, history: s.history, images: s.images, readonly: s.ui?.readonly ?? false, reduceMotion: this.reduceMotion, overlays: [], viewImages: s.viewImages, skin, pal };
+    const content = draw(root, ctx);
+    this.noteViewscreen(s, root);
+    useOverlays.getState().set(s.id, W, H, []); // typed entry overlays follow the 1200-unit layout; not placed in skinned mode yet
+    const prims: Prim[] = [];
+    prims.push({ id: PORT_ID, type: 'rect', props: { x: port[0], y: port[1], w: port[2], h: port[3], fill: '#00000000' } });
+    prims.push(...frameShapes(skin.frame, pal, vars, 'fr.'));
+    prims.push({ id: 'cw', type: 'group', props: { x: 0, y: 0, scaleX: L.scale / K, scaleY: L.scale / K, opacity: s.log ? 0 : 1, visible: true } });
+    for (const p of content) prims.push({ ...p, parent: p.parent ?? 'cw' });
+    prims.push({ id: 'portframe', type: 'rect', props: { x: port[0] - 8, y: port[1] - 8, w: port[2] + 16, h: port[3] + 16, r: skin.port.frame.r, stroke: col(skin.port.frame.role, pal), strokeWidth: skin.port.frame.width, fill: '#00000000', glow: skin.port.frame.glow } });
+    if (s.log) prims.push({ id: 'logsum', type: 'text', props: { x: port[0] + 4, y: port[1] - 22, text: `${label}   ${vars.ship}   HULL ${vars.hull}%   CORE ${vars.core}%   ALERT ${vars.alert}`, size: 22, fill: col('x', pal), baseline: 'middle', weight: '700', font: skin.font.family } });
+    prims.push(...navShapes(skin, pal, cur, 'nv.'));
+    const lb = skin.log.button;
+    prims.push({ id: 'logbtn', type: 'button', events: ['click'], target: { path: '', event: '', special: 'log' }, props: { x: lb.x, y: lb.y, w: lb.w, h: lb.h, r: lb.r ?? lb.h / 2, fill: col(lb.role, pal), text: s.log ? skin.log.shrink : skin.log.expand, color: col(lb.color, pal), size: lb.size * (skin.font.tscale ?? 1), weight: skin.font.weight, align: lb.align ?? 'center', padX: lb.padX ?? 16, font: skin.font.family, key: 'alt+l', glow: 0.04 } });
+    const ob = skin.off.button;
+    prims.push({ id: 'offbtn', type: 'button', events: ['click'], target: { path: '', event: '', special: 'off' }, props: { x: ob.x, y: ob.y, w: ob.w, h: ob.h, r: ob.r ?? ob.h / 2, fill: col(ob.role, pal), text: skin.off.label, color: col(ob.color, pal), size: ob.size * (skin.font.tscale ?? 1), weight: skin.font.weight, align: ob.align ?? 'center', font: skin.font.family, key: 'alt+s', glow: 0.04 } });
+    prims.forEach((p, i) => { p.props = { ...p.props, z: i }; });
+    const palKey = alert ? 'red' : 'normal';
+    const palChanged = s.lastPal !== '' && s.lastPal !== palKey;
+    s.lastPal = palKey;
+    const slow = this.reduceMotion ? 0 : 1;
+    const ease: Ease = (id, prop) => {
+      if (!slow) return 0;
+      if ((id === PORT_ID || id === 'portframe' || id === 'cw') && /^(x|y|w|h|opacity)$/.test(prop)) return 0.55;
+      if (palChanged && /^(fill|stroke|color)$/.test(prop)) return 0.9;
+      return 0;
+    };
+    const { ops, map } = diffOps(s.prev, prims, ease);
+    const rt = this.rtFor(s.id);
+    const head: GfxOp[] = [sceneOp(W, H, pal.bg, skin.bloom)];
+    if (!s.open) head.push({ op: 'on', scene: SCENE, id: '#scene', events: ['close'] });
+    s.open = true;
+    s.prev = map;
+    s.targets = new Map(prims.filter((p) => p.target).map((p) => [p.id, p.target!]));
+    rt.apply([...head, ...ops]);
+  }
+
   /** A pointer event from a scene. Returns true when the scene is CMCP's (consumed). */
   handleGfxEvent(session: string, e: GfxEventOut): boolean {
     if (e.scene !== SCENE) return false;
@@ -298,6 +386,8 @@ export class CmcpController {
     if (e.id === '#scene' && e.event === 'close') { s.dismissed = s.key; s.open = false; s.prev = new Map(); s.targets = new Map(); this.rtFor(session).apply([{ op: 'clear', scene: SCENE }, { op: 'scene', scene: SCENE, open: false }]); return true; }
     const tg = s.targets.get(e.id);
     if (!tg) return true;
+    if (tg.special === 'log') { this.toggleLog(session); return true; }
+    if (tg.special === 'off') { this.setOff(session, true); return true; }
     let event = tg.event;
     if (e.event === 'drag' && tg.event === 'change') event = 'change';
     const val = typeof tg.value === 'function' ? (tg.value as (x: number, y: number) => unknown)(e.x, e.y) : tg.value;
