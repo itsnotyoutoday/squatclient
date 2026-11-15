@@ -251,6 +251,11 @@ export function GfxProvider({ engine, children }: { engine: EngineAPI; children:
         e.preventDefault();
         return;
       }
+      if (e.altKey && !e.ctrlKey && (e.key === ']' || e.key === '[') && fg && usePane.getState().by[fg]?.has) {
+        getActiveCmcp()?.cycleScreen(fg, e.key === ']' ? 1 : -1);
+        e.preventDefault();
+        return;
+      }
       if (!e.altKey && !e.ctrlKey) return;
       for (const s of rt.slots.values()) {
         if (!s.scene.cfg.open) continue;

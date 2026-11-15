@@ -88,3 +88,30 @@ func (a *App) CmcpViewEvent(session, ev string) (string, error) {
 	}
 	return s.CmcpViewEvent(session, ev)
 }
+
+// CmcpShowScreen shows another screen of the current console locally ("std.power", "<pack>/<screen>").
+func (a *App) CmcpShowScreen(session, screen string) error {
+	s, err := a.service()
+	if err != nil {
+		return err
+	}
+	return s.CmcpShowScreen(session, screen)
+}
+
+// CmcpCycleScreen shows the next (dir > 0) or previous available screen of the console.
+func (a *App) CmcpCycleScreen(session string, dir int) (string, error) {
+	s, err := a.service()
+	if err != nil {
+		return "", err
+	}
+	return s.CmcpCycleScreen(session, dir)
+}
+
+// CmcpPinScreen keeps the locally chosen screen across console changes.
+func (a *App) CmcpPinScreen(session string, pin bool) error {
+	s, err := a.service()
+	if err != nil {
+		return err
+	}
+	return s.CmcpPinScreen(session, pin)
+}

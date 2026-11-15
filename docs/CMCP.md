@@ -38,3 +38,16 @@ Live: `SQUAT_LIVE_CMCP=1 SQUAT_LIVE_CMCP_MAN=1 go test ./pkg/engine -run CmcpLiv
 
 `go.mod` of squatClient and squatClientDaemon require `github.com/itsnotyoutoday/cmcp` with `replace ... => ../cmcp/go`. CI must check the cmcp
 repository out next to them (it is not on GitHub yet).
+
+## Running against the Evennia test game with packs (developer flag)
+
+The test game announces its packs from `http://127.0.0.1:4102`. Plain http from a loopback origin is accepted only with the developer flag, only for the
+origin this connection's Welcome announced, and only while the game itself is on loopback. The flag is never set in a release build:
+
+```
+SQUATCLIENT_DEV_LOOPBACK_HTTP=1 make run      # then connect to 127.0.0.1:4101 as bob (cobalt-fern-52) or carol (violet-oak-38)
+```
+
+Verified headlessly with the Go engine (SQUAT_LIVE_CMCP=1, see pkg/engine/cmcp_live_test.go, never port 4201): as bob, boarding the Klingon ship (`board drakhar`)
+and manning `opera` loads `fspace-klingon/operations` over the flag, and the theme follows the ship ("klingon", source builtin). The consent dialog and the real
+Wails window were not exercised. Settings: "Console theme: follow the ship (default) / fixed: <theme>".

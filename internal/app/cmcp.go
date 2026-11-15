@@ -41,7 +41,7 @@ func (s *Service) applyCmcpSettings() {
 	} else {
 		s.eng.SetCmcp(nil)
 	}
-	s.eng.SetCmcpRender(engine.CmcpRender{PortDefault: st.CmcpPortDefault, Calm: st.CmcpCalm, StartCollapsed: st.CmcpStartCollapsed, Theme: st.ConsoleTheme, UseShipTheme: st.UseShipTheme, Tokens: CmcpThemeTokens})
+	s.eng.SetCmcpRender(engine.CmcpRender{PortDefault: st.CmcpPortDefault, Calm: st.CmcpCalm, StartCollapsed: st.CmcpStartCollapsed, Theme: st.ConsoleTheme, UseShipTheme: st.ConsoleThemeMode != "fixed", Tokens: CmcpThemeTokens})
 }
 
 type cmcpNotesPayload struct {
@@ -113,4 +113,19 @@ func (s *Service) CmcpPackConsent(session, packID string, allow bool) error {
 // CmcpViewEvent toggles the text view: "log_toggle" (compact <-> expanded) or "screen_toggle" (the console screen off/on); it returns the state.
 func (s *Service) CmcpViewEvent(session, ev string) (string, error) {
 	return s.eng.CmcpViewEvent(session, ev)
+}
+
+// CmcpShowScreen shows another screen of the current console locally (the themes' console-switch column).
+func (s *Service) CmcpShowScreen(session, screen string) error {
+	return s.eng.CmcpShowScreen(session, screen)
+}
+
+// CmcpCycleScreen moves to the next (dir > 0) or previous available screen of the console, wrapping; it returns the screen shown.
+func (s *Service) CmcpCycleScreen(session string, dir int) (string, error) {
+	return s.eng.CmcpCycleScreen(session, dir)
+}
+
+// CmcpPinScreen keeps the locally chosen screen across console changes.
+func (s *Service) CmcpPinScreen(session string, pin bool) error {
+	return s.eng.CmcpPinScreen(session, pin)
 }

@@ -250,27 +250,16 @@ export function SettingsDialog() {
         </Field>
         <h3 className="group">Game consoles (CMCP) and sound</h3>
         {check('cmcp', 'Let games draw their consoles from protocol data', '(advertised when you connect; off = text only. Takes effect on the next connection.)')}
-        <Field label="Console theme" hint="How the consoles look. A game may suggest one; it is only followed when the next option is on.">
-          <select aria-label="Console theme" value={settings.consoleTheme} onChange={(e) => update({ consoleTheme: e.target.value })}>
+        <Field label="Console theme" hint="Follow the ship (default): a Klingon ship looks Klingon, a Romulan one Romulan. Fixed: always the theme chosen here.">
+          <select aria-label="Console theme" value={settings.consoleThemeMode === 'fixed' ? settings.consoleTheme : 'ship'} onChange={(e) => (e.target.value === 'ship' ? update({ consoleThemeMode: 'ship' }) : update({ consoleThemeMode: 'fixed', consoleTheme: e.target.value }))}>
+            <option value="ship">follow the ship (default)</option>
             {['tng', 'soft', 'klingon', 'romulan', 'tos', 'ferengi', 'ops'].map((t) => (
               <option key={t} value={t}>
-                {t}
+                fixed: {t}
               </option>
             ))}
           </select>
         </Field>
-        <Field label="Game text size on console screens" hint="Balanced gives the text 45% of the height (default); large 60%; compact is the theme's own small text (about 20%) that the LOG button grows.">
-          <select aria-label="Game text size" value={settings.cmcpPortDefault} onChange={(e) => update({ cmcpPortDefault: e.target.value as Settings['cmcpPortDefault'] })}>
-            {['compact', 'balanced', 'large'].map((t) => (
-              <option key={t} value={t}>
-                {t}
-              </option>
-            ))}
-          </select>
-        </Field>
-        {check('cmcpCalm', 'Calm mode', '(slower, gentler console animations)')}
-        {check('cmcpStartCollapsed', 'Start with the console screen switched off', '(the game text gets the whole area; Alt+S or the Console button brings the screen back)')}
-        {check('useShipTheme', "Use the ship's theme and sound era", '(the console, the ship or the screen may suggest one)')}
         <Field label="Sound era" hint="Which set of sounds to use for your own recordings. Empty = what the game or the ship's theme suggests.">
           <select aria-label="Sound era" value={settings.soundEra} onChange={(e) => update({ soundEra: e.target.value })}>
             {['', 'tos', 'tng', 'ds9', 'voy', 'klingon', 'romulan', 'ferengi', 'any'].map((t) => (

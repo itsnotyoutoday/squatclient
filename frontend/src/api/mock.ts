@@ -642,6 +642,16 @@ export class MockEngine implements EngineAPI {
     this.cmcpCall('cmcpViewEvent', session, ev);
     return 'default';
   }
+  async cmcpShowScreen(session: string, screen: string): Promise<void> {
+    this.cmcpCall('cmcpShowScreen', session, screen);
+  }
+  async cmcpCycleScreen(session: string, dir: number): Promise<string> {
+    this.cmcpCall('cmcpCycleScreen', session, dir);
+    return '';
+  }
+  async cmcpPinScreen(session: string, pin: boolean): Promise<void> {
+    this.cmcpCall('cmcpPinScreen', session, pin);
+  }
   async cmcpPackConsent(session: string, packId: string, allow: boolean): Promise<void> {
     this.cmcpCall('cmcpPackConsent', session, packId, allow);
   }

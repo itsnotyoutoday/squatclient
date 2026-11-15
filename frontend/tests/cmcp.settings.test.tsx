@@ -16,6 +16,10 @@ describe('Settings: consoles and sound', () => {
     expect(screen.getByText(/Game consoles \(CMCP\) and sound/)).toBeTruthy();
     fireEvent.change(screen.getByLabelText('Console theme'), { target: { value: 'klingon' } });
     expect(useSettings.getState().settings.consoleTheme).toBe('klingon');
+    expect(useSettings.getState().settings.consoleThemeMode).toBe('fixed');
+    fireEvent.change(screen.getByLabelText('Console theme'), { target: { value: 'ship' } });
+    expect(useSettings.getState().settings.consoleThemeMode).toBe('ship');
+    fireEvent.change(screen.getByLabelText('Console theme'), { target: { value: 'klingon' } });
     fireEvent.click(screen.getAllByText('Browse...').slice(-1)[0]);
     await vi.waitFor(() => expect(useSettings.getState().settings.soundFolder).toBe('/home/me/sounds'));
     fireEvent.change(screen.getByLabelText('Master volume'), { target: { value: '35' } });

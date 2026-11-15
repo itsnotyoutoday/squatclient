@@ -127,6 +127,7 @@ type Settings struct {
 	SoundFolder        string         `json:"soundFolder"`  // the player's local sound folder (never uploaded); "" = none
 	SoundVolume        int            `json:"soundVolume"`  // 0..100 master
 	SoundMuted         bool           `json:"soundMuted"`
+	ConsoleThemeMode   string         `json:"consoleThemeMode"`               // ship (default: follow the ship's suggested theme) | fixed (always ConsoleTheme)
 	CmcpPortDefault    string         `json:"cmcpPortDefault"`                // text view size: compact | balanced (default, 45%) | large (60%)
 	CmcpCalm           bool           `json:"cmcpCalm"`                       // eased motion 2.5x slower
 	CmcpStartCollapsed bool           `json:"cmcpStartCollapsed"`             // a console screen starts switched off
@@ -163,6 +164,9 @@ func (s *Settings) clampCommandWindow() {
 	s.SendLineDelayMs = clampInt(s.SendLineDelayMs, 0, MaxSendLineDelayMs)
 	s.HistoryMax = clampInt(s.HistoryMax, MinHistoryMax, MaxHistoryMax) // 0 is not allowed: it clamps to the minimum
 	s.SoundVolume = clampInt(s.SoundVolume, 0, 100)
+	if s.ConsoleThemeMode != "fixed" {
+		s.ConsoleThemeMode = "ship"
+	}
 	if s.CmcpPortDefault != "compact" && s.CmcpPortDefault != "large" {
 		s.CmcpPortDefault = "balanced"
 	}
@@ -185,7 +189,7 @@ func DefaultSettings() Settings {
 		ScrollbackLines: 20000, Notifications: true, Linkify: true, PauseOnScroll: true,
 		DefaultEncoding: "utf-8", Truecolor: true,
 		EditorHeight: DefaultEditorH, SoftcodeJoin: true, StripBlankLines: true, HistoryMax: DefaultHistoryMax, WarnUnbalanced: true, AutoReconnectSquatters: true, TFHideQueries: true,
-		Cmcp: true, ConsoleTheme: "tng", SoundVolume: 70, CmcpPortDefault: "balanced",
+		Cmcp: true, ConsoleTheme: "tng", SoundVolume: 70, CmcpPortDefault: "balanced", ConsoleThemeMode: "ship",
 	}
 }
 

@@ -27,7 +27,7 @@ export interface CmcpTree {
   theme: string;
   themeSource?: 'pack' | 'builtin' | 'plain';
   /** The text view's state from the shared core (LOG / screen-off) and the player's size choice. */
-  view?: { state: 'default' | 'expanded' | 'off'; portDefault: 'compact' | 'balanced' | 'large'; fraction: number; calm: boolean };
+  view?: { state: 'compact' | 'balanced' | 'large' | 'expanded' | 'off'; portDefault: 'compact' | 'balanced' | 'large'; fraction: number; calm: boolean };
   tokens: Record<string, string | number>;
   packKey: string;
   exhausted?: boolean;
@@ -62,6 +62,10 @@ export interface CmcpUI {
   /** Held contexts (consoles, rooms, away teams, events, docks), lowest priority first; the last one is shown. */
   stack?: CmcpStackEntry[];
   catalogueComplete?: boolean;
+  /** The screen menu: the screens this console can show, with why a screen is dimmed and how to get it. */
+  screens?: { id: string; title: string; available: boolean; reason?: string; hintCmd?: string; active: boolean }[];
+  localScreen?: string;
+  pinned?: boolean;
   catalogue?: Record<string, CmcpCommandSpec>;
   subs: CmcpSub[];
   docs?: Record<string, unknown>;

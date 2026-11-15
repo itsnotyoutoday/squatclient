@@ -53,7 +53,7 @@ interface SessionState {
   offSeen: boolean;
   lastPal: string;
   layoutMode: string;
-  viewState: 'default' | 'expanded' | 'off';
+  viewState: 'compact' | 'balanced' | 'large' | 'expanded' | 'off' | 'default';
 }
 
 /** Draws the Go engine's bound CMCP screen trees into each session's graphics runtime and sends widget events back.
@@ -83,7 +83,7 @@ export class CmcpController {
     const s = this.sess.get(session);
     if (!s) return;
     void this.engine.cmcpViewEvent(session, ev).then((st) => {
-      s.viewState = st as 'default' | 'expanded' | 'off'; // do not wait for the next model event
+      s.viewState = st as SessionState['viewState']; // do not wait for the next model event
       this.applyView(s);
     }).catch((e: unknown) => this.onError?.(String(e)));
   }
@@ -92,6 +92,8 @@ export class CmcpController {
   setOff(session: string, off: boolean): void { const s = this.sess.get(session); if (s && (s.viewState === 'off') !== off) this.viewEvent(session, 'screen_toggle'); }
   /** LOG: the text grows to about 80% of the height and the other panels fold into a summary strip, and back (animated). */
   toggleLog(session: string): void { this.viewEvent(session, 'log_toggle'); }
+  /** Alt+] / Alt+[ : the next or previous screen of the console */
+  cycleScreen(session: string, dir: number): void { void this.engine.cmcpCycleScreen(session, dir).catch((err: unknown) => this.onError?.(String(err).replace(/^Error: /, ''))); }
   logState(session: string): boolean { return this.sess.get(session)?.viewState === 'expanded'; }
 
   private applyView(s: SessionState): void {
@@ -367,7 +369,8 @@ export class CmcpController {
     for (const p of content) prims.push({ ...p, parent: p.parent ?? 'cw' });
     prims.push({ id: 'portframe', type: 'rect', props: { x: port[0] - 8, y: port[1] - 8, w: port[2] + 16, h: port[3] + 16, r: skin.port.frame.r, stroke: col(skin.port.frame.role, pal), strokeWidth: skin.port.frame.width, fill: '#00000000', glow: skin.port.frame.glow } });
     if (s.log) prims.push({ id: 'logsum', type: 'text', props: { x: port[0] + 4, y: port[1] - 22, text: `${label}   ${vars.ship}   HULL ${vars.hull}%   CORE ${vars.core}%   ALERT ${vars.alert}`, size: 22, fill: col('x', pal), baseline: 'middle', weight: '700', font: skin.font.family } });
-    prims.push(...navShapes(skin, pal, cur, 'nv.'));
+    const menu = s.ui?.screens ?? [];
+    prims.push(...navShapes(skin, pal, cur, 'nv.', (id) => { const o = menu.find((x) => x.id === id); return { available: o ? o.available : true, hint: o?.hintCmd }; }));
     const lb = skin.log.button;
     prims.push({ id: 'logbtn', type: 'button', events: ['click'], target: { path: '', event: '', special: 'log' }, props: { x: lb.x, y: lb.y, w: lb.w, h: lb.h, r: lb.r ?? lb.h / 2, fill: col(lb.role, pal), text: s.log ? skin.log.shrink : skin.log.expand, color: col(lb.color, pal), size: lb.size * (skin.font.tscale ?? 1), weight: skin.font.weight, align: lb.align ?? 'center', padX: lb.padX ?? 16, font: skin.font.family, key: 'alt+l', glow: 0.04 } });
     const ob = skin.off.button;
@@ -402,7 +405,11 @@ export class CmcpController {
     const tg = s.targets.get(e.id);
     if (!tg) return true;
     if (tg.special === 'log') { this.toggleLog(session); return true; }
-    if (tg.special === 'off') { this.setOff(session, true); return true; }
+    if (tg.special === 'off') { this.toggleOff(session); return true; }
+    if (tg.special === 'nav' && tg.screen) { // the console-switch column: another screen of this console, shown locally
+      void this.engine.cmcpShowScreen(session, tg.screen).catch((err: unknown) => this.onError?.(`${tg.screen!.replace('std.', '')}: ${String(err).replace(/^Error: /, '')}`));
+      return true;
+    }
     let event = tg.event;
     if (e.event === 'drag' && tg.event === 'change') event = 'change';
     const val = typeof tg.value === 'function' ? (tg.value as (x: number, y: number) => unknown)(e.x, e.y) : tg.value;
