@@ -113,3 +113,45 @@ func TestEffectiveMute(t *testing.T) {
 		t.Fatalf("the other session is unaffected: %q", got)
 	}
 }
+
+// A session held by a gtf squatter has an id like "sq1:fake" and no saved world of ours: it is audible unless the global mute is on, and its sounds are
+// emitted under that id (the web view plays the sounds of the session in front, matched by this id).
+func TestSquatterStyleSessionIsAudible(t *testing.T) {
+	f := newFixture(t)
+	if got := f.svc.MuteState("sq1:fake"); got != "" {
+		t.Fatalf("a squatter-held session with no world of ours is audible: %q", got)
+	}
+	lib := filepath.Join(t.TempDir(), "lib")
+	writeFile(t, filepath.Join(lib, "a.mp3"), "x")
+	writeFile(t, filepath.Join(lib, "era-maps", "tng.json"), `{"format":1,"id":"tng","events":{"phaser_fire":[{"file":"a.mp3"}]}}`)
+	cur := f.cfg.Settings()
+	cur.SoundFolder = lib
+	if err := f.svc.SaveSettings(cur); err != nil {
+		t.Fatal(err)
+	}
+	f.svc.playSound("sq1:fake", &msg.SoundPlay{Event: "phaser_fire"})
+	evs := f.events("cmcp-audio")
+	if len(evs) != 1 {
+		t.Fatalf("the sound was not emitted: %d events", len(evs))
+	}
+	m := evs[0].Payload.(SoundMsg)
+	if m.Session != "sq1:fake" || m.Res == nil || m.Res.URL != "/cmcp-audio/local/a.mp3" {
+		t.Fatalf("emitted under the wrong session or url: %+v", m)
+	}
+	st := cur
+	st.SoundMuted = true
+	if err := f.svc.SaveSettings(st); err != nil {
+		t.Fatal(err)
+	}
+	if got := f.svc.MuteState("sq1:fake"); got != "global" {
+		t.Fatalf("the global mute applies to it too: %q", got)
+	}
+}
+
+// The app opens a pack store at start: without one a client with no local sound folder never fetches the game's announced sound pack and is silent.
+func TestServiceHasAPackStore(t *testing.T) {
+	f := newFixture(t)
+	if !f.svc.Engine().HasCmcpPacks() {
+		t.Fatal("the service must give the engine a pack store (SetCmcpPacks)")
+	}
+}

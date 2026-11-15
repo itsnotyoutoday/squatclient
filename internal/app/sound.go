@@ -370,6 +370,7 @@ func (s *Service) playSound(session string, p *msg.SoundPlay) {
 	if p.Priority != nil {
 		m.Priority = *p.Priority
 	}
+	s.soundLog("emitted cmcp-audio play session=%q key=%q event=%q", session, m.Key, ev)
 	s.emit("cmcp-audio", m)
 }
 
@@ -390,6 +391,7 @@ func (s *Service) AudioHandler() http.Handler {
 			name, _ := url.PathUnescape(parts[1])
 			b, ct, err := s.eng.CmcpSample(sid, name)
 			if err != nil {
+				s.soundLog("sample %q of session %q could not be served: %v", name, sid, err)
 				http.Error(w, err.Error(), http.StatusNotFound)
 				return
 			}

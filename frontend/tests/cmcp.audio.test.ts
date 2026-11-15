@@ -179,3 +179,29 @@ describe('sound diagnostics and the recipe fallback', () => {
     expect(played.some((p) => p.recipe)).toBe(true);
   });
 });
+
+describe('the audio path is traced for client.log', () => {
+  it('writes what arrived, the foreground session and why a sound was not played', () => {
+    const lines: string[] = [];
+    const { audio } = rig();
+    audio.sink = (l) => lines.push(l);
+    audio.setForeground('s1');
+    const recipe = { duration: 1, gain: 1, pan: 0, detuneCents: 0, voices: [] };
+    audio.handle({ session: 's2', op: 'play', event: 'red_alert', category: 'alert', volume: 1, priority: 5, res: { kind: 'recipe', recipe } }); // another session: dropped
+    audio.handle({ session: 's1', op: 'play', event: 'phaser_fire', category: 'weapon', volume: 1, priority: 5, res: { kind: 'recipe', recipe } });
+    const text = lines.join('\n');
+    expect(text).toMatch(/audio: received play red_alert session=s2 fg=s1/);
+    expect(text).toMatch(/audio: NOT played red_alert: not the foreground session/);
+    expect(text).toMatch(/audio: playing phaser_fire/);
+  });
+});
+
+describe('a session id of a gtf squatter ("sq1:fake")', () => {
+  it('is matched by the foreground session like any other id', () => {
+    const { audio, played } = rig();
+    audio.setForeground('sq1:fake');
+    const recipe = { duration: 1, gain: 1, pan: 0, detuneCents: 0, voices: [] };
+    audio.handle({ session: 'sq1:fake', op: 'play', event: 'red_alert', category: 'alert', volume: 1, priority: 5, res: { kind: 'recipe', recipe } });
+    expect(played.some((p) => p.recipe)).toBe(true);
+  });
+});

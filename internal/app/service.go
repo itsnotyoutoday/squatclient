@@ -131,6 +131,14 @@ func New(o Options) (*Service, error) {
 	s.eng = engine.New(eo)
 	s.snd = newSoundSvc(s)
 	s.eng.SetCmcpLog(func(l string) { s.ClientLog(l) })
+	// the pack store: announced layout packs, themes and sound packs are fetched, verified and cached here (without it nothing a game announces is ever
+	// fetched and a client with no local sound folder is silent)
+	if ps, err := engine.OpenPackStore(filepath.Join(o.Config.Dir(), "packs")); err != nil {
+		o.Logger.Warn("pack store unavailable", "err", err)
+		s.ClientLog("pack store unavailable: " + err.Error())
+	} else {
+		s.eng.SetCmcpPacks(ps)
+	}
 	s.applyCmcpSettings()
 	s.eng.SetAutoReconnectSquatters(o.Config.Settings().AutoReconnectSquatters)
 	s.eng.SetShowGagged(o.Config.Settings().ShowGagged)
