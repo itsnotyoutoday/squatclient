@@ -107,11 +107,13 @@ describe('the CMCP level chip', () => {
 
 describe('a pane takes the game theme colours', () => {
   it('puts the screen tokens on the tree as CSS variables', () => {
-    const t = { ...tree, tokens: { 'color.accent': '#ff9900', 'color.text': '#e8e0d0', 'font.body': 'Antonio' } } as unknown as CmcpTree;
+    const t = { ...tree, tokens: { 'color.accent': '#ff9900', 'color.text': '#e8e0d0', 'font.title': 'Antonio' } } as unknown as CmcpTree;
     const { container } = render(<TreeView tree={t} send={() => undefined} />);
     const el = container.querySelector('.cmcp-tree') as HTMLElement;
     expect(el.style.getPropertyValue('--cmcp-accent')).toBe('#ff9900');
     expect(el.style.getPropertyValue('--cmcp-text')).toBe('#e8e0d0');
-    expect(el.style.getPropertyValue('--cmcp-font')).toContain('Antonio');
+    // the heading font is the theme's; the body keeps the window's own game font, so aligned columns line up
+    expect(el.style.getPropertyValue('--cmcp-font-title')).toContain('Antonio');
+    expect(el.style.getPropertyValue('--cmcp-font')).toBe('');
   });
 });

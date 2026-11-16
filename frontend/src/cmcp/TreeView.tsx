@@ -165,10 +165,9 @@ function themeVars(tree: CmcpTree): React.CSSProperties {
     const v = tree.tokens?.[token];
     if (typeof v === 'string' && v) out[name] = v;
   }
-  const font = tree.tokens?.['font.body'];
-  if (typeof font === 'string' && font) out['--cmcp-font'] = `"${font}", inherit`;
+  // only the headings take the theme's display font: the body is the window's own game font, so columns a game aligns with spaces line up
   const title = tree.tokens?.['font.title'];
-  if (typeof title === 'string' && title) out['--cmcp-font-title'] = `"${title}", inherit`;
+  if (typeof title === 'string' && title) out['--cmcp-font-title'] = `"${title}", var(--font, monospace)`;
   return out as React.CSSProperties;
 }
 
