@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSessions, useUi } from '../state/stores';
 import { useCmcpDom } from './dom';
 import { TreeView } from './TreeView';
@@ -198,7 +198,7 @@ export function PaneHosts({ children }: { children: React.ReactNode }) {
   const fg = useSessions((s) => s.fg);
   const dom = useCmcpDom((s) => (fg ? s.by[fg] : undefined));
   const [hidden, setHidden] = useState<Set<string>>(new Set());
-  const panes = dom?.panes ?? [];
+  const panes = useMemo(() => dom?.panes ?? [], [dom]);
   useEffect(() => {
     // a context that left the stack and came back is shown again (hiding lasts for the visit)
     setHidden((h) => {
