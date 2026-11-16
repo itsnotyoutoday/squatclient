@@ -1850,6 +1850,11 @@ h3.lay-panel-title {
 .cmcp-pane-wait { padding: 8px; }
 /* a pane's own text scrolls when it is taller than the space the dock gives it */
 .cmcp-pane > .cmcp-tree { overflow-y: auto; max-height: 70vh; }
+/* the dock IS the panel: a pane inside it has no frame of its own, only its title. A float still needs its frame: it stands over the window. */
+.cmcp-dock .cmcp-pane { background: none; border: 0; border-radius: 0; }
+.cmcp-dock .cmcp-pane + .cmcp-pane { border-top: 1px solid var(--ui-border); }
+.cmcp-dock .cmcp-pane-head { border-bottom: 0; padding-top: 0; }
+.cmcp-dock .cmcp-pane > .cmcp-tree { padding: 0 2px; max-height: none; overflow: visible; }
 /* a pane's own text scrolls when it is taller than the space the dock gives it */
 .cmcp-pane > .cmcp-tree { overflow-y: auto; max-height: 70vh; }
 .cmcp-float { position: absolute; z-index: 20; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45); }
