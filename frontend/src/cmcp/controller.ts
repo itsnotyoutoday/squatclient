@@ -299,7 +299,7 @@ export class CmcpController {
     const page = level === 2;
     useCmcpDom.getState().set(ui.session, {
       main: page ? ui.tree : null, title: ui.ctx?.type ? (ui.tree?.title || ui.title || '') : '', readonly: ui.readonly,
-      panes: level === 1 ? [] : (ui.panes ?? []), exits: level === 1 ? [] : exitsOf(ui), on: ui.state === 'ready', proto: ui.proto, serverLevel, level,
+      panes: (ui.panes ?? []).filter((p) => effectiveLevel(p.level ?? 3, capOf(ui.session)) > 1), exits: level === 1 ? [] : exitsOf(ui), on: ui.state === 'ready', proto: ui.proto, serverLevel, level,
     });
     if (page || level === 1) { this.close(s); s.tree = null; usePane.getState().set(s.id, false, false); return; }
     { const d = `${ui.session} model state=${ui.state} screen=${ui.tree?.screen ?? 'none'} view=${ui.tree?.view?.state ?? '-'} readonly=${ui.readonly} console=${ui.console?.id ?? ''} notice=${ui.notice?.id ?? ''}`; if (d !== this.lastDbg) { this.lastDbg = d; this.dbg(d); } }

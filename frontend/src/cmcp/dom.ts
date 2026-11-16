@@ -28,7 +28,10 @@ export const useCmcpDom = create<DomStore>((set) => ({
     ),
 }));
 
-/** The most the game allows for the context in view (its own level, else its type's, resolved by the core). Absent means 3: the game
+/** A pane carries its OWN level: it is not affected by the level of the main context, only by the player's cap. A pane whose effective
+ * level is 1 (text only) is not shown at all.
+ *
+ * The most the game allows for the context in view (its own level, else its type's, resolved by the core). Absent means 3: the game
  * allows the full console. */
 export function serverLevelOf(ui: CmcpUI): number {
   const lv = ui.ctx?.level;

@@ -141,3 +141,27 @@ describe('where a page-drawn screen goes', () => {
     expect(container.querySelector('.with-panes-main')?.textContent).toBe('the game text'); // nothing of it sits over the text
   });
 });
+
+describe('a pane keeps its own level', () => {
+  it('is shown when the main context is text only, and hidden when the player caps below its own level', async () => {
+    const { CmcpController } = await import('../src/cmcp/controller');
+    const { useCmcpDom } = await import('../src/cmcp/dom');
+    const { useCmcpLevel } = await import('../src/cmcp/level');
+    const { MockEngine } = await import('../src/api/mock');
+    const { GfxRuntime } = await import('../src/gfx/runtime');
+    const rt = new GfxRuntime();
+    rt.paused = true;
+    const ctl = new CmcpController(new MockEngine(), () => rt);
+    const model = (cap?: 'widgets' | 'text') => {
+      if (cap) useCmcpLevel.getState().set('s9', cap);
+      ctl.onUi({ session: 's9', rev: Math.random(), state: 'ready', proto: 2, v2: true, tree: null,
+        ctx: { type: 'world.place', scope: 'world', key: 'k', layout: 'l', surface: 'screen', ambient: false, level: 1 },
+        panes: [{ surface: 'dock', key: 'panel:briefing', ctx: 2, type: 'world.briefing', scope: 'world', layout: 'l', level: 2, tree }],
+      } as unknown as CmcpUI);
+      return useCmcpDom.getState().by.s9;
+    };
+    expect(model().level).toBe(1); // the concourse itself: text only
+    expect(model().panes.map((p) => p.key)).toEqual(['panel:briefing']); // the guide dock is still there
+    expect(model('text').panes).toEqual([]); // the player capped everything at text: the pane goes too
+  });
+});
