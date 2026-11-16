@@ -34,3 +34,11 @@ export const useAmbient = create<AmbientState>((set) => ({
   by: {},
   set: (session, a) => set((st) => (JSON.stringify(st.by[session]) === JSON.stringify(a) ? st : { by: { ...st.by, [session]: a } })),
 }));
+
+/** The hit shake for a session that has no CMCP screen up (a ship room with room screens off, or the client capped below the scene): the
+ * game output itself is nudged, so a hit is felt wherever the player is aboard. Zero when nothing is shaking. */
+interface ShakeState { by: Record<string, { x: number; y: number } | undefined>; set(session: string, s: { x: number; y: number } | undefined): void }
+export const useShake = create<ShakeState>((set) => ({
+  by: {},
+  set: (session, v) => set((st) => (st.by[session]?.x === v?.x && st.by[session]?.y === v?.y ? st : { by: { ...st.by, [session]: v } })),
+}));

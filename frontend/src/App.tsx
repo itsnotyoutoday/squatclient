@@ -4,6 +4,7 @@ import { startController } from './state/controller';
 import type { Controller } from './state/controller';
 import { ControllerContext } from './state/controller-context';
 import { useSessions, useSettings, useUi } from './state/stores';
+import { useShake } from './cmcp/pane';
 import { useTheme } from './state/hooks';
 import { PaneHosts } from './cmcp/PaneHost';
 import { applyTheme, setPortalLook, watchSystemLook } from './themes';
@@ -133,6 +134,9 @@ export function App({ engine }: { engine: EngineAPI }) {
   const view = useUi((s) => s.view);
   const fontFamily = useSettings((s) => s.settings.fontFamily);
   const fontSize = useSettings((s) => s.settings.fontSize);
+  // a hit while no console screen is up: the game output is nudged instead, so a hit is felt wherever the player is aboard
+  const fgSession = useSessions((s) => s.fg);
+  const shake = useShake((s) => (fgSession ? s.by[fgSession] : undefined));
   const unread = useSessions((s) =>
     Object.values(s.sessions).reduce((n, x) => n + (x.id === s.fg ? 0 : x.unread), 0),
   );
@@ -207,7 +211,7 @@ export function App({ engine }: { engine: EngineAPI }) {
       <GfxProvider engine={engine}>
         <div
           className="app"
-          style={{ '--font': fontFamily, '--font-size': `${fontSize}px` } as React.CSSProperties}
+          style={{ '--font': fontFamily, '--font-size': `${fontSize}px`, '--shake-x': `${shake?.x ?? 0}px`, '--shake-y': `${shake?.y ?? 0}px` } as React.CSSProperties}
         >
           <a
             className="skip"

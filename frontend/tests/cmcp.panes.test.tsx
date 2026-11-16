@@ -165,3 +165,22 @@ describe('a pane keeps its own level', () => {
     expect(model('text').panes).toEqual([]); // the player capped everything at text: the pane goes too
   });
 });
+
+describe('the hit shake with no console screen up', () => {
+  it('nudges the game output, and stops when the shake does', async () => {
+    const { CmcpController } = await import('../src/cmcp/controller');
+    const { useShake } = await import('../src/cmcp/pane');
+    const { MockEngine } = await import('../src/api/mock');
+    const { GfxRuntime } = await import('../src/gfx/runtime');
+    const engine = new MockEngine();
+    const rt = new GfxRuntime();
+    rt.paused = true;
+    const ctl = new CmcpController(engine, () => rt);
+    const off = ctl.attach();
+    engine.pushCmcpPulse({ session: 's5', active: false, level: 1, phase: 'on', shake: { active: true, x: 4.8, y: -2 } });
+    expect(useShake.getState().by.s5).toEqual({ x: 4.8, y: -2 });
+    engine.pushCmcpPulse({ session: 's5', active: false, level: 1, phase: 'on', shake: { active: false, x: 0, y: 0 } });
+    expect(useShake.getState().by.s5).toBeUndefined();
+    off();
+  });
+});

@@ -13,7 +13,7 @@ export const NOTICE_H = 26;
 export const NOTICE_MAX = 640;
 export type AlertRecolour = 'full' | 'edge' | 'off';
 import { skinFromTheme } from './skins/pack';
-import { setActiveCmcp, useAmbient, usePane, useScreenHelp, useThemeInUse } from './pane';
+import { setActiveCmcp, useAmbient, usePane, useScreenHelp, useShake, useThemeInUse } from './pane';
 import { useSettings } from '../state/stores';
 import { diffOps, PORT_ID, SCENE, sceneOp, type Ease } from './ops';
 import { exitsOf, serverLevelOf, useCmcpDom } from './dom';
@@ -103,7 +103,10 @@ export class CmcpController {
     const offs = [
       useCmcpLevel.subscribe(this.redrawAll),
       this.engine.on('cmcp', (ui) => this.onUi(ui)),
-      this.engine.on('cmcp-pulse', (p) => { useAmbient.getState().set(p.session, p.ambient ? { edge: p.ambient.edge, hueBg: p.ambient.hueBg } : undefined); const s = this.sess.get(p.session); if (s) { s.pulse = p; if (s.tree && s.open) this.render(s); } }),
+      this.engine.on('cmcp-pulse', (p) => { useAmbient.getState().set(p.session, p.ambient ? { edge: p.ambient.edge, hueBg: p.ambient.hueBg } : undefined); const s = this.sess.get(p.session); if (s) { s.pulse = p; if (s.tree && s.open) this.render(s); }
+        // with no screen up (a ship room, or the client capped below the scene) the scene cannot carry the hit shake: nudge the game output instead
+        const scene = !!s?.tree && !!s?.open;
+        useShake.getState().set(p.session, !scene && !this.reduceMotion && p.shake?.active ? { x: p.shake.x, y: p.shake.y } : undefined); }),
       this.engine.on('cmcp-notes', (p) => { this.onNotes?.(p.session, p.notes); this.noteErrors(p.notes); this.effects(p.session, p.notes); }),
       this.engine.on('session-removed', (p) => this.sess.delete(p.id)),
     ];

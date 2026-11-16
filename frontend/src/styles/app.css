@@ -1860,6 +1860,8 @@ h3.lay-panel-title {
 .cmcp-float-drag { cursor: move; touch-action: none; }
 /* a pane's body text keeps the window's own game font: it is a text game, and a theme's display font would break the aligned columns a
    game writes with spaces. Only the headings take the theme's display font. */
+/* the hit shake when no console screen is up: the output area is nudged, never the input line */
+.lay-mush { transform: translate(var(--shake-x, 0px), var(--shake-y, 0px)); }
 .cmcp-tree { padding: 8px 10px; color: var(--cmcp-text, inherit); font-family: var(--font, monospace); }
 .cmcp-box { display: flex; }
 .cmcp-box.col { flex-direction: column; }
