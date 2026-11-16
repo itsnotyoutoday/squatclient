@@ -114,3 +114,13 @@ describe('CMCP 2 nav column', () => {
     expect(buttons.map((b) => b.target?.screen)).toEqual(['std.sensors', 'std.power', 'std.tactical', 'std.damage', 'std.operations']);
   });
 });
+
+describe('a game refusing a command', () => {
+  it('says what the refusal means when the game gives no explanation of its own', async () => {
+    const { refusal } = await import('../src/cmcp/controller');
+    expect(refusal('conflict')).toContain('would not do that');
+    expect(refusal('console_taken')).toContain('someone else holds');
+    expect(refusal('something_new')).toBe('something_new'); // an unknown code is shown as it came
+    expect(refusal(undefined)).toBe('it did not work');
+  });
+});

@@ -84,6 +84,21 @@ interface SessionState {
 /** Draws the Go engine's bound CMCP screen trees into each session's graphics runtime and sends widget events back.
  * It evaluates nothing: bindings, fallbacks, enabled flags and actions all come from the shared core through the engine. */
 
+/** What a game's refusal means, in words a player can act on. The game's own hint is always preferred; this is for the bare code. */
+const REFUSALS: Record<string, string> = {
+  conflict: 'the game would not do that just now (it gave no reason)',
+  not_permitted: 'you are not allowed to do that',
+  not_available: 'not available here',
+  console_taken: 'someone else holds that console',
+  busy: 'the game is busy',
+  rate_limited: 'too many requests, slow down',
+  bad_args: 'the game did not accept what was sent',
+  no_answer: 'the game did not answer',
+  stale: 'that was for a ship you have left',
+  unknown_command: 'the game does not know that command',
+};
+export const refusal = (err?: string): string => (err ? (REFUSALS[err] ?? err) : 'it did not work');
+
 export class CmcpController {
   private sess = new Map<string, SessionState>();
   reduceMotion = false;
@@ -280,7 +295,7 @@ export class CmcpController {
 
   private noteErrors(notes: CmcpNote[]): void {
     for (const n of notes) {
-      if (n.kind === 'reply' && n.reply && !n.reply.ok) this.onError?.(`${n.reply.cmd}: ${n.reply.hint || n.reply.err || 'failed'}`);
+      if (n.kind === 'reply' && n.reply && !n.reply.ok) this.onError?.(`${n.reply.cmd}: ${n.reply.hint || refusal(n.reply.err)}`);
       if (n.kind === 'timeout' && n.reply) this.onError?.(`${n.reply.cmd}: the game did not answer`);
     }
   }
