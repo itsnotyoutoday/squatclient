@@ -117,3 +117,18 @@ describe('a pane takes the game theme colours', () => {
     expect(el.style.getPropertyValue('--cmcp-font')).toBe('');
   });
 });
+
+describe('where a page-drawn screen goes', () => {
+  it('sits in the side column with the panes, never as a card over the game text', async () => {
+    const { PaneHosts } = await import('../src/cmcp/PaneHost');
+    const { useCmcpDom } = await import('../src/cmcp/dom');
+    const { useSessions } = await import('../src/state/stores');
+    useSessions.setState({ fg: 's1', sessions: { s1: { id: 's1', name: 'T', state: 'connected', unread: 0 } } as never });
+    useCmcpDom.getState().set('s1', { main: tree, title: 'ACS Resolute Bridge', readonly: false, panes: [], exits: [], on: true, proto: 2 });
+    const { container } = render(<PaneHosts><p>the game text</p></PaneHosts>);
+    const aside = container.querySelector('aside.cmcp-dock');
+    expect(aside).toBeTruthy();
+    expect(aside?.querySelector('.cmcp-pane')).toBeTruthy(); // the screen is a pane of the column
+    expect(container.querySelector('.with-panes-main')?.textContent).toBe('the game text'); // nothing of it sits over the text
+  });
+});

@@ -98,7 +98,7 @@ function MainCard({ session }: { session: string }) {
   if (!dom?.main) return null;
   const title = dom.main.title || dom.title;
   return (
-    <section className="cmcp-card" aria-label={title}>
+    <section className="cmcp-pane" aria-label={title}>
       <Head
         title={title}
         folded={folded}
@@ -229,13 +229,20 @@ export function PaneHosts({ children }: { children: React.ReactNode }) {
         side.filter((p) => p.dock === 'left'),
         'cmcp-dock-left',
       )}
-      <div className="with-panes-main">
-        <MainCard session={fg} />
-        {children}
-      </div>
-      {column(
-        side.filter((p) => p.dock !== 'left'),
-        'cmcp-dock-right',
+      <div className="with-panes-main">{children}</div>
+      {(dom?.main || side.some((p) => p.dock !== 'left')) && (
+        <aside
+          className="cmcp-dock cmcp-dock-right"
+          aria-label="Game panes"
+          style={{ width: Math.max(320, ...side.filter((p) => p.dock !== 'left').map((p) => Math.max(240, Number(p.size?.w) || 320))) }}
+        >
+          <MainCard session={fg} />
+          {side
+            .filter((p) => p.dock !== 'left')
+            .map((p) => (
+              <DockPane key={p.key} session={fg} pane={p} hide={hide(p.key)} />
+            ))}
+        </aside>
       )}
       {floats.map((p) => (
         <FloatPane key={p.key} session={fg} pane={p} hide={hide(p.key)} />
