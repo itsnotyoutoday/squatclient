@@ -17,10 +17,11 @@ export function EndedBanner({ session }: { session: SessionInfo }) {
       const fresh = await engine.connect(
         world ? { worldId: world.id } : { host: session.host, port: session.port, tls: session.tls },
       );
-      await controller?.dismiss(session.id);
-      // the new session is the one to show: closing the old tab must not leave the window on whichever tab sat beside it
+      // show the world just reconnected BEFORE the ended tab is closed: closing the tab you were on picks whatever sat beside it,
+      // and that choice would then be pushed to the engine and win
       useUi.getState().showConsole(false);
       useSessions.getState().setFg(fresh.id);
+      await controller?.dismiss(session.id);
     } catch (e) {
       useUi.getState().toast('error', String(e));
     }

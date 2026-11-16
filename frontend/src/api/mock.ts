@@ -1108,14 +1108,13 @@ export class MockEngine implements EngineAPI {
     };
     if (this.opts.connectDelayMs <= 0) queueMicrotask(finish);
     else setTimeout(finish, this.opts.connectDelayMs);
-    this.emit('session', info);
-    // a connection the user starts becomes the active tab, as the engine does (Service.Connect calls SetForeground unless noFocus)
-    if (!('noFocus' in target && target.noFocus)) {
-      this.fg = sd.info.id;
-      this.emit('foreground', { session: sd.info.id });
-    } else if (!this.fg) {
-      this.fg = sd.info.id;
-    }
+    // the real engine answers the call first and the window hears about the new session a tick later, over its event channel
+    const focus = !('noFocus' in target && target.noFocus);
+    if (focus || !this.fg) this.fg = sd.info.id;
+    setTimeout(() => {
+      this.emit('session', info);
+      if (focus) this.emit('foreground', { session: sd.info.id });
+    }, 0);
     return info;
   }
   async disconnect(sessionId: string): Promise<void> {
@@ -1136,7 +1135,11 @@ export class MockEngine implements EngineAPI {
   }
   async foreground(sessionId: string): Promise<void> {
     this.must(sessionId);
+    const changed = this.fg !== sessionId;
     this.fg = sessionId;
+    // the engine tells the window which session is in front, as the real one does (it suppresses only an echo of the window's own choice)
+    // the real engine answers over an IPC round trip, so the window hears about it a tick later, never inside the call
+    if (changed) setTimeout(() => this.emit('foreground', { session: sessionId }), 0);
   }
 
   // ---- I/O

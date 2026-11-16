@@ -92,6 +92,32 @@ describe('reconnecting an ended session', () => {
     const fresh = useSessions.getState().order.find((id) => !before.has(id));
     await waitFor(() => expect(useSessions.getState().fg).toBe(fresh));
     expect(useSessions.getState().sessions[dead]).toBeUndefined(); // the ended tab is gone
+    // and it stays there: closing the ended tab must not push another world to the engine and be sent back
+    await new Promise((r) => setTimeout(r, 20));
+    expect(useSessions.getState().fg).toBe(fresh);
+  });
+
+  it('shows the new world BEFORE closing the ended tab (closing the tab you are on picks whatever sat beside it)', async () => {
+    const engine = await boot('demo');
+    await waitFor(() => expect(useSessions.getState().order.length).toBeGreaterThan(2));
+    const dead = useSessions.getState().order[1];
+    act(() => engine.endSession(dead, 'closed'));
+    await waitFor(() => expect(useSessions.getState().sessions[dead]?.state).toBe('ended'));
+    act(() => useSessions.getState().setFg(dead));
+    // what the window was showing at the moment the ended tab was closed: it must already be the new session, never the dead one
+    let fgAtDismiss: string | null = 'not called';
+    const before = new Set(useSessions.getState().order);
+    const realDismiss = engine.dismiss.bind(engine);
+    engine.dismiss = async (id: string) => {
+      fgAtDismiss = useSessions.getState().fg;
+      return realDismiss(id);
+    };
+    const banner = await screen.findByTestId('ended-banner');
+    await userEvent.click(within(banner).getByRole('button', { name: 'Reconnect' }));
+    await waitFor(() => expect(fgAtDismiss).not.toBe('not called'));
+    const fresh = useSessions.getState().order.find((id) => !before.has(id));
+    expect(fgAtDismiss).toBe(fresh);
+    expect(fgAtDismiss).not.toBe(dead);
   });
 
   it('closing a tab you are not on leaves the world in front alone', async () => {
