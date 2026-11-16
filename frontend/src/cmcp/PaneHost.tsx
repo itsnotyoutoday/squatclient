@@ -234,7 +234,8 @@ export function PaneHosts({ children }: { children: React.ReactNode }) {
         <aside
           className="cmcp-dock cmcp-dock-right"
           aria-label="Game panes"
-          style={{ width: Math.max(320, ...side.filter((p) => p.dock !== 'left').map((p) => Math.max(240, Number(p.size?.w) || 320))) }}
+          // wide enough for the lines a game writes for a narrow pane (it aligns them with spaces, so count characters, not pixels)
+          style={{ width: `max(${Math.max(320, ...side.filter((p) => p.dock !== 'left').map((p) => Math.max(240, Number(p.size?.w) || 320)))}px, 40ch)` }}
         >
           <MainCard session={fg} />
           {side
