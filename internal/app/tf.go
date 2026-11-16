@@ -111,7 +111,11 @@ func (s *Service) ConnectTFWorld(squatterID, name string) (engine.SessionInfo, e
 	if err := s.ensureSquatter(squatterID); err != nil {
 		return engine.SessionInfo{}, err
 	}
-	return s.eng.Dial(engine.World{Name: name, Via: squatterID, Ref: name}, "")
+	si, err := s.eng.Dial(engine.World{Name: name, Via: squatterID, Ref: name}, "")
+	if err == nil {
+		_ = s.eng.SetForeground(si.ID) // a world the user opens becomes the active tab, as for a direct connection
+	}
+	return si, err
 }
 
 // TFExec runs a TinyFugue command ("/...") and returns what it printed. Admin

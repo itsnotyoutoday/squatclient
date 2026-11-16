@@ -28,6 +28,18 @@ func TestANewConnectionBecomesTheActiveTab(t *testing.T) {
 	if got := f.svc.eng.Foreground(); got != sb.ID {
 		t.Fatalf("a connection the user starts becomes the active tab: %q want %q (the first one stayed in front)", got, sb.ID)
 	}
+	// the window only learns through the event, so it must be emitted for the world just connected
+	// the window only learns through the event, so it must be emitted for the world just connected
+	lastFg := func() string {
+		out := ""
+		for _, e := range f.events("foreground") {
+			if m, ok := e.Payload.(map[string]string); ok {
+				out = m["session"]
+			}
+		}
+		return out
+	}
+	f.until("the window is told which tab to show", func() bool { return lastFg() == sb.ID })
 	if _, err := f.svc.Connect(ConnectTarget{WorldID: wc.ID, NoFocus: true}); err != nil {
 		t.Fatal(err)
 	}

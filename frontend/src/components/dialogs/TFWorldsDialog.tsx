@@ -62,9 +62,10 @@ export function TFWorldsDialog() {
   const connect = async (name: string): Promise<void> => {
     if (!engine || !sqId) return;
     try {
-      const si = await engine.connectTFWorld(sqId, name);
+      await engine.connectTFWorld(sqId, name);
       useUi.getState().openDialog(null);
-      void engine.foreground(si.id).catch(() => undefined);
+      // the engine makes the world it just opened the active tab and tells the window; asking for it here would look like the window's
+      // own choice and be swallowed as an echo
     } catch (x) {
       fail(x);
     }

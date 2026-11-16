@@ -572,6 +572,9 @@ export class MockEngine implements EngineAPI {
     sd.info.link = 'attached';
     sd.info.tf = { world: w.name, fg: false, input: 'tf', automation: 'tf' };
     this.emit('session', this.snapshot(sd));
+    // a world the user opens becomes the active tab, as the engine does (Service.ConnectTFWorld calls SetForeground)
+    this.fg = sd.info.id;
+    this.emit('foreground', { session: sd.info.id });
     return this.snapshot(sd);
   }
   async tfExec(squatterId: string, line: string): Promise<TFExecResult> {
@@ -1106,7 +1109,13 @@ export class MockEngine implements EngineAPI {
     if (this.opts.connectDelayMs <= 0) queueMicrotask(finish);
     else setTimeout(finish, this.opts.connectDelayMs);
     this.emit('session', info);
-    if (!this.fg) this.fg = sd.info.id;
+    // a connection the user starts becomes the active tab, as the engine does (Service.Connect calls SetForeground unless noFocus)
+    if (!('noFocus' in target && target.noFocus)) {
+      this.fg = sd.info.id;
+      this.emit('foreground', { session: sd.info.id });
+    } else if (!this.fg) {
+      this.fg = sd.info.id;
+    }
     return info;
   }
   async disconnect(sessionId: string): Promise<void> {
