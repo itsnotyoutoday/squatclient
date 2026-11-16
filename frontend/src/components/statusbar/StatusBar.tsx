@@ -24,19 +24,24 @@ const LINK_LABEL = {
  * so the same game can be seen as a full console, as plain widgets, or as text alone. */
 function CmcpChip({ session }: { session: string }) {
   const dom = useCmcpDom((s) => s.by[session]);
-  const level = useCmcpLevel((s) => s.by[session] ?? 'scene');
+  const cap = useCmcpLevel((s) => s.by[session] ?? 'scene');
   if (!dom?.on) return null;
+  const allowed = LEVELS.find((l) => l.n === dom.serverLevel);
   return (
-    <span className="seg cmcp" title="What this client draws the game's screens with (testing; the game is not told)">
+    <span
+      className="seg cmcp"
+      title={`The game allows up to ${allowed?.label ?? dom.serverLevel} for the screen in view; this client may go lower, never higher. Drawing at ${LEVELS.find((l) => l.n === dom.level)?.label ?? dom.level}.`}
+    >
       CMCP {dom.proto}{' '}
       <select
-        aria-label="What the client draws CMCP screens with"
-        value={level}
+        aria-label="How far this client may draw the game's screens"
+        value={cap}
         onChange={(e) => useCmcpLevel.getState().set(session, e.target.value as CmcpLevel)}
       >
         {LEVELS.map((l) => (
-          <option key={l.id} value={l.id} title={l.hint}>
+          <option key={l.id} value={l.id} title={l.n > dom.serverLevel ? `The game allows only up to ${allowed?.label ?? dom.serverLevel} here` : l.hint}>
             {l.label}
+            {l.n > dom.serverLevel ? ' (game allows less)' : ''}
           </option>
         ))}
       </select>

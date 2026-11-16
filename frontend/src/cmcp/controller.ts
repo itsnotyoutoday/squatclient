@@ -16,8 +16,8 @@ import { skinFromTheme } from './skins/pack';
 import { setActiveCmcp, useAmbient, usePane, useScreenHelp, useThemeInUse } from './pane';
 import { useSettings } from '../state/stores';
 import { diffOps, PORT_ID, SCENE, sceneOp, type Ease } from './ops';
-import { drawsAsPage, exitsOf, useCmcpDom } from './dom';
-import { levelOf, useCmcpLevel } from './level';
+import { exitsOf, serverLevelOf, useCmcpDom } from './dom';
+import { capOf, effectiveLevel, useCmcpLevel } from './level';
 import { drawSprite, type SpriteView } from './sprite';
 import type { CmcpNode, CmcpNote, CmcpPulse, CmcpTree, CmcpUI } from './types';
 import { useOverlays } from './overlays';
@@ -294,13 +294,14 @@ export class CmcpController {
     s.ui = ui;
     // What this client draws with: the scene (the themed console), page elements, or nothing at all. A place or a ship room is page elements
     // whatever the level; a ship console is the scene unless the player capped the client lower (the CMCP chip in the status bar).
-    const level = levelOf(ui.session);
-    const page = level !== 'text' && drawsAsPage(ui, level);
+    const serverLevel = serverLevelOf(ui);
+    const level = effectiveLevel(serverLevel, capOf(ui.session));
+    const page = level === 2;
     useCmcpDom.getState().set(ui.session, {
       main: page ? ui.tree : null, title: ui.ctx?.type ? (ui.tree?.title || ui.title || '') : '', readonly: ui.readonly,
-      panes: level === 'text' ? [] : (ui.panes ?? []), exits: level === 'text' ? [] : exitsOf(ui), on: ui.state === 'ready', proto: ui.proto,
+      panes: level === 1 ? [] : (ui.panes ?? []), exits: level === 1 ? [] : exitsOf(ui), on: ui.state === 'ready', proto: ui.proto, serverLevel, level,
     });
-    if (page || level === 'text') { this.close(s); s.tree = null; usePane.getState().set(s.id, false, false); return; }
+    if (page || level === 1) { this.close(s); s.tree = null; usePane.getState().set(s.id, false, false); return; }
     { const d = `${ui.session} model state=${ui.state} screen=${ui.tree?.screen ?? 'none'} view=${ui.tree?.view?.state ?? '-'} readonly=${ui.readonly} console=${ui.console?.id ?? ''} notice=${ui.notice?.id ?? ''}`; if (d !== this.lastDbg) { this.lastDbg = d; this.dbg(d); } }
     // a refused close (the core's error notice) ends the wait at once: the screen is hidden locally
     if (s.closeScreen && ui.notice?.id === 'close' && ui.notice.kind === 'error') this.closeFallback(ui.session, s.closeScreen);

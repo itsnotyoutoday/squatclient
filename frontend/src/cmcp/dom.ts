@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { CmcpPane, CmcpTree, CmcpUI } from './types';
-import type { CmcpLevel } from './level';
+
 
 /** What the window draws with page elements (not the scene): the main context when it is not a ship console, and the dock / panel / float panes. */
 export interface DomState {
@@ -12,6 +12,9 @@ export interface DomState {
   /** the session speaks CMCP and is ready, and which protocol version (for the status chip) */
   on: boolean;
   proto: number;
+  /** the most the GAME allows for the screen in view (3 until it says otherwise) and what is drawn after the player's cap */
+  serverLevel: number;
+  level: number;
 }
 interface DomStore {
   by: Record<string, DomState>;
@@ -25,10 +28,11 @@ export const useCmcpDom = create<DomStore>((set) => ({
     ),
 }));
 
-/** Whether the window draws this session's screen with page elements instead of the scene. Only when the player capped the client there
- * (the CMCP chip): every screen a game sends is drawn in the scene, as it always was. */
-export function drawsAsPage(_ui: CmcpUI, level: CmcpLevel): boolean {
-  return level === 'widgets';
+/** The most the game allows for the context in view (its own level, else its type's, resolved by the core). Absent means 3: the game
+ * allows the full console. */
+export function serverLevelOf(ui: CmcpUI): number {
+  const lv = ui.ctx?.level;
+  return typeof lv === 'number' && lv >= 1 && lv <= 3 ? lv : 3;
 }
 
 /** The exits a room context lists in its data (`exits`: names, or {name, cmd}); each becomes a button that sends the command. */

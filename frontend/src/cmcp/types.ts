@@ -48,7 +48,9 @@ export interface CmcpStackEntry { key: string; kind: string; id: string; name?: 
 
 export interface CmcpScope { title?: string; owner?: { id: string; epoch: number; name?: string; theme?: string; class?: string; empire?: string; ai?: boolean } | null }
 /** The active context of a CMCP 2 session: where the player is, the layout in force and where it is presented. */
-export interface CmcpCtx { type: string; scope: string; key: string; id?: string; layout: string; surface: 'screen' | 'panel' | 'dock' | 'float' | string; ambient: boolean; data?: Record<string, unknown>; layouts?: string[] }
+export interface CmcpCtx { type: string; scope: string; key: string; id?: string; layout: string; surface: 'screen' | 'panel' | 'dock' | 'float' | string; ambient: boolean; data?: Record<string, unknown>; layouts?: string[];
+  /** the most a client may draw for it: 3 the full console, 2 ordinary widgets, 1 the game text alone (absent = 3) */
+  level?: number }
 
 export interface CmcpUI {
   session: string;
@@ -106,7 +108,7 @@ export interface CmcpUI {
 /** A context the game wants on a panel, dock or float, shown in addition to the main screen (CMCP 2, spec 20.14). dock, size and resizable are hints. */
 export interface CmcpPane {
   surface: 'panel' | 'dock' | 'float' | string; key: string; ctx: number; type: string; scope: string; id?: string; name?: string; title?: string; layout: string;
-  dock?: 'left' | 'right' | 'top' | 'bottom' | string; resizable?: boolean; size?: Record<string, number>; readonly?: boolean; commands?: string[];
+  dock?: 'left' | 'right' | 'top' | 'bottom' | string; resizable?: boolean; size?: Record<string, number>; readonly?: boolean; commands?: string[]; level?: number;
   /** null: its layout is not available yet (the pack is still coming) */
   tree: CmcpTree | null;
 }
