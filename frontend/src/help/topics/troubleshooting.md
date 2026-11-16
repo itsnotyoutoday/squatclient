@@ -14,7 +14,7 @@ Find the symptom, try the steps in order.
 3. If you see a certificate error and you trust the game, tick **Skip certificate verification** for that world. See [Connecting and worlds](help:connecting#encryption-tls).
 4. If the world is set to connect through a squatter, check that the squatter is reachable; see [Lost squatter connection](help:troubleshooting#lost-squatter-connection). Setting **Connect via** to **Direct** shows whether the squatter is the problem.
 5. If a world that needs a password fails at once, your operating system keychain may be locked. Unlock it and try again.
-6. A tab that says **ended** shows why the game closed the connection. Choose **Connect again** to retry.
+6. A tab that says **ended** shows why the game closed the connection. Choose **Reconnect** to retry.
 
 ## Colours look different
 
@@ -37,7 +37,7 @@ If a world routed through a squatter stops responding or the tab shows the squat
 2. If you reach the server through an ssh tunnel, restart the tunnel. See [Squatters and routing](help:squatter/routing#when-the-port-is-firewalled).
 3. If SquatClient refuses the connection because the fingerprint has changed, **do not trust it** until you know why. Compare the new fingerprint with the one printed by `./squatterd pair`. A legitimate change normally happens only if the server's data folder was reset; then pair again.
 4. Your game sessions are not lost while the squatter is running; once the link is back, everything you missed is replayed.
-5. A session that shows **ended** lost its game connection (not the squatter). Use **Connect again**.
+5. A session that shows **ended** lost its game connection (not the squatter). Use **Reconnect**.
 
 ## Password lines
 

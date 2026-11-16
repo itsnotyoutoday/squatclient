@@ -1,4 +1,4 @@
-import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { App } from '../src/App';
@@ -73,5 +73,36 @@ describe('a TinyFugue world opened through a squatter', () => {
     expect(si.id).not.toBe(first);
     await waitFor(() => expect(useSessions.getState().fg).toBe(si.id));
     expect(useUi.getState().consoleOpen).toBe(false);
+  });
+});
+
+describe('reconnecting an ended session', () => {
+  it('shows the world it just reconnected, not whichever tab sat beside the old one', async () => {
+    const engine = await boot('demo');
+    await waitFor(() => expect(useSessions.getState().order.length).toBeGreaterThan(2));
+    const order = useSessions.getState().order;
+    const dead = order[1];
+    act(() => engine.endSession(dead, 'closed'));
+    await waitFor(() => expect(useSessions.getState().sessions[dead]?.state).toBe('ended'));
+    act(() => useSessions.getState().setFg(dead));
+    const banner = await screen.findByTestId('ended-banner');
+    const before = new Set(useSessions.getState().order);
+    await userEvent.click(within(banner).getByRole('button', { name: 'Reconnect' }));
+    await waitFor(() => expect(useSessions.getState().order.some((id) => !before.has(id))).toBe(true));
+    const fresh = useSessions.getState().order.find((id) => !before.has(id));
+    await waitFor(() => expect(useSessions.getState().fg).toBe(fresh));
+    expect(useSessions.getState().sessions[dead]).toBeUndefined(); // the ended tab is gone
+  });
+
+  it('closing a tab you are not on leaves the world in front alone', async () => {
+    const engine = await boot('demo');
+    await waitFor(() => expect(useSessions.getState().order.length).toBeGreaterThan(2));
+    const [a, b] = useSessions.getState().order;
+    act(() => useSessions.getState().setFg(b));
+    act(() => engine.endSession(a, 'closed'));
+    await waitFor(() => expect(useSessions.getState().sessions[a]?.state).toBe('ended'));
+    await act(async () => engine.dismiss(a));
+    await waitFor(() => expect(useSessions.getState().sessions[a]).toBeUndefined());
+    expect(useSessions.getState().fg).toBe(b);
   });
 });

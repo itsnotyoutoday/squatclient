@@ -351,11 +351,13 @@ export async function startController(
       if (!s.paused[id]?.paused) ackLater(id);
     },
     async dismiss(id) {
+      const wasFg = useSessions.getState().fg === id;
       await engine.dismiss(id);
       dropBuffer(id);
       useSessions.getState().remove(id);
+      // closing a tab you were not on never changes which world is in front (and never tells the engine a stale one)
       const fgNow = useSessions.getState().fg;
-      if (fgNow) void engine.foreground(fgNow).catch(() => undefined);
+      if (wasFg && fgNow) void engine.foreground(fgNow).catch(() => undefined);
     },
     async loadOlder(id, limit = 1000) {
       const b = getBuffer(id);

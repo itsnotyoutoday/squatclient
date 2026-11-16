@@ -65,7 +65,7 @@ Direct connections cannot outlive the app, so `/suspend` leaves them connected a
 
 ### Ended sessions
 
-When a game closes the connection, resets it or cannot be reached, the session is **ended**. The tab shows the reason, the time and the last text received, and the history is kept. Choose **Connect again** to open a fresh connection, or **Dismiss** to remove the tab. Nothing reconnects by itself.
+When a game closes the connection, resets it or cannot be reached, the session is **ended**. The tab shows the reason, the time and the last text received, and the history is kept. Choose **Reconnect** to open a fresh connection, or **Dismiss** to remove the tab. Nothing reconnects by itself.
 
 ## Security summary
 

@@ -1,5 +1,5 @@
 import type { SessionInfo } from '../../api/types';
-import { useUi } from '../../state/stores';
+import { useSessions, useUi } from '../../state/stores';
 import { useControllerRef } from '../../state/controller-context';
 import { formatTime, humanizeReason } from '../../lib/humanize';
 
@@ -14,10 +14,13 @@ export function EndedBanner({ session }: { session: SessionInfo }) {
       (session.worldId ? worlds.find((w) => w.id === session.worldId) : undefined) ??
       worlds.find((w) => w.host === session.host && w.port === session.port);
     try {
-      await engine.connect(
+      const fresh = await engine.connect(
         world ? { worldId: world.id } : { host: session.host, port: session.port, tls: session.tls },
       );
       await controller?.dismiss(session.id);
+      // the new session is the one to show: closing the old tab must not leave the window on whichever tab sat beside it
+      useUi.getState().showConsole(false);
+      useSessions.getState().setFg(fresh.id);
     } catch (e) {
       useUi.getState().toast('error', String(e));
     }
@@ -33,7 +36,7 @@ export function EndedBanner({ session }: { session: SessionInfo }) {
       </div>
       <div className="actions">
         <button type="button" className="primary" onClick={() => void reconnect()}>
-          Connect again
+          Reconnect
         </button>
         <button type="button" onClick={() => void controller?.dismiss(session.id)}>
           Dismiss

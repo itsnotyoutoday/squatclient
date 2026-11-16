@@ -123,7 +123,7 @@ describe('App smoke (mock mode)', () => {
 });
 
 describe('ended session view', () => {
-  it('shows the humanised reason, time, last text, and Connect again / Dismiss', async () => {
+  it('shows the humanised reason, time, last text, and Reconnect / Dismiss', async () => {
     const e = await boot();
     await userEvent.keyboard('{Escape}');
     const ended = Object.values(useSessions.getState().sessions).find((s) => s.state === 'ended');
@@ -135,8 +135,8 @@ describe('ended session view', () => {
     expect(banner).toHaveTextContent(`Last text: ${ended?.lastText}`);
     expect(screen.queryByLabelText('Command input')).toBeNull();
 
-    // Connect again: opens a new connection to the same world and drops the ended one
-    await userEvent.click(within(banner).getByRole('button', { name: 'Connect again' }));
+    // Reconnect: opens a new connection to the same world and drops the ended one
+    await userEvent.click(within(banner).getByRole('button', { name: 'Reconnect' }));
     await waitFor(async () => {
       const list = await e.listSessions();
       expect(list.filter((s) => s.host === ended?.host).length).toBe(1);
