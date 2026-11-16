@@ -14,7 +14,7 @@ func TestDefaultsAndRoundTrip(t *testing.T) {
 		t.Fatal(err)
 	}
 	st := s.Settings()
-	if st.Theme != "system" || !st.Truecolor || st.DefaultEncoding != "utf-8" || st.ScrollbackLines != 20000 || !st.Linkify || !st.PauseOnScroll {
+	if st.Theme != "dark" || st.Notifications || !st.Truecolor || st.DefaultEncoding != "utf-8" || st.ScrollbackLines != 20000 || !st.Linkify || !st.PauseOnScroll {
 		t.Fatalf("bad defaults %+v", st)
 	}
 	w, err := s.SaveWorld(World{Name: " Trek ", Host: "startrekkin.net", Port: 1701, Login: &Login{Template: "connect {name} {password}", CharName: "kirk", HasPassword: true}})
@@ -223,5 +223,31 @@ func TestWorldsAlwaysHaveAGroup(t *testing.T) {
 	w2, _ := s.SaveWorld(World{Name: "B", Host: "b.example", Port: 4201, Group: "  Mine  "})
 	if w2.Group != "Mine" {
 		t.Fatalf("a group name is trimmed: %q", w2.Group)
+	}
+}
+
+// A settings file from a build that had the "Follow the system" theme: it is migrated to the dark theme, so nobody is
+// left with the blinding white window a light desktop gave them.
+func TestSystemThemeMigratesToDark(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "settings.json"),
+		[]byte(`{"version":1,"theme":"system","fontSize":14,"scrollbackLines":20000,"defaultEncoding":"utf-8"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	s, err := Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := s.Settings().Theme; got != "dark" {
+		t.Fatalf("theme %q, want dark", got)
+	}
+	// and it cannot be saved back
+	st := s.Settings()
+	st.Theme = "system"
+	if err := s.SaveSettings(st); err != nil {
+		t.Fatal(err)
+	}
+	if got := s.Settings().Theme; got != "dark" {
+		t.Fatalf("saved theme %q, want dark", got)
 	}
 }

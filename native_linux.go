@@ -40,11 +40,9 @@ func startDesk(onLook func(desktop.Look)) *desktop.Desktop {
 	return desk
 }
 
-// startDesktop starts listening to the desktop: notification clicks, and the colour scheme / contrast preference (sent to the window
-// as event "system-look", because the web view does not always follow the portal on its own).
-func startDesktop(emit func(string, any)) {
-	startDesk(func(l desktop.Look) { emit("system-look", l) })
-}
+// startDesktop starts listening to the desktop: notification clicks. The window does NOT follow the desktop's colour scheme
+// or contrast preference; it uses the theme the player picked (see Settings.migrate).
+func startDesktop(func(string, any)) { startDesk(nil) }
 
 // setBadge shows the unread count on the launcher entry (KDE, the Ubuntu dock, Dash to Dock, Plank; others ignore it).
 func setBadge(n int) {

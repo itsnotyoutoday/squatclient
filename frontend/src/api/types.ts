@@ -1019,7 +1019,7 @@ export interface DiagReport {
 export const DEFAULT_FONT = 'JetBrains Mono, SF Mono, Menlo, Consolas, monospace';
 
 export const DEFAULT_SETTINGS: Settings = {
-  theme: 'system',
+  theme: 'dark',
   fontFamily: DEFAULT_FONT,
   fontSize: 14,
   scrollbackLines: 20000,
@@ -1027,7 +1027,7 @@ export const DEFAULT_SETTINGS: Settings = {
   boldAsBright: false,
   minContrast: 0,
   linkify: true,
-  notifications: true,
+  notifications: false,
   taskbarFlash: true,
   iconBadge: true,
   screenReader: false,

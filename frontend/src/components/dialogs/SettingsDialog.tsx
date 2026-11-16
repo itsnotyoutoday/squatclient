@@ -4,7 +4,7 @@ import { useSessions, useSettings, useUi, setBufferCap } from '../../state/store
 import { seedHistory } from '../../state/history';
 import type { ScriptFolders, Settings } from '../../api/types';
 import { DEFAULT_FONT } from '../../api/types';
-import { SYSTEM_THEME, allThemes, parseThemeJson, useThemeVersion } from '../../themes';
+import { allThemes, parseThemeJson, useThemeVersion } from '../../themes';
 import { Dialog, Field } from './Dialog';
 import { useThemeInUse } from '../../cmcp/pane';
 import { useSoundMute } from '../../state/soundMute';
@@ -242,7 +242,6 @@ export function SettingsDialog() {
           <>
             <Field label="Theme">
               <select value={settings.theme} onChange={(e) => update({ theme: e.target.value })}>
-                <option value={SYSTEM_THEME}>Follow the system (light, dark, high contrast)</option>
                 {allThemes().map((t) => (
                   <option key={t.id} value={t.id}>
                     {t.name}

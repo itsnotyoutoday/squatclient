@@ -179,6 +179,17 @@ func clampInt(v, lo, hi int) int {
 	return v
 }
 
+// migrate brings a settings file written by an older build up to date.
+//
+// The "system" theme followed the operating system's colour scheme and contrast preference. It is gone: on a machine set
+// to light (or to a high-contrast scheme) it gave people a blinding white window they never asked for. A saved "system"
+// becomes the normal dark theme, which anyone can change in Settings.
+func (s *Settings) migrate() {
+	if s.Theme == "system" || s.Theme == "" {
+		s.Theme = "dark"
+	}
+}
+
 // clampCommandWindow forces the command-window settings into their ranges.
 func (s *Settings) clampCommandWindow() {
 	s.InputHeight = clampInt(s.InputHeight, 0, MaxInputHeight)
@@ -207,8 +218,8 @@ func (s *Settings) clampCommandWindow() {
 // DefaultSettings matches DEFAULT_SETTINGS in the front end.
 func DefaultSettings() Settings {
 	return Settings{
-		Theme: "system", FontFamily: "JetBrains Mono, SF Mono, Menlo, Consolas, monospace", FontSize: 14,
-		ScrollbackLines: 20000, Notifications: true, TaskbarFlash: true, IconBadge: true, Linkify: true, PauseOnScroll: true,
+		Theme: "dark", FontFamily: "JetBrains Mono, SF Mono, Menlo, Consolas, monospace", FontSize: 14,
+		ScrollbackLines: 20000, TaskbarFlash: true, IconBadge: true, Linkify: true, PauseOnScroll: true,
 		DefaultEncoding: "utf-8", Truecolor: true,
 		EditorHeight: DefaultEditorH, SoftcodeJoin: true, StripBlankLines: true, HistoryMax: DefaultHistoryMax, WarnUnbalanced: true, AutoReconnectSquatters: true, TFHideQueries: true, LocalEcho: false,
 		Cmcp: true, ConsoleTheme: "tng", SoundVolume: 70, CmcpPortDefault: "balanced", CmcpPackConsent: "always", CmcpAlertRecolour: "theme", CmcpAlertPulse: "theme", CmcpAlertAmbient: "theme", CmcpHitShake: "theme", CmcpTextLayout: "auto", ConsoleThemeMode: "ship",

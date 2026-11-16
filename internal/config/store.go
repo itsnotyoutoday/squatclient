@@ -78,6 +78,7 @@ func Open(dir string) (*Store, error) {
 	if err := s.load("settings.json", &sf, &sf.Version); err != nil {
 		return nil, err
 	}
+	sf.Settings.migrate()
 	s.settings = sf.Settings
 	var win windowFile
 	if err := s.load("window.json", &win, &win.Version); err != nil {
@@ -372,6 +373,7 @@ func (s *Store) SaveSettings(in Settings) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	in.Truecolor = true
+	in.migrate()
 	in.clampCommandWindow()
 	if in.ScrollbackLines < 100 {
 		return fmt.Errorf("scrollbackLines %d too small (min 100)", in.ScrollbackLines)

@@ -7,7 +7,7 @@ import { useSessions, useSettings, useUi } from './state/stores';
 import { useShake } from './cmcp/pane';
 import { useTheme } from './state/hooks';
 import { PaneHosts } from './cmcp/PaneHost';
-import { applyTheme, setPortalLook, watchSystemLook } from './themes';
+import { applyTheme } from './themes';
 import { LiveRegion } from './components/output/LiveRegion';
 import { getOutput } from './components/output/handle';
 import { ConsoleView } from './components/console/ConsoleView';
@@ -191,11 +191,6 @@ export function App({ engine }: { engine: EngineAPI }) {
   }, [engine]);
 
   useEffect(() => applyTheme(theme), [theme]);
-  useEffect(() => {
-    const off = engine.on('system-look', (l) => l.known && setPortalLook(l));
-    return off;
-  }, [engine]);
-  useEffect(() => watchSystemLook(), []); // the "Follow the system" theme tracks the OS colour scheme and contrast preference live
   useEffect(() => {
     document.title = unread > 0 ? `(${unread}) SquatClient` : 'SquatClient';
   }, [unread]);

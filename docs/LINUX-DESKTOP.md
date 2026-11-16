@@ -8,7 +8,6 @@ The D-Bus code is `internal/desktop` (plain Go, tested against a fake bus); the 
 | Notifications (click opens the world) | `org.freedesktop.Notifications` Notify + `ActionInvoked`; a world's newer notification replaces its older one; text is escaped when the daemon renders markup; falls back to `notify-send` | any notification daemon (GNOME Shell, Plasma, xfce4-notifyd, dunst, mako, ...) |
 | Unread count on the launcher icon | `com.canonical.Unity.LauncherEntry.Update` signal for `application://squatclient.desktop` | a launcher that listens: Plasma task manager, Ubuntu dock, Dash to Dock, Plank. Stock GNOME ignores it |
 | Taskbar flash | GTK urgency hint on the window | panel support (KDE, XFCE, i3bar/waybar highlight); GNOME shows its "is ready" notice; GTK3 on Wayland may do nothing |
-| Follow the system theme | `org.freedesktop.portal.Settings` keys `color-scheme` and `contrast` (read at start, `SettingChanged` after), sent to the window as the `system-look` event | xdg-desktop-portal; without it the web view's own `prefers-color-scheme` is used |
 | Wake and network change | clock-jump and interface-change detection (all platforms) | nothing |
 
 Everything needs the installed `squatclient.desktop` (`build/linux/squatclient.desktop`, installed by `install.sh`): the notification and

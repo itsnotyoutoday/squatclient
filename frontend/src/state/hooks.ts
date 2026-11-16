@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { findTheme, useSystemLook, useThemeVersion } from '../themes';
+import { findTheme, useThemeVersion } from '../themes';
 import type { Theme } from '../themes';
 import type { RenderOptions, RenderTheme } from '../lib/runs';
 import { useSettings } from './stores';
@@ -7,10 +7,8 @@ import { useSettings } from './stores';
 export function useTheme(): Theme {
   const id = useSettings((s) => s.settings.theme);
   const version = useThemeVersion((s) => s.version);
-  const sysDark = useSystemLook((s) => s.dark);
-  const sysContrast = useSystemLook((s) => s.highContrast);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  return useMemo(() => findTheme(id), [id, version, sysDark, sysContrast]);
+  return useMemo(() => findTheme(id), [id, version]);
 }
 
 export function useRenderTheme(): RenderTheme {

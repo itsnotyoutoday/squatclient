@@ -85,7 +85,7 @@ func main() {
 		Linux:     &linux.Options{Icon: appIcon, ProgramName: "squatclient"},
 		Mac: &mac.Options{
 			TitleBar: mac.TitleBarHiddenInset(),
-			// no forced appearance: the window follows the system, and so does the page's prefers-color-scheme (the "Follow the system" theme)
+			// no forced appearance: the native title bar follows the system. The PAGE does not: it is the theme the player picked (dark by default).
 			WebviewIsTransparent: false,
 			WindowIsTranslucent:  false,
 			// no native About panel: the About item opens the page's own dialog (menu_darwin.m)

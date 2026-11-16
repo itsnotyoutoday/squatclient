@@ -323,7 +323,7 @@ func TestColoursByteExactThroughApp(t *testing.T) {
 func TestSettingsAndQuit(t *testing.T) {
 	f := newFixture(t)
 	st, _ := f.svc.GetSettings()
-	if st.Theme != "system" || !st.Truecolor {
+	if st.Theme != "dark" || !st.Truecolor {
 		t.Fatalf("%+v", st)
 	}
 	st.Theme = "light"

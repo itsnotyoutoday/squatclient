@@ -4,7 +4,7 @@ import { App } from '../src/App';
 import { MockEngine } from '../src/api/mock';
 import { resetStores, useSessions, useSettings } from '../src/state/stores';
 import { clearHistories } from '../src/state/history';
-import { SYSTEM_THEME, findTheme, setPortalLook, useSystemLook } from '../src/themes';
+import { findTheme } from '../src/themes';
 import { dark, highContrast, light } from '../src/themes/builtin';
 import { stubLayout } from './helpers';
 
@@ -18,7 +18,6 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
-  useSystemLook.setState({ dark: true, highContrast: false });
 });
 
 async function boot(): Promise<{ fg: string; other: string }> {
@@ -45,6 +44,7 @@ describe('icon badge', () => {
 describe('native notifications', () => {
   it('notifies once for new text in a world that is not in front, with its first line, and not again at once', async () => {
     const { other } = await boot();
+    useSettings.getState().set({ ...useSettings.getState().settings, notifications: true });
     act(() => void engine.pushLine(other, [{ s: 'Saeihr pages you: hello' }]));
     await waitFor(() => expect(engine.notified).toHaveLength(1));
     expect(engine.notified[0]).toMatchObject({ body: 'Saeihr pages you: hello', session: other });
@@ -53,9 +53,9 @@ describe('native notifications', () => {
     expect(engine.notified).toHaveLength(1);
   });
 
-  it('stays quiet when the setting is off, and a click on one brings the world forward', async () => {
+  it('stays quiet until the player turns them on, and a click on one brings the world forward', async () => {
     const { fg, other } = await boot();
-    useSettings.getState().set({ ...useSettings.getState().settings, notifications: false });
+    expect(useSettings.getState().settings.notifications).toBe(false); // off until asked for: some people find them a pest
     act(() => void engine.pushLine(other, [{ s: 'silent' }]));
     await new Promise((r) => setTimeout(r, 30));
     expect(engine.notified).toHaveLength(0);
@@ -67,20 +67,22 @@ describe('native notifications', () => {
   });
 });
 
-describe('Follow the system theme', () => {
-  it('is dark, light or high contrast as the operating system asks', () => {
-    useSystemLook.setState({ dark: true, highContrast: false });
-    expect(findTheme(SYSTEM_THEME)).toBe(dark);
-    useSystemLook.setState({ dark: false, highContrast: false });
-    expect(findTheme(SYSTEM_THEME)).toBe(light);
-    useSystemLook.setState({ dark: false, highContrast: true });
-    expect(findTheme(SYSTEM_THEME)).toBe(highContrast);
+describe('the window does not follow the system look', () => {
+  it('uses the dark theme by default, and the OS colour scheme does not change it', () => {
+    expect(useSettings.getState().settings.theme).toBe('dark');
+    const mq = vi.spyOn(window, 'matchMedia').mockImplementation(
+      (q: string) => ({ matches: q.includes('light') || q.includes('contrast'), media: q, addEventListener() {}, removeEventListener() {} }) as unknown as MediaQueryList,
+    );
+    expect(findTheme(useSettings.getState().settings.theme)).toBe(dark);
+    mq.mockRestore();
   });
 
-  it('on Linux the desktop portal decides, and a later change from it is followed', () => {
-    setPortalLook({ dark: false, highContrast: false });
-    expect(findTheme(SYSTEM_THEME)).toBe(light);
-    setPortalLook({ dark: true, highContrast: true });
-    expect(findTheme(SYSTEM_THEME)).toBe(highContrast);
+  it('migrates a settings file that still says "system" to the dark theme', () => {
+    expect(findTheme('system')).toBe(dark); // the engine rewrites it too; this is the belt and braces
+  });
+
+  it('still offers light and high contrast to anyone who picks them', () => {
+    expect(findTheme('light')).toBe(light);
+    expect(findTheme('high-contrast')).toBe(highContrast);
   });
 });
