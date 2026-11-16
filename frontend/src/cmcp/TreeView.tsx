@@ -147,10 +147,35 @@ function Node({ n, send, readonly }: { n: CmcpNode; send: Send; readonly: boolea
   );
 }
 
+/** The screen's own colours and fonts (the game's theme, resolved by the engine) as CSS variables, so a pane looks like the game and not
+ * like the app's chrome. A token the theme does not set falls back to the app's own colour in the stylesheet. */
+const TOKEN_VARS: [string, string][] = [
+  ['color.text', '--cmcp-text'],
+  ['color.dim', '--cmcp-dim'],
+  ['color.accent', '--cmcp-accent'],
+  ['color.accent2', '--cmcp-accent2'],
+  ['color.ok', '--cmcp-ok'],
+  ['color.warn', '--cmcp-warn'],
+  ['color.alert', '--cmcp-alert'],
+  ['color.panel', '--cmcp-panel'],
+];
+function themeVars(tree: CmcpTree): React.CSSProperties {
+  const out: Record<string, string> = {};
+  for (const [token, name] of TOKEN_VARS) {
+    const v = tree.tokens?.[token];
+    if (typeof v === 'string' && v) out[name] = v;
+  }
+  const font = tree.tokens?.['font.body'];
+  if (typeof font === 'string' && font) out['--cmcp-font'] = `"${font}", inherit`;
+  const title = tree.tokens?.['font.title'];
+  if (typeof title === 'string' && title) out['--cmcp-font-title'] = `"${title}", inherit`;
+  return out as React.CSSProperties;
+}
+
 /** One CMCP layout as page elements. `send` carries a widget event (a click on a button, a chosen table row) to the engine. */
 export function TreeView({ tree, readonly, send }: { tree: CmcpTree; readonly?: boolean; send: Send }) {
   return (
-    <div className="cmcp-tree">
+    <div className="cmcp-tree" style={themeVars(tree)}>
       <Node n={tree.root} send={send} readonly={!!readonly} />
     </div>
   );

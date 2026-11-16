@@ -1859,30 +1859,30 @@ h3.lay-panel-title {
 .cmcp-pane > .cmcp-tree { overflow-y: auto; max-height: 70vh; }
 .cmcp-float { position: absolute; z-index: 20; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45); }
 .cmcp-float-drag { cursor: move; touch-action: none; }
-.cmcp-tree { padding: 8px 10px; }
+.cmcp-tree { padding: 8px 10px; color: var(--cmcp-text, inherit); font-family: var(--cmcp-font, inherit); }
 .cmcp-box { display: flex; }
 .cmcp-box.col { flex-direction: column; }
 .cmcp-box.row { flex-direction: row; flex-wrap: wrap; align-items: flex-start; }
 .cmcp-text { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
-.cmcp-text.title { font-size: 1.15em; font-weight: 700; }
-.cmcp-text.section { font-size: 0.85em; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ui-text-dim); }
-.cmcp-text.dim { color: var(--ui-text-dim); }
+.cmcp-text.title { font-size: 1.15em; font-weight: 700; color: var(--cmcp-accent, var(--ui-accent)); font-family: var(--cmcp-font-title, inherit); }
+.cmcp-text.section { font-size: 0.85em; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--cmcp-accent, var(--ui-accent)); font-family: var(--cmcp-font-title, inherit); margin-top: 6px; }
+.cmcp-text.dim { color: var(--cmcp-dim, var(--ui-text-dim)); }
 .cmcp-table { border-collapse: collapse; width: 100%; }
-.cmcp-table th { text-align: left; font-size: 0.8em; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--ui-text-dim); padding: 2px 8px; border-bottom: 1px solid var(--ui-border); }
+.cmcp-table th { text-align: left; font-size: 0.8em; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--cmcp-dim, var(--ui-text-dim)); padding: 2px 8px; border-bottom: 1px solid var(--ui-border); }
 .cmcp-table td { padding: 3px 8px; }
 .cmcp-table tr.pick { cursor: pointer; }
 .cmcp-table tr.pick:hover { background: var(--ui-panel-alt); }
-.cmcp-table tr.sel { background: var(--ui-accent); color: var(--ui-accent-text); }
-.cmcp-btn { cursor: pointer; font: inherit; padding: 3px 14px; border-radius: 4px; border: 1px solid var(--ui-border); background: var(--ui-panel-alt); color: inherit; }
+.cmcp-table tr.sel { background: var(--cmcp-accent, var(--ui-accent)); color: var(--ui-accent-text); }
+.cmcp-btn { cursor: pointer; font: inherit; padding: 3px 14px; border-radius: 4px; border: 1px solid var(--cmcp-accent, var(--ui-border)); background: var(--cmcp-panel, var(--ui-panel-alt)); color: var(--cmcp-accent, inherit); }
 .cmcp-btn:hover:not(:disabled) { border-color: var(--ui-accent); }
 .cmcp-btn:disabled { opacity: 0.5; cursor: default; }
-.cmcp-btn.tone-warn { border-color: var(--ui-warn); }
-.cmcp-btn.tone-alert { border-color: var(--ui-danger); }
+.cmcp-btn.tone-warn { border-color: var(--cmcp-warn, var(--ui-warn)); color: var(--cmcp-warn, inherit); }
+.cmcp-btn.tone-alert { border-color: var(--cmcp-alert, var(--ui-danger)); color: var(--cmcp-alert, inherit); }
 .cmcp-exits { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 10px 8px; }
 .cmcp-bar { display: flex; align-items: center; gap: 8px; }
-.cmcp-bar-label { min-width: 5em; color: var(--ui-text-dim); }
+.cmcp-bar-label { min-width: 5em; color: var(--cmcp-dim, var(--ui-text-dim)); }
 .cmcp-bar-track { flex: 1; height: 10px; border-radius: 5px; background: var(--ui-panel-alt); border: 1px solid var(--ui-border); overflow: hidden; }
-.cmcp-bar-fill { display: block; height: 100%; background: var(--ui-accent); }
+.cmcp-bar-fill { display: block; height: 100%; background: var(--cmcp-accent, var(--ui-accent)); }
 .cmcp-bar-fill.tone-warn { background: var(--ui-warn); }
 .cmcp-bar-fill.tone-alert { background: var(--ui-danger); }
 .cmcp-bar-fill.tone-ok { background: var(--ui-ok); }
