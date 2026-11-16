@@ -282,7 +282,8 @@ export interface HistoryPage {
 }
 
 export type ConnectTarget =
-  | { worldId: string }
+  /** `via` overrides the world's own route for this connection ("direct" or a squatter id): a reconnect keeps the route the session used. */
+  | { worldId: string; via?: string }
   | {
       host: string;
       port: number;

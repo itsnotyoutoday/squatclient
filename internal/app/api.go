@@ -159,6 +159,11 @@ func (s *Service) connect(t ConnectTarget) (si engine.SessionInfo, err error) {
 		if err != nil {
 			return engine.SessionInfo{}, fmt.Errorf("unknown world: %w", err)
 		}
+		// the route may be overridden: a reconnect keeps the route the session really used, which is not always the world's saved one
+		// (a world set to go through a squatter can be connected to directly, and reconnecting it must stay direct)
+		if t.Via != "" {
+			w.Via = t.Via
+		}
 		if w.Via != "" && w.Via != "direct" {
 			if err := s.ensureSquatter(w.Via); err != nil {
 				return engine.SessionInfo{}, err

@@ -132,3 +132,25 @@ describe('reconnecting an ended session', () => {
     expect(useSessions.getState().fg).toBe(b);
   });
 });
+
+describe('reconnecting keeps the route the session used', () => {
+  it('a world set to go through a squatter, connected to directly, reconnects directly', async () => {
+    const engine = await boot('demo');
+    await waitFor(() => expect(useSessions.getState().order.length).toBeGreaterThan(0));
+    const asked: unknown[] = [];
+    const realConnect = engine.connect.bind(engine);
+    engine.connect = async (t) => {
+      asked.push(t);
+      return realConnect(t);
+    };
+    const id = useSessions.getState().order[0];
+    act(() => engine.endSession(id, 'closed'));
+    await waitFor(() => expect(useSessions.getState().sessions[id]?.state).toBe('ended'));
+    act(() => useSessions.getState().setFg(id));
+    const banner = await screen.findByTestId('ended-banner');
+    await userEvent.click(within(banner).getByRole('button', { name: 'Reconnect' }));
+    await waitFor(() => expect(asked.length).toBe(1));
+    // the session was direct, so the reconnect says so rather than letting the world's saved squatter be used
+    expect(asked[0]).toMatchObject({ via: 'direct' });
+  });
+});

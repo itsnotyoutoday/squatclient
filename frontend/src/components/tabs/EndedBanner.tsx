@@ -14,8 +14,11 @@ export function EndedBanner({ session }: { session: SessionInfo }) {
       (session.worldId ? worlds.find((w) => w.id === session.worldId) : undefined) ??
       worlds.find((w) => w.host === session.host && w.port === session.port);
     try {
+      // keep the route this session really used: a world that is set to go through a squatter may have been connected to directly,
+      // and reconnecting it must not quietly take the squatter instead
+      const via = session.via || 'direct';
       const fresh = await engine.connect(
-        world ? { worldId: world.id } : { host: session.host, port: session.port, tls: session.tls },
+        world ? { worldId: world.id, via } : { host: session.host, port: session.port, tls: session.tls, via },
       );
       // show the world just reconnected BEFORE the ended tab is closed: closing the tab you were on picks whatever sat beside it,
       // and that choice would then be pushed to the engine and win

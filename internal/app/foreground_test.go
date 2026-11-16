@@ -47,3 +47,25 @@ func TestANewConnectionBecomesTheActiveTab(t *testing.T) {
 		t.Fatalf("NoFocus leaves the active tab alone: %q want %q", got, sb.ID)
 	}
 }
+
+// A reconnect keeps the route the session really used: a world set to go through a squatter can be connected to directly, and
+// reconnecting it stays direct (it must not try the squatter, which may not even be reachable).
+func TestConnectKeepsTheRouteItWasGiven(t *testing.T) {
+	f := newFixture(t)
+	a := fakemush.New(t)
+	// the world is configured to go through a squatter that does not exist here
+	w, err := f.svc.SaveWorld(config.World{Name: "Alpha", Host: a.Host(), Port: a.Port(), Via: "sq-missing"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.svc.Connect(ConnectTarget{WorldID: w.ID}); err == nil {
+		t.Fatal("the world's own route is used when none is given, and that squatter is unreachable")
+	}
+	si, err := f.svc.Connect(ConnectTarget{WorldID: w.ID, Via: "direct"})
+	if err != nil {
+		t.Fatalf("connecting directly must not touch the squatter: %v", err)
+	}
+	if si.Via != "" && si.Via != "direct" {
+		t.Fatalf("the session is direct: via %q", si.Via)
+	}
+}

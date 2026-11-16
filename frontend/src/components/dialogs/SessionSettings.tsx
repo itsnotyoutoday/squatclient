@@ -86,7 +86,7 @@ export function SessionSettings() {
 
   const reconnect = async (): Promise<void> => {
     try {
-      if (s.worldId) await engine.connect({ worldId: s.worldId });
+      if (s.worldId) await engine.connect({ worldId: s.worldId, via: route }); // the route chosen here, not the world's saved one
       else
         await engine.connect({
           host: s.host,
