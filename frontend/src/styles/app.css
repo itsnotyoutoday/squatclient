@@ -1848,6 +1848,10 @@ h3.lay-panel-title {
 .cmcp-pane-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cmcp-pane-btn { background: none; border: 0; color: inherit; cursor: pointer; font: inherit; padding: 0 4px; }
 .cmcp-pane-wait { padding: 8px; }
+/* a pane's own text scrolls when it is taller than the space the dock gives it */
+.cmcp-pane > .cmcp-tree { overflow-y: auto; max-height: 70vh; }
+/* a pane's own text scrolls when it is taller than the space the dock gives it */
+.cmcp-pane > .cmcp-tree { overflow-y: auto; max-height: 70vh; }
 .cmcp-float { position: absolute; z-index: 20; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45); }
 .cmcp-float-drag { cursor: move; touch-action: none; }
 .cmcp-tree { padding: 8px 10px; }
